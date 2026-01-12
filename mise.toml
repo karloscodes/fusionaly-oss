@@ -1,0 +1,3 @@
+[tools]
+go = "1.25.3"
+node = "20"  # LTS - Playwright 1.47 compatibility

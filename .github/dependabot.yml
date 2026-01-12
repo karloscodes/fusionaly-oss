@@ -1,0 +1,88 @@
+version: 2
+updates:
+  # Enable version updates for Go modules
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+      day: "1"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "karloscodes"
+    assignees:
+      - "karloscodes"
+    commit-message:
+      prefix: "deps"
+      prefix-development: "deps-dev"
+      include: "scope"
+    # Only major updates and security fixes
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          ["version-update:semver-minor", "version-update:semver-patch"]
+
+  # Enable version updates for npm packages
+  - package-ecosystem: "npm"
+    directory: "/web"
+    schedule:
+      interval: "monthly"
+      day: "1"
+      time: "09:00"
+    open-pull-requests-limit: 2
+    reviewers:
+      - "karloscodes"
+    assignees:
+      - "karloscodes"
+    commit-message:
+      prefix: "deps"
+      prefix-development: "deps-dev"
+      include: "scope"
+    # Only major updates and security fixes
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          ["version-update:semver-minor", "version-update:semver-patch"]
+
+  # Enable version updates for npm packages in e2e directory
+  - package-ecosystem: "npm"
+    directory: "/e2e"
+    schedule:
+      interval: "monthly"
+      day: "1"
+      time: "09:00"
+    open-pull-requests-limit: 1
+    reviewers:
+      - "karloscodes"
+    assignees:
+      - "karloscodes"
+    commit-message:
+      prefix: "deps"
+      prefix-development: "deps-dev"
+      include: "scope"
+    # Only major updates and security fixes
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          ["version-update:semver-minor", "version-update:semver-patch"]
+
+  # Enable version updates for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+      day: "1"
+      time: "09:00"
+    open-pull-requests-limit: 1
+    reviewers:
+      - "karloscodes"
+    assignees:
+      - "karloscodes"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    # Only major updates and security fixes
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          ["version-update:semver-minor", "version-update:semver-patch"]

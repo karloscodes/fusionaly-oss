@@ -1,0 +1,157 @@
+version: 2
+
+project_name: fusionaly
+
+before:
+  hooks:
+    - go mod tidy
+
+# Manager builds as standalone binaries (no CGO needed)
+builds:
+  - id: fusionaly-manager
+    main: ./cmd/manager
+    binary: fusionaly-manager
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.currentManagerVersion={{.Version}}
+
+  # Skip app builds here - they happen inside Docker (CGO/SQLite)
+  - id: fusionaly
+    skip: true
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - id: manager-binaries
+    builds:
+      - fusionaly-manager
+    format: binary
+    name_template: "{{ .Binary }}-{{ .Os }}-{{ .Arch }}"
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "^ci:"
+      - Merge pull request
+      - Merge branch
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+      order: 0
+    - title: Bug Fixes
+      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
+      order: 1
+    - title: Others
+      order: 999
+
+dockers:
+  - image_templates:
+      - "karloscodes/fusionaly:{{ .Version }}-amd64"
+      - "karloscodes/fusionaly:latest-amd64"
+    use: buildx
+    dockerfile: Dockerfile
+    build_flag_templates:
+      - "--platform=linux/amd64"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+    extra_files:
+      - go.mod
+      - go.sum
+      - cmd
+      - internal
+      - pkg
+      - api
+      - web
+      - scripts
+
+  - image_templates:
+      - "karloscodes/fusionaly:{{ .Version }}-arm64"
+      - "karloscodes/fusionaly:latest-arm64"
+    use: buildx
+    goarch: arm64
+    dockerfile: Dockerfile
+    build_flag_templates:
+      - "--platform=linux/arm64"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+    extra_files:
+      - go.mod
+      - go.sum
+      - cmd
+      - internal
+      - pkg
+      - api
+      - web
+      - scripts
+
+docker_manifests:
+  - name_template: "karloscodes/fusionaly:{{ .Version }}"
+    image_templates:
+      - "karloscodes/fusionaly:{{ .Version }}-amd64"
+      - "karloscodes/fusionaly:{{ .Version }}-arm64"
+
+  - name_template: "karloscodes/fusionaly:v{{ .Major }}"
+    image_templates:
+      - "karloscodes/fusionaly:{{ .Version }}-amd64"
+      - "karloscodes/fusionaly:{{ .Version }}-arm64"
+
+  - name_template: "karloscodes/fusionaly:v{{ .Major }}.{{ .Minor }}"
+    image_templates:
+      - "karloscodes/fusionaly:{{ .Version }}-amd64"
+      - "karloscodes/fusionaly:{{ .Version }}-arm64"
+
+  - name_template: "karloscodes/fusionaly:latest"
+    image_templates:
+      - "karloscodes/fusionaly:latest-amd64"
+      - "karloscodes/fusionaly:latest-arm64"
+
+release:
+  github:
+    owner: karloscodes
+    name: fusionaly-oss
+  prerelease: auto
+  mode: replace
+  header: |
+    ## Fusionaly {{ .Tag }}
+
+    Privacy-focused web analytics with SQLite storage.
+
+    ### Installation
+
+    Download the manager and run:
+    ```bash
+    curl -L https://github.com/karloscodes/fusionaly-oss/releases/download/{{ .Tag }}/fusionaly-manager-linux-$(uname -m | sed 's/x86_64/amd64/' | sed 's/aarch64/arm64/') -o fusionaly-manager
+    chmod +x fusionaly-manager
+    sudo ./fusionaly-manager install
+    ```
+
+    ### Docker
+
+    ```bash
+    docker pull karloscodes/fusionaly:{{ .Version }}
+    ```
+  footer: |
+    ---
+
+    **Full Changelog**: https://github.com/karloscodes/fusionaly-oss/compare/{{ .PreviousTag }}...{{ .Tag }}

@@ -1,0 +1,58 @@
+# VCS
+.git
+.github
+.gitignore
+
+# Dependencies (but keep package*.json for caching)
+**/node_modules
+**/.cache
+**/bower_components
+
+# Build artifacts
+dist
+build
+tmp
+bin
+storage
+logs
+*.log
+
+# Development files
+Dockerfile*
+docker-compose*
+*.md
+.env*
+.editorconfig
+.vscode
+.idea
+mise.toml
+
+# Test files and fixtures
+test-results
+playwright-report
+coverage
+e2e
+tests
+fixtures
+**/*.test.js
+**/*_test.go
+**/testdata
+walkthrough
+
+# Documentation
+docs
+*.md
+AGENTS.md
+CLAUDE.md
+CODEX.md
+TODO.md
+plan.md
+
+# Temp files
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Scripts not needed in container
+scripts

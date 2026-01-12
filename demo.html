@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>My First Web Page</title>
+  <!-- Make sure this path is correct for your test environment -->
+  <script defer src="/y/api/v1/sdk.js"></script>
+
+  <script>
+    // Wait for the DOM to be fully loaded and parsed
+    document.addEventListener('DOMContentLoaded', (event) => {
+      console.log("DOM fully loaded and parsed");
+      // Add a small delay to give the deferred SDK script time to initialize
+      // This is a fallback, ideally the SDK provides a ready callback/event
+      setTimeout(() => {
+        console.log("Attempting to send custom event...");
+        if (typeof Fusionaly !== 'undefined' && Fusionaly.sendCustomEvent) {
+          Fusionaly.sendCustomEvent('user:subscribed', {
+            'button': 'demo_button',
+          });
+          console.log("Custom event 'user:subscribed' sent.");
+
+          Fusionaly.registerPurchase(199, 'USD', {
+            'button': 'demo_button',
+          });
+          console.log("Purchase registered: $1.99 USD");
+        } else {
+          console.error("Fusionaly SDK not ready when trying to send custom event.");
+        }
+
+
+
+      }, 150); // 150ms delay, adjust if needed
+    });
+  </script>
+</head>
+
+<body>
+  <h1>Testing Event Ingestion</h1>
+  <p>This page includes the tracking script.</p>
+
+  <!-- Test links for e2e tests -->
+  <a href="https://google.com" data-fusionaly-event-name="click:link:google" data-fusionaly-metadata-category="test">
+    Test Link (Google)
+  </a>
+  <br>
+  <a href="https://example.com" data-fusionaly-event-name="click:link:example"
+    data-fusionaly-metadata-category="test">
+    Test Link (Example)
+  </a>
+
+</body>
+
+</html>

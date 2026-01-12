@@ -1,0 +1,56 @@
+services:
+  fusionaly-web:
+    image: karloscodes/fusionaly-beta:latest
+    pull_policy: always
+    container_name: fusionaly-devbox
+    environment:
+      # Required for DevBox functionality
+      - FUSIONALY_ENV=test
+      - FUSIONALY_DOMAIN=localhost
+      - FUSIONALY_APP_PORT=8080
+      - FUSIONALY_LICENSE_KEY=IM-DEVBOX-TEST-ONLY
+      # Optional: Better DevBox experience
+      - FUSIONALY_LOG_LEVEL=info
+      - FUSIONALY_JOB_INTERVAL_SECONDS=3
+      - TZ=UTC
+    volumes:
+      - fusionaly_storage:/app/storage
+      - fusionaly_logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - fusionaly-network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/_health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  caddy:
+    image: caddy:2.7-alpine
+    container_name: caddy-devbox
+    environment:
+      - DOMAIN=localhost
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./devbox.html:/usr/share/caddy/devbox.html:ro
+      - ./alt.html:/usr/share/caddy/alt.html:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - fusionaly-network
+    depends_on:
+      fusionaly-web:
+        condition: service_healthy
+
+volumes:
+  fusionaly_storage:
+  fusionaly_logs:
+  caddy_data:
+  caddy_config:
+
+networks:
+  fusionaly-network:
+    driver: bridge

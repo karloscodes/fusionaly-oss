@@ -1,0 +1,20 @@
+access-key-id: ${AWS_ACCESS_KEY_ID}
+secret-access-key: ${AWS_SECRET_ACCESS_KEY}
+
+dbs:
+  - path: /app/storage/fusionaly-production.db
+    replicas:
+      - url: s3://${S3_BUCKET}/${DOMAIN}/db
+        region: ${S3_REGION}
+        sync-interval: 1m
+    snapshots:
+      - url: s3://${S3_BUCKET}/${DOMAIN}/snapshots
+        region: ${S3_REGION}
+        retention: 336h    # Keep snapshots for 14 days
+        interval: 24h      # Create daily snapshots
+
+exec:
+  - name: fusionaly
+    args: ["/app/fusionaly"]
+    restart-on-exit: true
+    restart-on-error: true

@@ -1,0 +1,116 @@
+# If you prefer the allow list template instead of the deny list, see community template:
+# https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.sublime-workspace
+*.sublime-project
+
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories (remove the comment below to include it)
+# vendor/
+
+# Go workspace file
+go.work
+go.work.sum
+
+node_modules
+
+*.db*
+
+*.gz
+
+tmp
+
+dist
+
+# Logs
+logs/
+**/logs/
+
+# Storage directory - keep structure but ignore runtime files
+storage/*.db
+storage/*.sqlite*
+storage/backups/
+storage/caddy/
+storage/dev_bdgr_s/
+
+# Environment variables
+.env
+
+# Binaries
+/bin/
+/fusionaly
+/fnctl
+*.exe
+*.exe~
+
+# Database files
+*.sqlite
+*.sqlite3
+*.sqlite3-shm
+*.sqlite3-wal
+
+
+e2e/playwright-report
+e2e/screenshots
+e2e/screenshot-*.png
+
+# Test results (anywhere in repo)
+test-results/
+**/test-results/
+
+# Go build cache
+.gocache/
+.gopath/
+
+# Claude Code settings (developer-specific)
+.claude/
+
+# GeoIP database (download from MaxMind)
+*.mmdb
+internal-storage/GeoLite2-City.mmdb
+storage/GeoLite2-City.mmdb
+
+# Backup files
+*.bak
+*.back
+*.backup
+*.orig
+
+# Coverage reports
+coverage.out
+coverage.html
+*.coverprofile
+
+# Debug files
+debug
+*.log
+
+# Air (hot reload) temp files
+.air.toml

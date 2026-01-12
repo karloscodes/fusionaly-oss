@@ -1,0 +1,357 @@
+package analytics_test
+
+import (
+	"fusionaly/internal/analytics"
+	"fusionaly/internal/timeframe"
+
+	"fmt"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"fusionaly/internal/testsupport"
+)
+
+func TestAggregatedPageViews(t *testing.T) {
+	tests := []struct {
+		name           string
+		setup          func() // Function to set up site_stats data
+		timeFrameSize  timeframe.TimeFrameSize
+		fromTime       time.Time
+		toTime         time.Time
+		expectedCounts map[string]int // Map date string to expected count
+	}{
+		{
+			name: "Daily Format",
+			setup: func() {
+				dbManager, _ := testsupport.SetupTestDBManager(t)
+				db := dbManager.GetConnection()
+				// Clean the site_stats table specifically to ensure no leftover data
+				testsupport.CleanTables(db, []string{"site_stats"})
+
+				// Create site_stats entries for testing daily format
+				siteStats := []analytics.SiteStat{
+					{
+						WebsiteID: 1,
+						PageViews: 1,
+						Hour:      time.Date(2024, 7, 1, 12, 0, 0, 0, time.UTC),
+					},
+					{
+						WebsiteID: 1,
+						PageViews: 1,
+						Hour:      time.Date(2024, 7, 2, 10, 0, 0, 0, time.UTC),
+					},
+					{
+						WebsiteID: 1,
+						PageViews: 1,
+						Hour:      time.Date(2024, 7, 2, 14, 0, 0, 0, time.UTC),
+					},
+					{
+						WebsiteID: 1,
+						PageViews: 1,
+						Hour:      time.Date(2024, 7, 3, 9, 0, 0, 0, time.UTC),
+					},
+				}
+
+				// Insert records individually with error checking
+				for i, stat := range siteStats {
+					result := db.Create(&stat)
+					if result.Error != nil {
+						panic(fmt.Sprintf("Failed to insert test data %d: %v", i, result.Error))
+					}
+				}
+			},
+			timeFrameSize: timeframe.DailyTimeFrame,
+			fromTime:      time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC),
+			toTime:        time.Date(2024, 7, 3, 23, 59, 59, 0, time.UTC),
+			expectedCounts: map[string]int{
+				"2024-07-01T00:00:00Z": 1,
+				"2024-07-02T00:00:00Z": 2,
+				"2024-07-03T00:00:00Z": 1,
+			},
+		},
+		{
+			name: "Hourly Format",
+			setup: func() {
+				dbManager, _ := testsupport.SetupTestDBManager(t)
+				db := dbManager.GetConnection()
+				// Clean the site_stats table specifically to ensure no leftover data
+				testsupport.CleanTables(db, []string{"site_stats"})
+
+				// Create site_stats entries for testing hourly format
+				// Note: site_stats has a unique constraint on (website_id, hour)
+				siteStats := []analytics.SiteStat{
+					{
+						WebsiteID: 1,
+						PageViews: 2, // 2 pageviews in the 10:00 hour
+						Hour:      time.Date(2024, 7, 1, 10, 0, 0, 0, time.UTC),
+					},
+					{
+						WebsiteID: 1,
+						PageViews: 1, // 1 pageview in the 11:00 hour
+						Hour:      time.Date(2024, 7, 1, 11, 0, 0, 0, time.UTC),
+					},
+					{
+						WebsiteID: 1,
+						PageViews: 1, // 1 pageview in the 12:00 hour
+						Hour:      time.Date(2024, 7, 1, 12, 0, 0, 0, time.UTC),
+					},
+				}
+
+				// Insert records individually with error checking
+				for i, stat := range siteStats {
+					result := db.Create(&stat)
+					if result.Error != nil {
+						panic(fmt.Sprintf("Failed to insert test data %d: %v", i, result.Error))
+					}
+				}
+			},
+			timeFrameSize: timeframe.HourlyTimeFrame,
+			fromTime:      time.Date(2024, 7, 1, 10, 0, 0, 0, time.UTC),
+			toTime:        time.Date(2024, 7, 1, 12, 59, 59, 0, time.UTC),
+			expectedCounts: map[string]int{
+				"2024-07-01T10:00:00Z": 2,
+				"2024-07-01T11:00:00Z": 1,
+				"2024-07-01T12:00:00Z": 1,
+			},
+		},
+		{
+			name: "Monthly Format",
+			setup: func() {
+				dbManager, _ := testsupport.SetupTestDBManager(t)
+				db := dbManager.GetConnection()
+				// Clean the site_stats table specifically to ensure no leftover data
+				testsupport.CleanTables(db, []string{"site_stats"})
+
+				// Create site_stats entries for testing monthly format
+				siteStats := []analytics.SiteStat{
+					{
+						WebsiteID: 1,
+						PageViews: 1,
+						Hour:      time.Date(2024, 1, 15, 12, 0, 0, 0, time.UTC),
+					},
+					{
+						WebsiteID: 1,
+						PageViews: 1,
+						Hour:      time.Date(2024, 2, 5, 12, 0, 0, 0, time.UTC),
+					},
+					{
+						WebsiteID: 1,
+						PageViews: 1,
+						Hour:      time.Date(2024, 2, 20, 12, 0, 0, 0, time.UTC),
+					},
+					{
+						WebsiteID: 1,
+						PageViews: 1,
+						Hour:      time.Date(2024, 3, 10, 12, 0, 0, 0, time.UTC),
+					},
+					{
+						WebsiteID: 1,
+						PageViews: 1,
+						Hour:      time.Date(2024, 4, 1, 12, 0, 0, 0, time.UTC),
+					},
+				}
+
+				// Insert records individually with error checking
+				for i, stat := range siteStats {
+					result := db.Create(&stat)
+					if result.Error != nil {
+						panic(fmt.Sprintf("Failed to insert test data %d: %v", i, result.Error))
+					}
+				}
+			},
+			timeFrameSize: timeframe.MonthlyTimeFrame,
+			fromTime:      time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+			toTime:        time.Date(2024, 6, 30, 23, 59, 59, 0, time.UTC),
+			expectedCounts: map[string]int{
+				"2024-01-01T00:00:00Z": 1,
+				"2024-02-01T00:00:00Z": 2,
+				"2024-03-01T00:00:00Z": 1,
+				"2024-04-01T00:00:00Z": 1,
+				"2024-05-01T00:00:00Z": 0,
+				"2024-06-01T00:00:00Z": 0,
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			dbManager, _ := testsupport.SetupTestDBManager(t)
+			db := dbManager.GetConnection()
+			// Set up test data
+			tc.setup()
+
+			timeFrame, err := timeframe.NewTimeFrame(timeframe.TimeFrameParams{
+				FromTime:      tc.fromTime,
+				ToTime:        tc.toTime,
+				TimeFrameSize: tc.timeFrameSize,
+			}, time.UTC)
+			require.NoError(t, err)
+
+			// Create query params with website ID 1
+			queryParams := analytics.NewWebsiteScopedQueryParams(timeFrame, 1)
+			result, err := analytics.AggregatedPageViewsInTimeFrame(db, queryParams)
+			require.NoError(t, err)
+
+			// Check that all expected dates and counts match
+			resultMap := make(map[string]int)
+			for _, item := range result {
+				resultMap[item.Date] = item.Count
+			}
+
+			// Verify expected counts
+			for expectedDate, expectedCount := range tc.expectedCounts {
+				actualCount, exists := resultMap[expectedDate]
+				assert.True(t, exists, "Expected date %v not found in results", expectedDate)
+				assert.Equal(t, expectedCount, actualCount, "Count mismatch for date %v", expectedDate)
+			}
+
+			// Verify no extra dates are present
+			assert.Equal(t, len(tc.expectedCounts), len(resultMap),
+				"Number of dates in result doesn't match expected")
+		})
+	}
+}
+
+func TestPageViewsEdgeCases(t *testing.T) {
+	testCases := []struct {
+		name           string
+		setup          func() *timeframe.TimeFrame
+		expectedLength int
+		checkFunc      func(*testing.T, []timeframe.DateStat)
+	}{
+		{
+			name: "Empty dataset",
+			setup: func() *timeframe.TimeFrame {
+				dbManager, _ := testsupport.SetupTestDBManager(t)
+				db := dbManager.GetConnection()
+				// Clean the site_stats table specifically
+				testsupport.CleanTables(db, []string{"site_stats"})
+
+				timeFrame, err := timeframe.NewTimeFrame(timeframe.TimeFrameParams{
+					FromTime:      time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC),
+					ToTime:        time.Date(2024, 7, 3, 23, 59, 59, 0, time.UTC),
+					TimeFrameSize: timeframe.DailyTimeFrame,
+				}, time.UTC)
+				require.NoError(t, err)
+				return timeFrame
+			},
+			expectedLength: 3, // Should still have 3 data points for the 3 days
+			checkFunc: func(t *testing.T, result []timeframe.DateStat) {
+				for _, point := range result {
+					assert.Equal(t, 0, point.Count, "Count should be zero for empty dataset")
+				}
+			},
+		},
+		{
+			name: "Single-day timeframe",
+			setup: func() *timeframe.TimeFrame {
+				dbManager, _ := testsupport.SetupTestDBManager(t)
+				db := dbManager.GetConnection()
+				// Clean the site_stats table specifically
+				testsupport.CleanTables(db, []string{"site_stats"})
+
+				singleDay := time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC)
+				endOfDay := time.Date(2024, 7, 1, 23, 59, 59, 0, time.UTC)
+
+				// Insert site_stats data
+				siteStats := []analytics.SiteStat{
+					{
+						WebsiteID: 1,
+						PageViews: 1,
+						Hour:      time.Date(2024, 7, 1, 10, 0, 0, 0, time.UTC),
+					},
+					{
+						WebsiteID: 1,
+						PageViews: 1,
+						Hour:      time.Date(2024, 7, 1, 14, 0, 0, 0, time.UTC),
+					},
+				}
+
+				// Insert records individually
+				for i, stat := range siteStats {
+					result := db.Create(&stat)
+					if result.Error != nil {
+						panic(fmt.Sprintf("Failed to insert test data %d: %v", i, result.Error))
+					}
+				}
+
+				timeFrame, err := timeframe.NewTimeFrame(timeframe.TimeFrameParams{
+					FromTime:      singleDay,
+					ToTime:        endOfDay,
+					TimeFrameSize: timeframe.DailyTimeFrame,
+				}, time.UTC)
+				require.NoError(t, err)
+				return timeFrame
+			},
+			expectedLength: 1, // Just one day
+			checkFunc: func(t *testing.T, result []timeframe.DateStat) {
+				assert.Equal(t, 2, result[0].Count, "Should count both page views")
+			},
+		},
+		{
+			name: "Multiple websites",
+			setup: func() *timeframe.TimeFrame {
+				dbManager, _ := testsupport.SetupTestDBManager(t)
+				db := dbManager.GetConnection()
+				// Clean the site_stats table specifically
+				testsupport.CleanTables(db, []string{"site_stats"})
+
+				fromTime := time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC)
+				toTime := time.Date(2024, 7, 1, 23, 59, 59, 0, time.UTC)
+
+				// Insert site_stats for two different websites
+				siteStats := []analytics.SiteStat{
+					{
+						WebsiteID: 1,
+						PageViews: 3,
+						Hour:      time.Date(2024, 7, 1, 12, 0, 0, 0, time.UTC),
+					},
+					{
+						WebsiteID: 2,
+						PageViews: 5,
+						Hour:      time.Date(2024, 7, 1, 12, 0, 0, 0, time.UTC),
+					},
+				}
+
+				// Insert records individually
+				for i, stat := range siteStats {
+					result := db.Create(&stat)
+					if result.Error != nil {
+						panic(fmt.Sprintf("Failed to insert test data %d: %v", i, result.Error))
+					}
+				}
+
+				timeFrame, err := timeframe.NewTimeFrame(timeframe.TimeFrameParams{
+					FromTime:      fromTime,
+					ToTime:        toTime,
+					TimeFrameSize: timeframe.DailyTimeFrame,
+				}, time.UTC)
+				require.NoError(t, err)
+				return timeFrame
+			},
+			expectedLength: 1, // Just one day
+			checkFunc: func(t *testing.T, result []timeframe.DateStat) {
+				// Now we're using a website-scoped query, so we only get page views for website 1
+				assert.Equal(t, 3, result[0].Count, "Should only count page views for website ID 1")
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			dbManager, _ := testsupport.SetupTestDBManager(t)
+			db := dbManager.GetConnection()
+
+			timeFrame := tc.setup()
+			// Create query params with website ID 1
+			queryParams := analytics.NewWebsiteScopedQueryParams(timeFrame, 1)
+			result, err := analytics.AggregatedPageViewsInTimeFrame(db, queryParams)
+			require.NoError(t, err)
+			assert.Equal(t, tc.expectedLength, len(result), "Unexpected number of data points")
+			tc.checkFunc(t, result)
+		})
+	}
+}

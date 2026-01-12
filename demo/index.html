@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>∞ Fusionaly DevBox ∞</title>
+  <script defer src="/y/api/v1/sdk.js"></script>
+  <script defer src="https://unpkg.com/three@0.158.0/build/three.min.js"></script>
+  <script defer src="https://unpkg.com/three-globe@2.28.0/dist/three-globe.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800;900&family=Fira+Code:wght@400;600;700&family=Source+Code+Pro:wght@400;600;700;900&display=swap');
+
+    :root {
+      --bg: #1a1a1a;
+      --card: #2a2a2a;
+      --text: #ffffff;
+      --muted: #999999;
+      --accent: #c4ff00;
+      --bright-lime: #c4ff00;
+      --dark-lime: #9acc00;
+      --darker: #404040;
+      --globe-bg: #0f1419;
+    }
+
+    /* Animated Globe Background */
+    .globe-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      overflow: hidden;
+      pointer-events: none;
+      display: none;
+      /* replaced by WebGL globe */
+    }
+
+    /* WebGL globe canvas layer (left column) */
+    #bg3d {
+      position: fixed;
+      left: 0;
+      top: 0;
+      /* cover entire viewport (no banner) */
+      width: 100vw;
+      height: 100vh;
+      z-index: 1;
+      /* behind UI */
+      pointer-events: none;
+      /* allow clicking UI */
+    }
+
+    /* Satellite feel: subtle transparency */
+    #bg3d canvas {
+      opacity: 0.78;
+    }
+
+    .globe {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 30% 30%, rgba(196, 255, 0, 0.3) 0%, transparent 50%),
+        radial-gradient(circle at 70% 70%, rgba(196, 255, 0, 0.2) 0%, transparent 40%),
+        radial-gradient(ellipse 100% 50% at 50% 0%, transparent 40%, rgba(196, 255, 0, 0.1) 50%, transparent 60%),
+        radial-gradient(ellipse 100% 50% at 50% 100%, transparent 40%, rgba(196, 255, 0, 0.1) 50%, transparent 60%);
+      box-shadow:
+        inset 0 0 50px rgba(196, 255, 0, 0.2),
+        0 0 100px rgba(196, 255, 0, 0.3);
+      animation: globe-rotate 30s linear infinite;
+      overflow: hidden;
+    }
+
+    .globe::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      border-radius: 50%;
+      background:
+        repeating-linear-gradient(0deg,
+          transparent 0px,
+          transparent 40px,
+          rgba(196, 255, 0, 0.1) 41px,
+          rgba(196, 255, 0, 0.1) 42px),
+        repeating-linear-gradient(90deg,
+          transparent 0px,
+          transparent 40px,
+          rgba(196, 255, 0, 0.1) 41px,
+          rgba(196, 255, 0, 0.1) 42px);
+      animation: grid-rotate 60s linear infinite;
+    }
+
+    .globe::after {
+      content: '';
+      position: absolute;
+      top: -50px;
+      left: -50px;
+      right: -50px;
+      bottom: -50px;
+      border: 2px solid rgba(196, 255, 0, 0.4);
+      border-radius: 50%;
+      animation: orbit-rotate 45s linear infinite;
+    }
+
+    .connection-dot {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      background: var(--bright-lime);
+      border-radius: 50%;
+      box-shadow: 0 0 20px rgba(196, 255, 0, 1);
+      animation: pulse-dot 3s ease-in-out infinite;
+    }
+
+    .continent {
+      position: absolute;
+      background: rgba(196, 255, 0, 0.3);
+      border-radius: 50%;
+      animation: continent-drift 40s linear infinite;
+    }
+
+    .continent:nth-child(1) {
+      width: 80px;
+      height: 50px;
+      top: 25%;
+      left: 15%;
+      border-radius: 60% 40% 70% 30%;
+    }
+
+    .continent:nth-child(2) {
+      width: 60px;
+      height: 70px;
+      top: 45%;
+      left: 65%;
+      border-radius: 40% 60% 30% 70%;
+      animation-delay: -10s;
+    }
+
+    .continent:nth-child(3) {
+      width: 45px;
+      height: 35px;
+      top: 15%;
+      left: 70%;
+      border-radius: 50% 70% 40% 60%;
+      animation-delay: -20s;
+    }
+
+    .continent:nth-child(4) {
+      width: 70px;
+      height: 40px;
+      top: 70%;
+      left: 25%;
+      border-radius: 70% 30% 60% 40%;
+      animation-delay: -30s;
+    }
+
+    @keyframes globe-rotate {
+      from {
+        transform: translate(-50%, -50%) rotate(0deg);
+      }
+
+      to {
+        transform: translate(-50%, -50%) rotate(360deg);
+      }
+    }
+
+    @keyframes grid-rotate {
+      from {
+        transform: rotate(0deg);
+      }
+
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @keyframes orbit-rotate {
+      from {
+        transform: rotate(0deg);
+      }
+
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @keyframes continent-drift {
+      from {
+        transform: rotate(0deg);
+      }
+
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @keyframes pulse-dot {
+
+      0%,
+      100% {
+        opacity: 0.6;
+        transform: scale(1);
+      }
+
+      50% {
+        opacity: 1;
+        transform: scale(1.5);
+      }
+    }
+
+    /* Glitch effect */
+    @keyframes glitch {
+
+      0%,
+      100% {
+        transform: translateX(0);
+      }
+
+      20% {
+        transform: translateX(-2px);
+      }
+
+      40% {
+        transform: translateX(2px);
+      }
+
+      60% {
+        transform: translateX(-1px);
+      }
+
+      80% {
+        transform: translateX(1px);
+      }
+    }
+
+    .glitch {
+      animation: glitch 0.3s ease-in-out infinite alternate;
+    }
+
+    /* Neon glow */
+    .neon-glow {
+      text-shadow: 0 0 5px currentColor, 0 0 10px currentColor, 0 0 15px currentColor;
+    }
+
+    /* Pulse animation */
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.5;
+      }
+    }
+
+    .pulse {
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      position: relative;
+      font-weight: 400;
+    }
+
+    header {
+      padding: 48px 20px 24px;
+      text-align: center;
+      position: relative;
+      z-index: 100;
+      background: transparent;
+      /* make header transparent over globe */
+      backdrop-filter: none;
+    }
+
+    .title {
+      font-size: 42px;
+      font-weight: 700;
+      letter-spacing: -1px;
+      color: var(--text);
+      line-height: 1.1;
+      margin-bottom: 12px;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      margin-top: 8px;
+      font-size: 16px;
+      font-weight: 400;
+      letter-spacing: 0.3px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+      position: relative;
+      z-index: 3;
+      /* above globe */
+    }
+
+    .right-side {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+      width: min(820px, 92vw);
+      margin: 0 auto;
+    }
+
+    @media (max-width: 1200px) {
+      .container {
+        padding: 16px;
+      }
+    }
+
+    .log-card {
+      grid-column: 1 / -1;
+    }
+
+    .log-card .log {
+      height: 160px;
+    }
+
+    .card {
+      background: rgba(42, 42, 42, 0.95);
+      border: 1px solid rgba(196, 255, 0, 0.2);
+      border-radius: 12px;
+      padding: 28px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+      z-index: 50;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    }
+
+    .card:hover {
+      border-color: var(--bright-lime);
+      transform: translateY(-4px);
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4), 0 0 20px rgba(196, 255, 0, 0.1);
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--bright-lime), transparent);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .card:hover::before {
+      opacity: 1;
+    }
+
+    .card h3 {
+      margin: 0 0 16px;
+      font-size: 20px;
+      color: var(--text);
+      font-weight: 600;
+      letter-spacing: -0.3px;
+    }
+
+    .card p {
+      margin: 0 0 20px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+      font-weight: 400;
+    }
+
+    .btn,
+    button.btn,
+    a.btn {
+      appearance: none;
+      border: 1px solid var(--bright-lime);
+      cursor: pointer;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 500;
+      color: #1a1a1a;
+      background: var(--bright-lime);
+      font-family: inherit;
+      font-size: 14px;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+      text-decoration: none;
+      display: inline-block;
+      text-align: center;
+    }
+
+    .btn::before,
+    button.btn::before,
+    a.btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(154, 204, 0, 0.3), transparent);
+      transition: left 0.5s ease;
+    }
+
+    .btn:hover::before,
+    button.btn:hover::before,
+    a.btn:hover::before {
+      left: 100%;
+    }
+
+    .btn:hover,
+    button.btn:hover,
+    a.btn:hover {
+      background: var(--dark-lime);
+      border-color: var(--dark-lime);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(196, 255, 0, 0.3);
+    }
+
+    .btn:active,
+    button.btn:active,
+    a.btn:active {
+      transform: translateY(0);
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .log {
+      margin-top: 24px;
+      background: rgba(15, 20, 25, 0.95);
+      border: 1px solid rgba(196, 255, 0, 0.3);
+      border-radius: 12px;
+      padding: 20px;
+      height: 200px;
+      overflow: auto;
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+      font-size: 12px;
+      color: var(--bright-lime);
+      font-weight: 400;
+      position: relative;
+      z-index: 60;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    }
+
+    .log::before {
+      content: 'System Log';
+      position: absolute;
+      top: -1px;
+      left: 16px;
+      background: var(--bg);
+      padding: 0 12px;
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 6px 16px;
+      border-radius: 20px;
+      background: rgba(196, 255, 0, 0.15);
+      color: var(--bright-lime);
+      font-size: 12px;
+      font-weight: 500;
+      border: 1px solid rgba(196, 255, 0, 0.3);
+      letter-spacing: 0.5px;
+    }
+
+    .footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+      padding: 20px;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="bg3d"></div>
+  <div class="globe-bg">
+    <div class="globe">
+      <div class="continent"></div>
+      <div class="continent"></div>
+      <div class="continent"></div>
+      <div class="continent"></div>
+      <div class="connection-dot" style="top: 15%; left: 25%; animation-delay: 0s;"></div>
+      <div class="connection-dot" style="top: 35%; left: 75%; animation-delay: 1s;"></div>
+      <div class="connection-dot" style="top: 65%; left: 20%; animation-delay: 2s;"></div>
+      <div class="connection-dot" style="top: 80%; left: 80%; animation-delay: 1.5s;"></div>
+      <div class="connection-dot" style="top: 45%; left: 45%; animation-delay: 0.5s;"></div>
+      <div class="connection-dot" style="top: 25%; left: 65%; animation-delay: 2.5s;"></div>
+    </div>
+  </div>
+
+  <header>
+    <div class="badge">Analytics Platform</div>
+    <div class="title">
+      Fusionaly Playground
+    </div>
+    <div class="subtitle">
+      Professional analytics demo with live events and system logging
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="right-side">
+      <div class="grid">
+        <section class="card">
+          <h3>Custom Event</h3>
+          <p>
+            Sends <code>button_click</code> event with sample metadata.<br>
+            <small>Target: <code>/api/events/custom</code></small>
+          </p>
+          <button id="btn-custom" class="btn accent">Send Event</button>
+        </section>
+
+        <section class="card">
+          <h3>Purchase</h3>
+          <p>
+            Registers a purchase transaction for <strong>$19.99</strong> USD.<br>
+            <small>Includes SKU and quantity data</small>
+          </p>
+          <button id="btn-purchase" class="btn">Register Purchase</button>
+        </section>
+
+        <section class="card">
+          <h3>Page View</h3>
+          <p>
+            Open subpage or manually trigger page view tracking.<br>
+            <small>Demonstrates multi-page analytics</small>
+          </p>
+          <div class="row">
+            <a class="btn" href="/alt.html" target="_blank" rel="noreferrer noopener">Open Subpage</a>
+            <button id="btn-send-pv" class="btn">Track View</button>
+          </div>
+        </section>
+
+        <section class="card">
+          <h3>Link Tracking</h3>
+          <p>
+            Auto-tracked link using data attributes.<br>
+            <small>Destination: <code>example.com</code></small>
+          </p>
+          <a class="btn" href="https://example.com" data-infinity-event-name="click:learn_more"
+            data-infinity-metadata-source="demo_link" target="_blank" rel="noreferrer noopener">Visit Link</a>
+        </section>
+      </div>
+
+      <div class="card log-card">
+        <h3 style="margin-bottom:8px">System Log</h3>
+        <div id="log" class="log" aria-live="polite" aria-atomic="true">
+          > Initializing event monitoring...<br>
+          > SDK status: Loading<br>
+          > Ready for analytics data
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    Served at <code>/</code> — SDK <code>/y/api/v1/sdk.js</code> — subpage <code>/alt.html</code>
+  </footer>
+
+  <script>
+
+    function log(msg) {
+      const el = document.getElementById('log');
+      const time = new Date().toLocaleTimeString();
+      el.innerHTML = `<span style="color: var(--muted);">[${time}]</span> ${msg}<br>` + el.innerHTML;
+    }
+
+    function rand(min, max) { return Math.random() * (max - min) + min; }
+
+    const flashKeyframes = `
+      @keyframes flash {
+        0% { opacity: 0; }
+        50% { opacity: 1; }
+        100% { opacity: 0; }
+      }
+    `;
+    const style = document.createElement('style');
+    style.textContent = flashKeyframes;
+    document.head.appendChild(style);
+
+    function ready(fn) {
+      if (document.readyState !== 'loading') fn();
+      else document.addEventListener('DOMContentLoaded', fn);
+    }
+
+    // Initialize Three.js background globe
+    function initBackgroundGlobe() {
+      if (!window.THREE || !window.ThreeGlobe) return;
+      const mount = document.getElementById('bg3d');
+      if (!mount) return;
+
+      // Wait for layout to settle
+      setTimeout(() => {
+        const rect = mount.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) return;
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(rect.width, rect.height);
+        renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+        renderer.domElement.style.pointerEvents = 'none';
+        renderer.domElement.style.width = '100%';
+        renderer.domElement.style.height = '100%';
+        mount.appendChild(renderer.domElement);
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(45, rect.width / rect.height, 0.1, 2000);
+        camera.position.z = 320; // pull back slightly to avoid feeling too close
+
+        const globe = new ThreeGlobe()
+          .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
+          .bumpImageUrl('https://unpkg.com/three-globe/example/img/earth-topology.png')
+          .ringsData([])
+          .ringColor(() => t => `rgba(196,255,0,${0.9 - t})`)
+          .ringMaxRadius(3.5)
+          .ringPropagationSpeed(2)
+          .ringRepeatPeriod(600)
+          .arcsData([])
+          .arcColor(() => ['#c4ff00', '#9acc00'])
+          .arcAltitude(0.1)
+          .arcStroke(0.5)
+          .arcDashLength(0.9)
+          .arcDashGap(0.6)
+          .arcDashAnimateTime(2800);
+        scene.add(globe);
+        // Centered view
+        globe.rotation.y = -0.25;   // show both sides tastefully
+        globe.rotation.x = 0.10;   // gentle tilt
+        const amb = new THREE.AmbientLight(0xffffff, 1.05); scene.add(amb);
+        const dir = new THREE.DirectionalLight(0xffffff, 0.9); dir.position.set(-200, 200, 400); scene.add(dir);
+        // Make globe slightly translucent for a subtle background look
+        const mat = globe.globeMaterial();
+        if (mat) { mat.transparent = true; mat.opacity = 0.85; }
+
+        function fitGlobe() {
+          const rect = mount.getBoundingClientRect();
+          renderer.setSize(rect.width, rect.height);
+          camera.aspect = rect.width / rect.height;
+          camera.updateProjectionMatrix();
+          // Big satellite view: scale to larger of the dimensions and clamp
+          const base = Math.max(rect.width, rect.height);
+          const s = Math.min(1.8, Math.max(0.95, base / 800));
+          globe.scale.set(s, s, s);
+        }
+        function onResize() { fitGlobe(); }
+        window.addEventListener('resize', onResize);
+
+        // Cities and sampling
+        const CITIES = [
+          { name: 'New York, US', lat: 40.7128, lng: -74.0060 }, { name: 'Los Angeles, US', lat: 34.0522, lng: -118.2437 },
+          { name: 'Toronto, CA', lat: 43.65107, lng: -79.347015 }, { name: 'Mexico City, MX', lat: 19.4326, lng: -99.1332 },
+          { name: 'Bogotá, CO', lat: 4.7110, lng: -74.0721 }, { name: 'São Paulo, BR', lat: -23.5505, lng: -46.6333 },
+          { name: 'London, UK', lat: 51.5074, lng: -0.1278 }, { name: 'Paris, FR', lat: 48.8566, lng: 2.3522 },
+          { name: 'Berlin, DE', lat: 52.5200, lng: 13.4050 }, { name: 'Madrid, ES', lat: 40.4168, lng: -3.7038 },
+          { name: 'Dubai, AE', lat: 25.2048, lng: 55.2708 }, { name: 'Mumbai, IN', lat: 19.0760, lng: 72.8777 },
+          { name: 'Singapore, SG', lat: 1.3521, lng: 103.8198 }, { name: 'Sydney, AU', lat: -33.8688, lng: 151.2093 },
+          { name: 'Tokyo, JP', lat: 35.6762, lng: 139.6503 }, { name: 'Seoul, KR', lat: 37.5665, lng: 126.9780 },
+          { name: 'Taipei, TW', lat: 25.0330, lng: 121.5654 }, { name: 'Hong Kong, HK', lat: 22.3193, lng: 114.1694 },
+          { name: 'Jakarta, ID', lat: -6.2088, lng: 106.8456 }, { name: 'Bangkok, TH', lat: 13.7563, lng: 100.5018 }
+        ];
+        const WEIGHTS = CITIES.map(c => (1 + Math.max(0, Math.cos((Math.PI / 180) * c.lat))) * (/US|CA|UK|DE|FR|JP|KR|AU|IN|CN|HK|SG/.test(c.name) ? 1.4 : 1));
+        const totalW = WEIGHTS.reduce((a, b) => a + b, 0);
+        function pickCity() { let r = Math.random() * totalW; for (let i = 0; i < CITIES.length; i++) { r -= WEIGHTS[i]; if (r <= 0) return CITIES[i]; } return CITIES[CITIES.length - 1]; }
+        let USER_LOC = null;
+        function orientTo(lat, lng) {
+          const targetY = -THREE.MathUtils.degToRad(lng);
+          const targetX = THREE.MathUtils.degToRad(lat) * 0.6;
+          const startY = globe.rotation.y, startX = globe.rotation.x;
+          const start = performance.now();
+          const dur = 600;
+          (function anim() {
+            const t = Math.min(1, (performance.now() - start) / dur);
+            const ease = t * t * (3 - 2 * t);
+            globe.rotation.y = startY + (targetY - startY) * ease;
+            globe.rotation.x = startX + (targetX - startX) * ease;
+            if (t < 1) requestAnimationFrame(anim);
+          })();
+        }
+        function addPulseAt(lat, lng) {
+          globe.ringsData(globe.ringsData().concat([{ lat, lng }]));
+        }
+        // No background stream - only user-triggered pulses
+        // Rotate + render
+        (function animate() { globe.rotation.y += 0.0006; renderer.render(scene, camera); requestAnimationFrame(animate); })();
+        // Expose hooks for UI triggers and location
+        window.__IM_BG_PULSE = (lat, lng) => {
+          if (typeof lat === 'number' && typeof lng === 'number') { addPulseAt(lat, lng); orientTo(lat, lng); return; }
+          if (USER_LOC) { addPulseAt(USER_LOC.lat, USER_LOC.lng); orientTo(USER_LOC.lat, USER_LOC.lng); return; }
+          const c = pickCity(); addPulseAt(c.lat, c.lng); orientTo(c.lat, c.lng);
+        };
+        window.__IM_BG_SET_USER_LOC = (lat, lng) => { USER_LOC = { lat, lng }; orientTo(lat, lng); };
+        fitGlobe();
+      }, 100);
+    }
+
+    ready(() => {
+      initBackgroundGlobe();
+      // Attempt to use user's location; fallback handled in __IM_BG_PULSE
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition((pos) => {
+          if (window.__IM_BG_SET_USER_LOC) {
+            window.__IM_BG_SET_USER_LOC(pos.coords.latitude, pos.coords.longitude);
+          }
+        }, () => {/* ignore */ }, { enableHighAccuracy: false, timeout: 2000, maximumAge: 600000 });
+      }
+
+      const hasSDK = () => (typeof window !== 'undefined' && window.Fusionaly);
+
+      document.getElementById('btn-custom').addEventListener('click', () => {
+        if (hasSDK() && Fusionaly.sendCustomEvent) {
+          Fusionaly.sendCustomEvent('button_click', { source: 'devbox', variant: 'custom' });
+          log("✓ Custom event sent: button_click");
+          log("→ Metadata: {source: 'devbox', variant: 'custom'}");
+          if (window.__IM_BG_PULSE) window.__IM_BG_PULSE();
+        } else {
+          log("⚠ SDK not ready: sendCustomEvent unavailable");
+        }
+      });
+
+      document.getElementById('btn-purchase').addEventListener('click', () => {
+        if (hasSDK() && Fusionaly.registerPurchase) {
+          Fusionaly.registerPurchase(1999, 'USD', { sku: 'devbox_pro', qty: 1 });
+          log("✓ Purchase registered: $19.99 USD");
+          log("→ SKU: devbox_pro | Quantity: 1");
+          if (window.__IM_BG_PULSE) window.__IM_BG_PULSE();
+        } else {
+          log("⚠ SDK not ready: registerPurchase unavailable");
+        }
+      });
+
+      document.getElementById('btn-send-pv').addEventListener('click', () => {
+        if (hasSDK() && Fusionaly.sendPageView) {
+          Fusionaly.sendPageView();
+          log("✓ Page view tracked for current path");
+          if (window.__IM_BG_PULSE) window.__IM_BG_PULSE();
+        } else {
+          log("⚠ SDK not ready: sendPageView unavailable");
+        }
+      });
+
+      // Initialization messages
+      if (hasSDK()) {
+        log("✓ Fusionaly SDK loaded successfully");
+        log("→ All tracking functions available");
+      } else {
+        log("⏳ Loading SDK from /y/api/v1/sdk.js...");
+      }
+
+      // Add startup message
+      setTimeout(() => {
+        log("🚀 Analytics Platform ready");
+      }, 1000);
+    });
+  </script>
+</body>
+
+</html>

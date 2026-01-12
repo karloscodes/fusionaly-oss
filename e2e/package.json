@@ -1,0 +1,14 @@
+{
+  "name": "fusionaly-e2e",
+  "version": "1.0.0",
+  "description": "E2E tests for fusionaly",
+  "scripts": {
+    "setup": "node setup-test-env.js",
+    "test": "npm run setup && npx playwright test",
+    "test:all": "npm run test"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@playwright/test": "^1.47.2"
+  }
+}

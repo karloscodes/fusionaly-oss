@@ -1,0 +1,31 @@
+{
+    admin off
+}
+
+:8080 {
+    root * /usr/share/caddy
+
+    route {
+        # Serve the DevBox page only at root
+        @root path "/"
+        handle @root {
+            rewrite * /devbox.html
+            file_server
+        }
+
+        # Serve static demo pages directly (only our local pages)
+        @static path "/devbox.html" "/alt.html" "/world.html"
+        handle @static {
+            file_server
+        }
+
+        # Proxy app assets, SDK, API and dashboard to the backend
+        reverse_proxy /assets/* fusionaly-web:8080
+        reverse_proxy /y/* fusionaly-web:8080
+        reverse_proxy /x/* fusionaly-web:8080
+        reverse_proxy /admin* fusionaly-web:8080
+
+        # Fallback proxy
+        reverse_proxy * fusionaly-web:8080
+    }
+}

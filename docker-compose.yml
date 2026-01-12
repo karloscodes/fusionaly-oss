@@ -1,0 +1,85 @@
+services:
+  caddy:
+    image: caddy:2.7-alpine
+    container_name: fusionaly-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp" # For HTTP/3
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      - DOMAIN=${DOMAIN:-localhost}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@example.com}
+    networks:
+      - fusionaly-network
+
+  fusionaly-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fusionaly
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - fusionaly_storage:/app/storage
+      - fusionaly_logs:/app/logs
+      - ./litestream.yml:/app/litestream.yml:ro
+    environment:
+      - FUSIONALY_ENV=production
+      - FUSIONALY_STORAGE_PATH=/app/storage
+      - FUSIONALY_GEO_DB_PATH=/app/internal-storage/GeoLite2-City.mmdb
+      - FUSIONALY_PUBLIC_DIR=/app/web/dist
+      - FUSIONALY_LOGS_DIR=/app/logs
+      - FUSIONALY_LOG_LEVEL=info
+      - FUSIONALY_APP_PORT=8080
+      - FUSIONALY_LICENSE_KEY=${FUSIONALY_LICENSE_KEY:-LICENSE-DEMO-1234-5678-ABCD}
+      - SERVER_INSTANCE_ID=${HOSTNAME:-fusionaly}-$(date +%s)
+      - TZ=UTC
+      - ENABLE_BACKUPS=${ENABLE_BACKUPS:-false}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - S3_BUCKET=${S3_BUCKET}
+      - S3_REGION=${S3_REGION:-us-east-1}
+    networks:
+      - fusionaly-network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/_health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  caddy_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./caddy
+  caddy_config:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./caddy
+  fusionaly_storage:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./storage
+  fusionaly_logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./logs
+
+networks:
+  fusionaly-network:
+    driver: bridge
