@@ -7,9 +7,19 @@ Privacy-first, self-hosted web analytics. Simple, fast, no cookies required.
 - **Privacy-First**: No cookies, no IP logging, GDPR-compliant by design
 - **Self-Hosted**: Full control over your data
 - **Fast**: Go backend + SQLite (WAL mode) + Inertia.js frontend
-- **Lightweight Tracking**: ~1KB SDK, minimal performance impact
+- **Lightweight Tracking**: ~6KB SDK (gzipped), minimal performance impact
 - **Event Tracking**: Custom events, goals, revenue tracking
 - **Real-time Dashboard**: Live visitor counts, page views, referrers
+
+## Architecture
+
+Fusionaly uses a three-tier data pipeline optimized for durability and performance:
+
+1. **Ingestion**: Browser SDK batches events (200ms intervals) → HTTP API → `ingested_events` table
+2. **Processing**: Background jobs process raw events → `events` table with retries and backpressure
+3. **Aggregation**: Hourly rollups into optimized tables for fast dashboard queries (<10ms)
+
+SQLite with WAL mode handles hundreds of thousands of daily events per installation. See [Internal Architecture](https://fusionaly.com/docs/internal-architecture/) for details.
 
 ## Project Structure
 
@@ -112,23 +122,59 @@ Copy `.env.example` to `.env` and configure:
 |----------|-------------|
 | `FUSIONALY_PRIVATE_KEY` | Session encryption key (32+ random characters). **Must change from default!** |
 
-### Optional
+### Core Settings
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `FUSIONALY_APP_PORT` | `3000` | HTTP server port |
 | `FUSIONALY_ENV` | `development` | Environment: `development`, `production`, `test` |
-| `FUSIONALY_LOG_LEVEL` | `debug` | Log level: `debug`, `info`, `warn`, `error` |
 | `FUSIONALY_DOMAIN` | `localhost:3000` | Public domain for cookies/CSRF |
+| `FUSIONALY_LOG_LEVEL` | `debug` | Log level: `debug`, `info`, `warn`, `error` |
+
+### Storage
+
+| Variable | Default | Description |
+|----------|---------|-------------|
 | `FUSIONALY_STORAGE_PATH` | `storage` | SQLite database directory |
-| `FUSIONALY_GEO_DB_PATH` | `internal-storage/GeoLite2-City.mmdb` | GeoLite2 database for location detection (optional) |
-| `FUSIONALY_SESSION_TIMEOUT_SECONDS` | `1800` | Session timeout (30 minutes) |
-| `FUSIONALY_DB_MAX_OPEN_CONNS` | Auto | Database connection pool size |
-| `FUSIONALY_LOGS_DIR` | `logs` | Log file directory |
+| `FUSIONALY_DB_MAX_OPEN_CONNS` | `10` (prod) / `1` (test) | Max database connections |
+| `FUSIONALY_DB_MAX_IDLE_CONNS` | `5` (prod) / `1` (test) | Idle database connections |
 
 ### GeoIP (Optional)
 
-For country/city detection, register at [MaxMind](https://www.maxmind.com/en/geolite2/signup) and download GeoLite2-City.mmdb. Works without it.
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `FUSIONALY_GEO_DB_PATH` | `internal-storage/GeoLite2-City.mmdb` | Path to GeoLite2 database |
+
+For country/city detection, register at [MaxMind](https://www.maxmind.com/en/geolite2/signup) and download GeoLite2-City.mmdb. Without it, locations show as "Unknown" but analytics work normally.
+
+### Session & Jobs
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `FUSIONALY_SESSION_TIMEOUT_SECONDS` | `1800` | Session timeout (30 minutes) |
+| `FUSIONALY_JOB_INTERVAL_SECONDS` | `60` | Background job interval |
+| `FUSIONALY_INGESTED_EVENTS_RETENTION_DAYS` | `90` | Days to keep raw events |
+
+### Logging
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `FUSIONALY_LOGS_DIR` | `logs` | Log file directory |
+| `FUSIONALY_LOGS_MAX_SIZE_IN_MB` | `20` | Max log file size |
+| `FUSIONALY_LOGS_MAX_BACKUPS` | `10` | Number of log backups |
+| `FUSIONALY_LOGS_MAX_AGE_IN_DAYS` | `30` | Days to keep logs |
+
+## Contributing
+
+We welcome contributions! Please follow these guidelines:
+
+1. **Open an issue first** - Before submitting a feature or significant change, open an issue to discuss it. This ensures your contribution aligns with the project direction and avoids wasted effort.
+
+2. **Bug fixes** - Small bug fixes can be submitted directly as PRs with a clear description of the problem and solution.
+
+3. **Code style** - Follow existing patterns. Run `make lint` before submitting.
+
+4. **Tests** - Add tests for new functionality. Run `make test` and `make test-e2e` to verify.
 
 ## Documentation
 
