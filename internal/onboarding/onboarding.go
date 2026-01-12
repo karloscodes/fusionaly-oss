@@ -19,7 +19,8 @@ const (
 	StepCompleted   OnboardingStep = "completed"
 )
 
-// Note: License and OpenAI steps are available in Fusionaly Pro. See https://fusionaly.com/#pricing
+// Note: GeoLite configuration, License, and OpenAI steps are available in Fusionaly Pro.
+// See https://fusionaly.com/#pricing
 
 // OnboardingData holds the collected onboarding information
 type OnboardingData struct {

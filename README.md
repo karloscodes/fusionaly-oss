@@ -139,13 +139,19 @@ Copy `.env.example` to `.env` and configure:
 | `FUSIONALY_DB_MAX_OPEN_CONNS` | `10` (prod) / `1` (test) | Max database connections |
 | `FUSIONALY_DB_MAX_IDLE_CONNS` | `5` (prod) / `1` (test) | Idle database connections |
 
-### GeoIP (Optional)
+### GeoIP (Optional - for location data)
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `FUSIONALY_GEO_DB_PATH` | `internal-storage/GeoLite2-City.mmdb` | Path to GeoLite2 database |
 
-For country/city detection, register at [MaxMind](https://www.maxmind.com/en/geolite2/signup) and download GeoLite2-City.mmdb. Without it, locations show as "Unknown" but analytics work normally.
+GeoLite2 enables country/city detection in your analytics. Without it, all visitor locations show as "Unknown" but event tracking works normally.
+
+**To enable location detection:**
+1. Register at [MaxMind](https://www.maxmind.com/en/geolite2/signup) (free account)
+2. Download GeoLite2-City.mmdb from your MaxMind account
+3. Place it at `internal-storage/GeoLite2-City.mmdb` or configure `FUSIONALY_GEO_DB_PATH`
+4. Restart Fusionaly
 
 ### Session & Jobs
 
