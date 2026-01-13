@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -79,6 +80,11 @@ func MountAppRoutes(srv *cartridge.Server) {
 		}
 		// Bypass for E2E tests (Playwright sends this header)
 		if c.Get("X-Test-Source") == "playwright-e2e" {
+			return c.Next()
+		}
+		// Bypass for localhost requests (always dev/test traffic)
+		origin := c.Get("Origin")
+		if strings.Contains(origin, "localhost") || strings.Contains(origin, "127.0.0.1") {
 			return c.Next()
 		}
 		return cartridgemiddleware.SecFetchSiteMiddleware(cartridgemiddleware.SecFetchSiteConfig{
