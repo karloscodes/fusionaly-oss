@@ -12,6 +12,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/karloscodes/cartridge"
 
+	"fusionaly/internal/config"
 	"fusionaly/internal/events"
 	"fusionaly/internal/websites"
 )
@@ -130,6 +131,16 @@ func validateOrigin(c *fiber.Ctx, dbManager cartridge.DBManager, logger *slog.Lo
 	// Get the base domain (e.g., sub.example.com -> example.com)
 	hostname := parsedURL.Hostname()
 	baseDomain := websites.BaseDomainForHost(hostname)
+
+	// Allow localhost in non-production environments
+	// This exercises the same validation code path but with relaxed rules for dev/test
+	cfg := config.GetConfig()
+	if !cfg.IsProduction() && (hostname == "localhost" || hostname == "127.0.0.1") {
+		logger.Debug("Origin validated (localhost allowed in non-production)",
+			slog.String("origin", origin),
+			slog.String("hostname", hostname))
+		return nil
+	}
 
 	// Check if this domain is registered
 	db := dbManager.GetConnection()
