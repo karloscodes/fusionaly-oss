@@ -52,7 +52,7 @@ module.exports = {
 	],
 	// Run your local dev server before starting the tests.
 	webServer: {
-		command: "cd .. && mkdir -p tmp/go-cache && go run cmd/fusionaly/main.go",
+		command: "cd .. && mkdir -p tmp/go-cache && FUSIONALY_ENV=test LOG_LEVEL=error go run cmd/fusionaly/main.go",
 		url: "http://localhost:3000/_health",
 		reuseExistingServer: !process.env.CI,
 		timeout: 90000, // 90s server startup (reduced from 120s)
