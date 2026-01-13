@@ -96,7 +96,7 @@ const WebsiteNew: React.FC = () => {
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => router.visit('/admin/websites')}
+                      onClick={() => router.visit('/admin')}
                       className="flex-1 h-11"
                     >
                       <ArrowLeft className="w-4 h-4 mr-2" />

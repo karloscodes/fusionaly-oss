@@ -87,7 +87,11 @@ export const AnnotationForm = ({ websiteId, annotation, onClose, initialDate }: 
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
-		form.setData("annotation_date", getAnnotationDateTime());
+		const annotationDate = getAnnotationDateTime();
+		form.transform((data) => ({
+			...data,
+			annotation_date: annotationDate,
+		}));
 		form.post(formAction, {
 			onSuccess: () => onClose(),
 		});

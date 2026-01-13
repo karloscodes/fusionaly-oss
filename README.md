@@ -71,7 +71,6 @@ For production deployment and configuration options, see [Installation Guide](ht
 **Key environment variables:**
 - `FUSIONALY_ENV` - Set to `production` for production
 - `FUSIONALY_PRIVATE_KEY` - **Required in production** (generate with `openssl rand -hex 32`)
-- `FUSIONALY_GEO_DB_PATH` - Path to GeoLite2 database for geo-location
 
 ## Contributing
 

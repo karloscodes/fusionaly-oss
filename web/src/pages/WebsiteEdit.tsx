@@ -168,10 +168,10 @@ const WebsiteEdit: React.FC = () => {
     const cleanedGoals = selectedGoals.filter(goal => goal && goal.trim().length > 0)
       .map(goal => goal.trim());
 
-    form.setData({
+    form.transform(() => ({
       conversion_goals: JSON.stringify(cleanedGoals),
       subdomain_tracking_enabled: subdomainTrackingEnabled.toString(),
-    });
+    }));
     form.post(`/admin/websites/${website.id}`);
   };
 
