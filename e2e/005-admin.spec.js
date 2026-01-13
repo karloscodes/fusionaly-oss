@@ -39,14 +39,12 @@ test.describe.serial("Administration Pages Tests", () => {
 		const sidebar = await page.locator('aside:has-text("Administration")');
 		await expect(sidebar).toBeVisible();
 
-		// Verify all navigation links are present in the administration sidebar
+		// Verify all navigation links are present in the administration sidebar (OSS version)
 		const ingestionLink = await page.locator('aside:has-text("Administration") a:has-text("Ingestion")');
-		const aiLink = await page.locator('aside:has-text("Administration") a:has-text("AI")');
 		const accountLink = await page.locator('aside:has-text("Administration") a:has-text("Account")');
 		const systemLink = await page.locator('aside:has-text("Administration") a:has-text("System")');
 
 		await expect(ingestionLink).toBeVisible();
-		await expect(aiLink).toBeVisible();
 		await expect(accountLink).toBeVisible();
 		await expect(systemLink).toBeVisible();
 
@@ -135,12 +133,6 @@ test.describe.serial("Administration Pages Tests", () => {
 			waitForSelector: 'h1:has-text("Ingestion Settings")',
 			timeout: 30000
 		});
-
-		// Navigate to AI (use sidebar to avoid collision with main nav)
-		// OSS version shows paywall instead of form
-		await page.click('aside:has-text("Administration") a:has-text("AI")');
-		await page.waitForSelector('text=AI Features are Pro Only', { state: "visible", timeout: 5000 });
-		helpers.log("Navigated to AI page (paywall)");
 
 		// Navigate to Account
 		await page.click('aside:has-text("Administration") a:has-text("Account")');

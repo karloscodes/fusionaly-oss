@@ -16,11 +16,9 @@ type OnboardingStep string
 const (
 	StepUserAccount OnboardingStep = "user_account"
 	StepPassword    OnboardingStep = "password"
+	StepGeoLite     OnboardingStep = "geolite"
 	StepCompleted   OnboardingStep = "completed"
 )
-
-// Note: GeoLite configuration, License, and OpenAI steps are available in Fusionaly Pro.
-// See https://fusionaly.com/#pricing
 
 // OnboardingData holds the collected onboarding information
 type OnboardingData struct {

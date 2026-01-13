@@ -49,6 +49,12 @@ export interface ComparisonMetrics {
   revenue_change?: number;
 }
 
+export interface UserFlowLink {
+  source: string;
+  target: string;
+  value: number;
+}
+
 export interface AnalyticsData {
   page_views: PageViewData[];
   visitors: PageViewData[];
@@ -86,6 +92,7 @@ export interface AnalyticsData {
   conversion_goals: string[];
   insights: Insight[];
   comparison?: ComparisonMetrics;
+  user_flow?: UserFlowLink[];
 }
 
 export interface TimeRange {

@@ -38,7 +38,7 @@ func MountAppRoutes(srv *cartridge.Server) {
 	// ============================================
 	// PUBLIC ENDPOINT PROTECTION
 	// All public endpoints get the following protection:
-	// - Rate limiting (100 req/min, production only)
+	// - Rate limiting (70 req/min for events, production only)
 	// - CORS (permissive for cross-origin tracking)
 	// - Sec-Fetch-Site validation where applicable
 	// ============================================
@@ -54,23 +54,25 @@ func MountAppRoutes(srv *cartridge.Server) {
 		}
 	}
 
-	// Standard rate limiter for public API (100 requests per minute per IP)
+	// Rate limiter for public event ingestion API (70 requests per minute per IP)
+	// 70/min = ~1.2 req/sec - handles legitimate analytics traffic while preventing abuse
 	publicRateLimiter := conditionalRateLimiter(cartridgemiddleware.RateLimiter(
-		cartridgemiddleware.WithMax(100),
+		cartridgemiddleware.WithMax(70),
 		cartridgemiddleware.WithDuration(time.Minute),
 	))
 
 	// Stricter rate limiter for auth endpoints (10 requests per minute)
+	// Prevents brute force login attempts
 	authRateLimiter := conditionalRateLimiter(cartridgemiddleware.RateLimiter(
 		cartridgemiddleware.WithMax(10),
 		cartridgemiddleware.WithDuration(time.Minute),
 	))
 
 	// Sec-Fetch-Site middleware for event ingestion endpoints
-	// Allows cross-site since tracking scripts are loaded cross-origin
-	// Rejects requests without Sec-Fetch-Site header (blocks curl, Postman, etc.)
+	// Only allows browser-initiated requests from web pages (cross-site, same-site, same-origin)
+	// Rejects "none" (direct navigation) and missing headers (curl, Postman, scripts)
 	secFetchForEvents := cartridgemiddleware.SecFetchSiteMiddleware(cartridgemiddleware.SecFetchSiteConfig{
-		AllowedValues: []string{"cross-site", "same-site", "same-origin", "none"},
+		AllowedValues: []string{"cross-site", "same-site", "same-origin"},
 		Methods:       []string{"POST"},
 		Next: func(c *fiber.Ctx) bool {
 			return c.Method() != "POST" // Only validate POST requests
@@ -156,13 +158,12 @@ func MountAppRoutes(srv *cartridge.Server) {
 	// === SDK ROUTES ===
 	srv.Get("/y/api/v1/sdk.js", v1.GetSDKAction, sdkConfig)
 
-	// === ONBOARDING ROUTES ===
+	// === ONBOARDING ROUTES (PRG pattern) ===
 	srv.Get("/setup", http.OnboardingPageAction, onboardingConfig)
 	srv.Get("/api/onboarding/check", http.OnboardingCheckAction, onboardingConfig)
-	srv.Post("/api/onboarding/start", http.OnboardingStartAction, onboardingConfig)
-	srv.Post("/api/onboarding/user", http.OnboardingUserAccountAction, onboardingConfig)
-	srv.Post("/api/onboarding/password", http.OnboardingPasswordAction, onboardingConfig)
-	srv.Get("/api/onboarding/status", http.OnboardingStatusAction, onboardingConfig)
+	srv.Post("/setup/user", http.OnboardingUserFormAction, onboardingConfig)
+	srv.Post("/setup/password", http.OnboardingPasswordFormAction, onboardingConfig)
+	srv.Post("/setup/geolite", http.OnboardingGeoLiteFormAction, onboardingConfig)
 
 	// === AUTHENTICATION ROUTES ===
 	// Login needs rate limiting to prevent brute force attacks

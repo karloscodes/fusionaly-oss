@@ -6,6 +6,7 @@ import (
 	"fusionaly/internal/analytics"
 	"fusionaly/internal/database"
 	"fusionaly/internal/events"
+	"fusionaly/internal/pkg/geoip"
 )
 
 // EventProcessorJob handles processing of ingested events
@@ -24,6 +25,13 @@ func NewEventProcessorJob(dbManager *database.DBManager, logger *slog.Logger) *E
 // Run processes unprocessed events from the ingest database
 func (j *EventProcessorJob) Run() error {
 	j.logger.Info("Starting event processing")
+
+	// Check if GeoLite database is available - required for event processing
+	if geoip.GetGeoDB() == nil {
+		j.logger.Warn("GeoLite database not configured - events will remain queued. " +
+			"Configure GeoLite in Administration > System or set FUSIONALY_GEO_DB_PATH")
+		return nil
+	}
 
 	db := j.dbManager.GetConnection()
 

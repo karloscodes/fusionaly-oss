@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { FlashMessageDisplay } from "@/components/ui/flash-message";
 import { Input } from "@/components/ui/input";
-import { Key, Sparkles, ExternalLink } from "lucide-react";
+import { Key } from "lucide-react";
 import type { FlashMessage } from "@/types";
 import { AdministrationLayout } from "@/components/administration-layout";
 
@@ -151,38 +151,6 @@ export const AdministrationAccount: FC = () => {
 								{passwordForm.processing ? "Updating..." : "Update Password"}
 							</Button>
 						</form>
-					</CardContent>
-				</Card>
-
-				{/* License Management - Pro Feature */}
-				<Card className="border-2 border-dashed border-gray-300 bg-gray-50/50">
-					<CardHeader className="pb-4">
-						<div className="flex justify-between items-center">
-							<CardTitle className="text-lg text-gray-500">
-								License Management
-							</CardTitle>
-						</div>
-						<CardDescription>
-							License management is available in Fusionaly Pro.
-						</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<div className="flex flex-col items-center gap-3">
-							<Button
-								asChild
-								className="bg-black hover:bg-gray-800 text-white gap-2"
-							>
-								<a
-									href="https://fusionaly.com/#pricing"
-									target="_blank"
-									rel="noopener noreferrer"
-								>
-									<Sparkles className="w-4 h-4" />
-									Upgrade to Pro
-									<ExternalLink className="w-4 h-4" />
-								</a>
-							</Button>
-						</div>
 					</CardContent>
 				</Card>
 			</div>

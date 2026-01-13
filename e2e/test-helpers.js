@@ -135,6 +135,12 @@ class TestHelpers {
 			// Navigate to login page
 			await this.navigateTo("/login");
 
+			// Check if we were redirected to setup (no users exist)
+			const navUrl = this.page.url();
+			if (navUrl.includes("/setup")) {
+				throw new Error("Redirected to /setup - onboarding test must run first to create user. Run full test suite with 'make test-e2e'");
+			}
+
 			// Fill login form (don't wait after submit - we'll handle it)
 			await this.fillForm({ email, password }, { waitAfterSubmit: false });
 

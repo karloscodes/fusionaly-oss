@@ -255,12 +255,7 @@ test.describe.serial("Dashboard Data Display Tests", () => {
 		const visitorFlows = page.locator('text=Visitor Flows').first();
 		await expect(visitorFlows).toBeVisible({ timeout: 10000 });
 
-		// Verify it's NOT behind a paywall (no "Pro" badge nearby)
-		const proPaywall = page.locator('text=Visitor Flows >> .. >> text=Pro');
-		const hasPaywall = await proPaywall.count();
-		expect(hasPaywall).toBe(0);
-
-		helpers.log("Visitor Flows section visible without Pro paywall");
+		helpers.log("Visitor Flows section displayed");
 	});
 
 	test("should have working time range selector", async ({ page }) => {

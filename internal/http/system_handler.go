@@ -130,9 +130,6 @@ func AdministrationAccountPageAction(ctx *cartridge.Context) error {
 	})
 }
 
-// Note: License-related functionality (license status checking) is available in Fusionaly Pro.
-// See https://fusionaly.com/#pricing
-
 // AdministrationSystemPageAction renders the System administration page
 func AdministrationSystemPageAction(ctx *cartridge.Context) error {
 	db := ctx.DB()

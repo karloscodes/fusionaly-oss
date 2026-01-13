@@ -25,7 +25,6 @@ import {
 	Smartphone,
 	Check,
 	GitBranch,
-	ExternalLink,
 } from "lucide-react";
 import { HeroMetricsBar, createMetric } from "@/components/hero-metrics-bar";
 import DataTable from "./data-table";
@@ -34,11 +33,13 @@ import type {
 	PageViewData,
 	FlashMessage,
 	Annotation,
+	UserFlowLink,
 } from "../types";
 import { timeRanges } from "../types";
 import { TimeRangeSelector } from "@/components/time-range-selector";
 import { ReferrersCard } from "@/components/referrers-card";
 import { AnnotationManager, AnnotationDetailDialog } from "@/components/annotation-manager";
+import { VisitorFlowSankey } from "@/components/user-flow-sankey";
 import {
 	TooltipProvider,
 	TooltipTrigger,
@@ -78,6 +79,7 @@ interface DashboardComponentProps extends Partial<AnalyticsData> {
 	error?: string | null;
 	annotations?: Annotation[];
 	is_public_view?: boolean;
+	user_flow?: UserFlowLink[];
 }
 
 export const Dashboard = (props: DashboardComponentProps) => {
@@ -1070,34 +1072,25 @@ export const Dashboard = (props: DashboardComponentProps) => {
 				</Card>
 			</div>
 
-			{/* Visitor Flow - Pro Feature */}
+			{/* Visitor Flow */}
 			<div className="mt-4">
-				<Card className="border-2 border-dashed border-gray-200 bg-gray-50/50">
-					<CardHeader className="pb-2">
-						<CardTitle className="text-lg font-medium flex items-center gap-2">
-							<GitBranch className="w-5 h-5" />
-							Visitor Flows
-							<span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full font-normal">
-								Pro
-							</span>
-						</CardTitle>
-					</CardHeader>
-					<CardContent className="pt-2">
-						<p className="text-sm text-gray-600 mb-4">
-							Visualize how visitors navigate through your site with interactive Sankey diagrams.
-							Identify drop-off points and optimize user journeys.
-						</p>
-						<a
-							href="https://fusionaly.com/#pricing"
-							target="_blank"
-							rel="noopener noreferrer"
-							className="inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700"
-						>
-							Upgrade to Pro
-							<ExternalLink className="w-4 h-4" />
-						</a>
-					</CardContent>
-				</Card>
+				<Deferred data="user_flow" fallback={
+					<Card>
+						<CardHeader className="pb-2">
+							<CardTitle className="text-lg font-medium flex items-center gap-2">
+								<GitBranch className="w-5 h-5" />
+								Visitor Flows
+							</CardTitle>
+						</CardHeader>
+						<CardContent className="pt-2">
+							<div className="h-64 flex items-center justify-center">
+								<p className="text-sm text-gray-500">Loading visitor flow data...</p>
+							</div>
+						</CardContent>
+					</Card>
+				}>
+					<VisitorFlowSankey links={props.user_flow || []} />
+				</Deferred>
 			</div>
 
 				{/* Annotation detail dialog - shown when clicking an annotation on the chart */}

@@ -93,7 +93,7 @@ func GetConfig() *Config {
 		v.SetDefault("privatekey", "88888888888888888888888888888888")
 		v.SetDefault("sessiontimeoutseconds", 1800)
 		v.SetDefault("storagepath", "storage")
-		v.SetDefault("geodbpath", "internal-storage/GeoLite2-City.mmdb")
+		v.SetDefault("geodbpath", "storage/GeoLite2-City.mmdb")
 		v.SetDefault("publicdir", "web/dist/assets")
 		v.SetDefault("publicassetsurlprefix", "/")
 		v.SetDefault("logsdir", "logs")
@@ -146,9 +146,13 @@ func GetConfig() *Config {
 		// Set derived values
 		cfg.DatabaseName = cfg.GetDatabasePath()
 
-		// Validate private key
+		// Validate private key - in production, must be explicitly set (not empty, not default)
+		defaultKey := "88888888888888888888888888888888"
 		if cfg.PrivateKey == "" {
 			log.Fatal("Private key is required")
+		}
+		if cfg.IsProduction() && cfg.PrivateKey == defaultKey {
+			log.Fatal("Production requires a unique FUSIONALY_PRIVATE_KEY (cannot use default)")
 		}
 	})
 	return cfg

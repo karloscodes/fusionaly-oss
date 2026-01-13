@@ -1,6 +1,6 @@
 # Developer Agent Guidelines
 
-This is the **canonical source** for all AI coding assistants (Claude, Copilot, Codex) working on Fusionaly.
+This is the **canonical source** for all AI coding assistants (Claude, Copilot, Codex) working on Fusionaly OSS.
 
 ---
 
@@ -25,20 +25,21 @@ internal/
 ├── http/                 # HTTP Transport Layer
 │   ├── *_handler.go     # Thin handlers (HTTP concerns only)
 │   ├── middleware/      # HTTP middleware
-│   ├── routes.go        # Route registration
-│   └── server.go        # Server configuration
+│   └── routes.go        # Route registration (in internal/)
 │
-├── analytics/           # Context: Analytics domain
-├── events/              # Context: Events domain
+├── analytics/           # Context: Analytics domain (metrics, dashboards)
+├── events/              # Context: Events domain (tracking, ingestion)
 ├── websites/            # Context: Websites domain
 ├── users/               # Context: Users domain
 ├── visitors/            # Context: Visitors domain
 ├── onboarding/          # Context: Onboarding domain
 ├── settings/            # Context: Settings domain
-├── queries/             # Context: Saved queries
-├── insights/            # Context: AI insights
 ├── timeframe/           # Context: Time ranges
-└── aggregates/          # Context: Aggregations
+├── annotations/         # Context: Dashboard annotations
+├── jobs/                # Context: Background jobs (event processing, cleanup)
+├── config/              # App configuration
+├── database/            # Database setup
+└── pkg/                 # Shared utilities
 ```
 
 ### Context Rules
@@ -53,18 +54,20 @@ internal/
 
 ```go
 // ✅ GOOD: Thin handler delegating to context
-func DashboardAction(c *fiber.Ctx, db *gorm.DB, logger *zap.Logger, cfg *config.Config) error {
-    websiteID := c.QueryInt("website_id", 0)
-    timeframe := timeframe.ParseTimeframe(c.Query("range"))
-    
+func DashboardAction(ctx *cartridge.Context) error {
+    db := ctx.DB()
+    websiteID := ctx.QueryInt("website_id", 0)
+    timeframe := timeframe.ParseTimeframe(ctx.Query("range"))
+
     metrics := analytics.GetDashboardMetrics(db, websiteID, timeframe)
-    return view.RenderSuccess(c, "Dashboard", map[string]interface{}{
+    return inertia.RenderPage(ctx.Ctx, "Dashboard", inertia.Props{
         "metrics": metrics,
     })
 }
 
 // ❌ BAD: Business logic in handler
-func DashboardAction(c *fiber.Ctx, db *gorm.DB, logger *zap.Logger, cfg *config.Config) error {
+func DashboardAction(ctx *cartridge.Context) error {
+    db := ctx.DB()
     var visitors int64
     db.Model(&visitors.Visitor{}).Count(&visitors) // Direct DB access
     // ... complex calculations ...
@@ -95,7 +98,7 @@ make test-e2e               # Full suite (~5 minutes)
 # Write failing test first
 vim internal/users/users_test.go
 
-# Run test watch loop  
+# Run test watch loop
 make test t="TestCreateUser"
 
 # Implement until green
@@ -106,27 +109,29 @@ vim internal/users/users.go
 
 ### Deployment
 ```bash
-make release    # Tests + Build + Push + Deploy
+make release v=1.0.0    # Tag + Push + GoReleaser builds
 ```
 
 ---
 
 ## Project Snapshot
 
-- **Stack**: Go 1.23+ (Fiber, GORM, SQLite) + React 19/TypeScript/Tailwind
-- **Architecture**: Phoenix Contexts pattern  
+- **Stack**: Go 1.23+ (Fiber, GORM, SQLite, Cartridge) + React 19/TypeScript/Tailwind
+- **Architecture**: Phoenix Contexts pattern
 - **Domain**: Privacy-first analytics
 - **Database**: SQLite with WAL mode
 - **Binaries**: `cmd/fusionaly` (server) + `cmd/fnctl` (CLI/migrations)
 
 ### Repo Landmarks
 
-- **`internal/http/`**: HTTP handlers, middleware, routes
+- **`internal/http/`**: HTTP handlers, middleware
+- **`internal/routes.go`**: Route registration
 - **`internal/{domain}/`**: Domain contexts (analytics, events, users, etc.)
 - **`api/v1/`**: Public ingestion + SDK endpoints
-- **`web/`**: React SPA (shadcn/ui, Tailwind, TanStack Query)
-- **`tests/` and `e2e/`**: Go tests and Playwright suites
-- **`cmd/`**: Main binaries
+- **`web/`**: React SPA (shadcn/ui, Tailwind, Inertia.js)
+- **`e2e/`**: Playwright E2E test suites
+- **`cmd/`**: Main binaries (fusionaly, fnctl, manager)
+- **`storage/`**: Runtime data (GeoLite2 database, uploads)
 
 ---
 
@@ -142,53 +147,117 @@ make test         # Reset test DB and run Go tests (~3s)
 make test-e2e     # Build web app and run Playwright E2E tests (~5m)
 make lint         # Run staticcheck and golangci-lint
 make build        # Produce production binaries + bundled frontend
-make release      # Tests + Build + Docker + Deploy
+make check        # Run all CI checks locally
+make release v=X  # Create tagged release (triggers GoReleaser)
 ```
 
 ---
 
 ## UI Architecture
 
-Hybrid architecture optimized for solo maintainability:
+**STRICT REQUIREMENT: Inertia.js Everywhere**
 
-1. **ALL UI**: React components + Tailwind (shadcn/ui)
-   - Every page is a React component
-   - Consistent component library
+All pages MUST use Inertia.js patterns. No exceptions. No fetch() API calls for page data.
 
-2. **INITIAL DATA**: window.__PAGE_DATA__
-   - Server renders HTML shell once
-   - React hydrates from embedded data
-   - No client-side data fetching on page load
+### Architecture Overview
 
-3. **FORMS**: PRG Pattern (POST → Redirect → GET)
-   - Settings, Websites, Account, Login
-   - Flash messages for feedback
-   - Works without JavaScript
-   - Use `view.RenderSuccess()` for rendering
+1. **ALL PAGES**: Inertia.js + React + Tailwind (shadcn/ui)
+   - Every page is a React component receiving props via Inertia
+   - Server uses `inertia.RenderPage()` to pass data
+   - React components use `usePage()` to access props
+   - Consistent component library (shadcn/ui)
 
-4. **NAVIGATION**: Custom Link Component
-   - Smooth transitions without full reload
-   - Fetches new page via AJAX  
-   - React remounts with new data
-   - Use `<Link>` from `@/components/link`
+2. **FORMS**: PRG Pattern (POST → Redirect → GET)
+   - All forms use HTML `<form action="..." method="POST">`
+   - Server validates, sets flash message, redirects
+   - Flash messages displayed via `props.flash`
+   - NO fetch() or JSON API calls for form submissions
+   - Examples: Settings, Websites, Account, Login, Onboarding
 
-5. **JSON APIs**: ONLY for complex features
-   - Ask AI: Streaming responses (SSE/NDJSON)
-   - Lens: Query CRUD and execution
-   - Dashboard Insights: Async data loading
-   - Use `c.JSON()` for these endpoints
+3. **DATA FLOW**:
+   - Server prepares ALL data needed for render
+   - Pass data as Inertia props
+   - React receives via `usePage<Props>()`
+   - NO client-side data fetching on page load
 
-**When adding features:**
-- Admin pages → Use `view.RenderSuccess()` with `__PAGE_DATA__`
-- Forms → Use PRG pattern with flash messages
-- Complex interactions → JSON API only if truly needed
+4. **NAVIGATION**: Inertia Link or HTML forms
+   - Use Inertia's `<Link>` for navigation
+   - Full page transitions handled by Inertia
+   - Progress bar shown automatically
+
+### What NOT to do
+
+```tsx
+// ❌ BAD: Using fetch() for data
+const handleSubmit = async () => {
+  const response = await fetch('/api/some-endpoint', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  });
+  const result = await response.json();
+};
+
+// ✅ GOOD: Using HTML form with PRG pattern
+<form action="/setup/user" method="POST">
+  <input name="email" type="email" />
+  <Button type="submit">Continue</Button>
+</form>
+```
+
+### Server Handler Pattern
+
+```go
+// ✅ GOOD: Inertia page render
+func OnboardingPageAction(ctx *cartridge.Context) error {
+    props := inertia.Props{
+        "step":  session.Step,
+        "email": session.Data.Email,
+    }
+    return inertia.RenderPage(ctx.Ctx, "Onboarding", props)
+}
+
+// ✅ GOOD: PRG form handler
+func OnboardingUserFormAction(ctx *cartridge.Context) error {
+    email := ctx.FormValue("email")
+    // ... validation ...
+    if err != nil {
+        flash.SetFlash(ctx.Ctx, "error", "Invalid email")
+        return ctx.Redirect("/setup", fiber.StatusFound)
+    }
+    // ... save data ...
+    return ctx.Redirect("/setup", fiber.StatusFound)
+}
+```
+
+### Exception: Streaming/Real-time Only
+
+JSON APIs (`ctx.JSON()`) are ONLY allowed for:
+- SSE/NDJSON streaming responses
+- WebSocket-like real-time updates
+
+---
+
+## Route Protection
+
+### Public Endpoints (event ingestion, SDK)
+- Rate limiting: 70 req/min per IP (production only)
+- CORS: Permissive for cross-origin tracking
+- Sec-Fetch-Site validation: Only allows browser-initiated requests (cross-site, same-site, same-origin)
+- Rejects direct requests (curl, Postman, scripts without browser context)
+
+### Auth Endpoints (login)
+- Rate limiting: 10 req/min per IP (brute force protection)
+
+### Admin Endpoints
+- Session-based authentication
+- Onboarding check middleware
+- Website filter middleware
 
 ---
 
 ## Strong Requirements
 
-- **Convention over configuration:** Minimize setup complexity
-- **window.__PAGE_DATA__:** Server-side data hydration for React
+- **Inertia.js everywhere:** No fetch() for page data, use PRG pattern
 - **No arbitrary docs:** Don't create .md files unless explicitly requested
 - **Test integrity:** Never skip tests or mark as pending to pass CI
 - **Privacy first:** No IP storage, cookie-less tracking
@@ -212,9 +281,11 @@ Hybrid architecture optimized for solo maintainability:
 ## Privacy & Security
 
 - **GDPR compliant**: No IP storage, cookie-less tracking
-- **CSRF protection**: Enabled for admin routes
-- **Rate limiting**: Public API endpoints protected
-- **User signatures**: Instead of identifiable data
+- **CSRF protection**: Enabled via Cartridge middleware
+- **Rate limiting**: Public API endpoints protected (70 req/min)
+- **Auth rate limiting**: Login endpoints (10 req/min)
+- **Sec-Fetch-Site**: Validates browser requests on event ingestion (rejects curl/scripts)
+- **User signatures**: Hash-based visitor identification instead of cookies
 
 ---
 

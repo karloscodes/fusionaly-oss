@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect } from 'react';
+import { usePage } from '@inertiajs/react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -6,182 +7,47 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Progress } from '../components/ui/progress';
 
-interface OnboardingData {
+interface OnboardingProps {
+  step: string;
   email?: string;
-  password?: string;
+  flash?: {
+    error?: string;
+    success?: string;
+    info?: string;
+  };
+  [key: string]: unknown;
 }
 
-type Step = 'user_account' | 'password' | 'completed';
+type Step = 'user_account' | 'password' | 'geolite' | 'completed';
 
 const stepNames: Record<Step, string> = {
   user_account: 'User Account',
   password: 'Password Setup',
+  geolite: 'Location Data',
   completed: 'Complete'
 };
 
 const stepProgress: Record<Step, number> = {
-  user_account: 33,
-  password: 66,
+  user_account: 25,
+  password: 50,
+  geolite: 75,
   completed: 100
 };
 
 export default function Onboarding() {
-  const [currentStep, setCurrentStep] = useState<Step>('user_account');
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string>('');
-  const [data, setData] = useState<OnboardingData>({});
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const { props } = usePage<OnboardingProps>();
+  const currentStep = (props.step || 'user_account') as Step;
+  const email = props.email || '';
+  const flash = props.flash || {};
 
-  // Start onboarding session on component mount
+  // Set timezone cookie on mount
   useEffect(() => {
-    // Clear any existing authentication cookies
-    clearAuthCookies();
-    // Set timezone cookie
-    setTimezoneCookie();
-    // Start onboarding process
-    startOnboarding();
-  }, []);
-
-  const clearAuthCookies = () => {
-    // Clear common authentication cookies
-    const cookiesToClear = ['fusionaly_session', 'fusionaly_flash', 'fusionaly_onboarding_session', '_session', 'session_token', 'auth_token'];
-    cookiesToClear.forEach(cookieName => {
-      document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-      document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname};`;
-    });
-  };
-
-  const setTimezoneCookie = () => {
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     document.cookie = `_tz=${timezone}; path=/; SameSite=Lax`;
-  };
-
-  const startOnboarding = async () => {
-    try {
-      setLoading(true);
-      setError('');
-
-      const response = await fetch('/api/onboarding/start', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ force: false }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to start onboarding');
-      }
-
-      setSessionId(result.session_id);
-      setCurrentStep(result.step);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleUserAccountSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!data.email?.trim()) {
-      setError('Email is required');
-      return;
-    }
-
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(data.email.trim())) {
-      setError('Please enter a valid email address');
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError('');
-
-      const response = await fetch('/api/onboarding/user', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: data.email,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'User account setup failed');
-      }
-
-      setCurrentStep(result.step);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handlePasswordSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!data.password?.trim()) {
-      setError('Password is required');
-      return;
-    }
-
-    if (data.password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-
-    if (data.password.length < 8) {
-      setError('Password must be at least 8 characters long');
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError('');
-
-      const response = await fetch('/api/onboarding/password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          password: data.password,
-          confirm_password: confirmPassword,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Password setup failed');
-      }
-
-      setCurrentStep(result.step);
-
-      // Redirect to websites page after successful completion
-      setTimeout(() => {
-        window.location.href = '/admin/websites/new';
-      }, 2000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, []);
 
   const renderUserAccountStep = () => (
-    <form onSubmit={handleUserAccountSubmit} className="space-y-4">
+    <form action="/setup/user" method="POST" className="space-y-4">
       <div className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="email">Email Address</Label>
@@ -190,9 +56,7 @@ export default function Onboarding() {
             type="email"
             name="email"
             placeholder="Enter your email address"
-            value={data.email || ''}
-            onChange={(e) => setData({ ...data, email: e.target.value })}
-            disabled={loading}
+            defaultValue={email}
             required
           />
         </div>
@@ -202,14 +66,14 @@ export default function Onboarding() {
         </p>
       </div>
 
-      <Button type="submit" disabled={loading} className="w-full">
-        {loading ? 'Setting up...' : 'Continue'}
+      <Button type="submit" className="w-full">
+        Continue
       </Button>
     </form>
   );
 
   const renderPasswordStep = () => (
-    <form onSubmit={handlePasswordSubmit} className="space-y-4">
+    <form action="/setup/password" method="POST" className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="password">Password</Label>
         <Input
@@ -217,9 +81,6 @@ export default function Onboarding() {
           type="password"
           name="password"
           placeholder="Enter password"
-          value={data.password || ''}
-          onChange={(e) => setData({ ...data, password: e.target.value })}
-          disabled={loading}
           required
         />
       </div>
@@ -231,9 +92,6 @@ export default function Onboarding() {
           type="password"
           name="confirm_password"
           placeholder="Confirm password"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          disabled={loading}
           required
         />
       </div>
@@ -242,8 +100,42 @@ export default function Onboarding() {
         Password must be at least 8 characters long.
       </p>
 
-      <Button type="submit" disabled={loading} className="w-full">
-        {loading ? 'Creating account...' : 'Complete Setup'}
+      <Button type="submit" className="w-full">
+        Continue
+      </Button>
+    </form>
+  );
+
+  const renderGeoLiteStep = () => (
+    <form action="/setup/geolite" method="POST" className="space-y-4">
+      <Alert className="border-amber-200 bg-amber-50">
+        <AlertDescription className="text-amber-800">
+          <strong>GeoLite Database Required for Event Processing</strong>
+        </AlertDescription>
+      </Alert>
+
+      <div className="space-y-3 text-sm text-gray-600">
+        <p>
+          Fusionaly uses MaxMind's GeoLite2 database to detect visitor locations (country, city).
+          <strong className="text-gray-900"> Without it, events will be queued but not processed.</strong>
+        </p>
+
+        <div className="bg-gray-50 p-3 rounded-md border">
+          <p className="font-medium text-gray-900 mb-2">To enable event processing:</p>
+          <ol className="list-decimal list-inside space-y-1">
+            <li>Register at <a href="https://www.maxmind.com/en/geolite2/signup" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">MaxMind</a> (free account)</li>
+            <li>Download GeoLite2-City.mmdb</li>
+            <li>Go to <strong>Administration &rarr; System</strong> to configure the path</li>
+          </ol>
+        </div>
+
+        <p className="text-gray-500">
+          You can complete setup now and configure GeoLite later. Events will queue until GeoLite is configured.
+        </p>
+      </div>
+
+      <Button type="submit" className="w-full">
+        Complete Setup
       </Button>
     </form>
   );
@@ -272,6 +164,8 @@ export default function Onboarding() {
         return renderUserAccountStep();
       case 'password':
         return renderPasswordStep();
+      case 'geolite':
+        return renderGeoLiteStep();
       case 'completed':
         return renderCompletedStep();
       default:
@@ -280,20 +174,9 @@ export default function Onboarding() {
   };
 
   const getStepNumber = () => {
-    const steps: Step[] = ['user_account', 'password', 'completed'];
+    const steps: Step[] = ['user_account', 'password', 'geolite', 'completed'];
     return steps.indexOf(currentStep) + 1;
   };
-
-  if (loading && !sessionId) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-gray-600">Starting setup...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -309,7 +192,7 @@ export default function Onboarding() {
               <div>
                 <CardTitle className="text-lg">{stepNames[currentStep]}</CardTitle>
                 <CardDescription>
-                  Step {getStepNumber()} of 3
+                  Step {getStepNumber()} of 4
                 </CardDescription>
               </div>
               <div className="text-right text-sm text-gray-500">
@@ -320,9 +203,19 @@ export default function Onboarding() {
           </CardHeader>
 
           <CardContent>
-            {error && (
+            {flash.error && (
               <Alert className="mb-4 border-red-200 bg-red-50">
-                <AlertDescription className="text-red-800">{error}</AlertDescription>
+                <AlertDescription className="text-red-800">{flash.error}</AlertDescription>
+              </Alert>
+            )}
+            {flash.success && (
+              <Alert className="mb-4 border-green-200 bg-green-50">
+                <AlertDescription className="text-green-800">{flash.success}</AlertDescription>
+              </Alert>
+            )}
+            {flash.info && (
+              <Alert className="mb-4 border-blue-200 bg-blue-50">
+                <AlertDescription className="text-blue-800">{flash.info}</AlertDescription>
               </Alert>
             )}
 
