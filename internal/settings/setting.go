@@ -318,6 +318,30 @@ type SettingResponse struct {
 	Value string `json:"value"`
 }
 
+// GeoLite settings keys
+const (
+	KeyGeoLiteAccountID  = "geolite_account_id"
+	KeyGeoLiteLicenseKey = "geolite_license_key"
+)
+
+// GetGeoLiteCredentials retrieves GeoLite account ID and license key
+func GetGeoLiteCredentials(db *gorm.DB) (accountID string, licenseKey string, err error) {
+	accountID, _ = GetSetting(db, KeyGeoLiteAccountID)
+	licenseKey, _ = GetSetting(db, KeyGeoLiteLicenseKey)
+	return accountID, licenseKey, nil
+}
+
+// SaveGeoLiteCredentials saves GeoLite account ID and license key
+func SaveGeoLiteCredentials(db *gorm.DB, accountID string, licenseKey string) error {
+	if err := CreateOrUpdateSetting(db, KeyGeoLiteAccountID, strings.TrimSpace(accountID)); err != nil {
+		return fmt.Errorf("failed to save GeoLite account ID: %w", err)
+	}
+	if err := CreateOrUpdateSetting(db, KeyGeoLiteLicenseKey, strings.TrimSpace(licenseKey)); err != nil {
+		return fmt.Errorf("failed to save GeoLite license key: %w", err)
+	}
+	return nil
+}
+
 // GetAllSettingsForDisplay retrieves all general (non-website-specific) settings
 // with sensitive values masked for display
 func GetAllSettingsForDisplay(db *gorm.DB) ([]SettingResponse, error) {

@@ -6,12 +6,14 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/karloscodes/cartridge"
 	"github.com/karloscodes/cartridge/inertia"
 
 	"fusionaly/internal/config"
+	"fusionaly/internal/jobs"
 	"github.com/karloscodes/cartridge/cache"
 	"github.com/karloscodes/cartridge/flash"
 	"fusionaly/internal/settings"
@@ -169,10 +171,35 @@ func AdministrationSystemPageAction(ctx *cartridge.Context) error {
 		}
 	}
 
+	// Get GeoLite credentials (masked for display)
+	geoAccountID, geoLicenseKey, _ := settings.GetGeoLiteCredentials(db)
+
+	// Get GeoLite last update time
+	lastUpdateStr, _ := settings.GetSetting(db, jobs.KeyGeoLiteLastUpdate)
+	var geoLastUpdate string
+	if lastUpdateStr != "" {
+		if t, err := time.Parse(time.RFC3339, lastUpdateStr); err == nil {
+			geoLastUpdate = t.Format("January 2, 2006 at 3:04 PM")
+		}
+	}
+
+	// Check if GeoLite database file exists
+	cfg := config.GetConfig()
+	geoDBPath := cfg.GeoDBPath
+	if geoDBPath == "" {
+		geoDBPath = filepath.Join("storage", "GeoLite2-City.mmdb")
+	}
+	_, geoDBErr := os.Stat(geoDBPath)
+	geoDBExists := geoDBErr == nil
+
 	return inertia.RenderPage(ctx.Ctx, "AdministrationSystem", inertia.Props{
-		"websites":  websitesData,
-		"show_logs": showLogs,
-		"logs":      logs,
+		"websites":            websitesData,
+		"show_logs":           showLogs,
+		"logs":                logs,
+		"geolite_account_id":  geoAccountID,
+		"geolite_license_key": geoLicenseKey,
+		"geolite_last_update": geoLastUpdate,
+		"geolite_db_exists":   geoDBExists,
 	})
 }
 
@@ -190,5 +217,40 @@ func SystemPurgeCacheFormAction(ctx *cartridge.Context) error {
 
 	ctx.Logger.Info("Caches purged successfully", slog.Int64("rows_deleted", rowsAffected))
 	flash.SetFlash(ctx.Ctx, "success", "All caches have been purged successfully")
+	return ctx.Redirect("/admin/administration/system", fiber.StatusFound)
+}
+
+// SystemGeoLiteFormAction handles POST form submission for GeoLite settings (Inertia)
+func SystemGeoLiteFormAction(ctx *cartridge.Context) error {
+	db := ctx.DB()
+
+	// Parse form data - try both form value and JSON body (for Inertia.js)
+	accountID := ctx.FormValue("geolite_account_id")
+	licenseKey := ctx.FormValue("geolite_license_key")
+
+	// Try parsing as JSON for Inertia.js requests
+	if accountID == "" && licenseKey == "" {
+		var jsonBody struct {
+			AccountID  string `json:"geolite_account_id"`
+			LicenseKey string `json:"geolite_license_key"`
+		}
+		if err := ctx.BodyParser(&jsonBody); err == nil {
+			accountID = jsonBody.AccountID
+			licenseKey = jsonBody.LicenseKey
+		}
+	}
+
+	// Save GeoLite credentials
+	if err := settings.SaveGeoLiteCredentials(db, accountID, licenseKey); err != nil {
+		ctx.Logger.Error("Failed to save GeoLite settings", slog.Any("error", err))
+		flash.SetFlash(ctx.Ctx, "error", "Failed to save GeoLite settings")
+		return ctx.Redirect("/admin/administration/system", fiber.StatusFound)
+	}
+
+	ctx.Logger.Info("GeoLite settings updated",
+		slog.String("account_id", accountID),
+		slog.Bool("has_license_key", licenseKey != ""))
+
+	flash.SetFlash(ctx.Ctx, "success", "GeoLite settings saved successfully")
 	return ctx.Redirect("/admin/administration/system", fiber.StatusFound)
 }

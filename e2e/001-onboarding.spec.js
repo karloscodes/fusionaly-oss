@@ -41,11 +41,11 @@ test.describe("Onboarding Flow - MUST RUN FIRST", () => {
 		// Step 1.2: User account setup (email-based)
 		await helpers.fillForm({
 			email: TEST_EMAIL
-		});
+		}, { submitButton: null }); // Don't auto-submit
 
 		// Click Continue button
 		await page.click('button[type="submit"]');
-		await page.waitForTimeout(2000);
+		await page.waitForLoadState('networkidle');
 		helpers.log(`User account configured with email: ${TEST_EMAIL}`);
 
 		// Step 1.3: Password setup
@@ -53,18 +53,24 @@ test.describe("Onboarding Flow - MUST RUN FIRST", () => {
 		await helpers.fillForm({
 			password: TEST_PASSWORD,
 			confirm_password: TEST_PASSWORD
-		});
+		}, { submitButton: null }); // Don't auto-submit
 
-		// Click Complete Setup button - wait for it to be enabled first
-		const submitButton = page.locator('button[type="submit"]');
-		await submitButton.waitFor({ state: 'visible', timeout: 10000 });
-
-		// Only click if button is not already processing
-		const buttonText = await submitButton.textContent();
-		if (!buttonText?.includes('Creating')) {
-			await submitButton.click();
-		}
+		// Click Continue button to proceed to GeoLite step
+		const passwordSubmit = page.locator('button:has-text("Continue")');
+		await passwordSubmit.waitFor({ state: 'visible', timeout: 10000 });
+		await passwordSubmit.click();
+		await page.waitForLoadState('networkidle');
 		helpers.log("Password configured");
+
+		// Step 1.4: GeoLite configuration step (skip it for testing)
+		await page.waitForSelector('text=GeoLite', { timeout: 10000 });
+		helpers.log("GeoLite step loaded");
+
+		// Skip GeoLite configuration for now (click Skip for Now button)
+		const skipButton = page.locator('button:has-text("Skip for Now")');
+		await skipButton.waitFor({ state: 'visible', timeout: 10000 });
+		await skipButton.click();
+		helpers.log("GeoLite step skipped");
 
 		// Final redirect check - should be logged in
 		await page.waitForURL(/\/admin\/websites\/new/, { timeout: 15000 });

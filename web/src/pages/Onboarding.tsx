@@ -110,33 +110,60 @@ export default function Onboarding() {
     <form action="/setup/geolite" method="POST" className="space-y-4">
       <Alert className="border-amber-200 bg-amber-50">
         <AlertDescription className="text-amber-800">
-          <strong>GeoLite Database Required for Event Processing</strong>
+          <strong>GeoLite Database for Location Data</strong>
         </AlertDescription>
       </Alert>
 
       <div className="space-y-3 text-sm text-gray-600">
         <p>
           Fusionaly uses MaxMind's GeoLite2 database to detect visitor locations (country, city).
-          <strong className="text-gray-900"> Without it, events will be queued but not processed.</strong>
+          Enter your MaxMind credentials to enable automatic database downloads.
         </p>
 
         <div className="bg-gray-50 p-3 rounded-md border">
-          <p className="font-medium text-gray-900 mb-2">To enable event processing:</p>
+          <p className="font-medium text-gray-900 mb-2">Get your free credentials:</p>
           <ol className="list-decimal list-inside space-y-1">
-            <li>Register at <a href="https://www.maxmind.com/en/geolite2/signup" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">MaxMind</a> (free account)</li>
-            <li>Download GeoLite2-City.mmdb</li>
-            <li>Go to <strong>Administration &rarr; System</strong> to configure the path</li>
+            <li>Register at <a href="https://www.maxmind.com/en/geolite2/signup" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">MaxMind</a> (free)</li>
+            <li>Go to Account &rarr; Manage License Keys</li>
+            <li>Generate a new license key</li>
           </ol>
         </div>
-
-        <p className="text-gray-500">
-          You can complete setup now and configure GeoLite later. Events will queue until GeoLite is configured.
-        </p>
       </div>
 
-      <Button type="submit" className="w-full">
-        Complete Setup
-      </Button>
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="geolite_account_id">Account ID</Label>
+          <Input
+            id="geolite_account_id"
+            type="text"
+            name="geolite_account_id"
+            placeholder="e.g., 123456"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="geolite_license_key">License Key</Label>
+          <Input
+            id="geolite_license_key"
+            type="password"
+            name="geolite_license_key"
+            placeholder="Your MaxMind license key"
+          />
+        </div>
+      </div>
+
+      <p className="text-xs text-gray-500">
+        This step is optional. You can configure GeoLite later in Administration &rarr; System.
+      </p>
+
+      <div className="flex gap-2">
+        <Button type="submit" name="action" value="skip" variant="outline" className="flex-1">
+          Skip for Now
+        </Button>
+        <Button type="submit" name="action" value="save" className="flex-1">
+          Save & Complete
+        </Button>
+      </div>
     </form>
   );
 

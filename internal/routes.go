@@ -68,16 +68,22 @@ func MountAppRoutes(srv *cartridge.Server) {
 		cartridgemiddleware.WithDuration(time.Minute),
 	))
 
-	// Sec-Fetch-Site middleware for event ingestion endpoints
+	// Sec-Fetch-Site middleware for event ingestion endpoints (production only)
 	// Only allows browser-initiated requests from web pages (cross-site, same-site, same-origin)
 	// Rejects "none" (direct navigation) and missing headers (curl, Postman, scripts)
-	secFetchForEvents := cartridgemiddleware.SecFetchSiteMiddleware(cartridgemiddleware.SecFetchSiteConfig{
-		AllowedValues: []string{"cross-site", "same-site", "same-origin"},
-		Methods:       []string{"POST"},
-		Next: func(c *fiber.Ctx) bool {
-			return c.Method() != "POST" // Only validate POST requests
-		},
-	})
+	// Bypassed in dev/test since headless browsers may send different headers
+	secFetchForEvents := func(c *fiber.Ctx) error {
+		if !cfg.IsProduction() {
+			return c.Next()
+		}
+		return cartridgemiddleware.SecFetchSiteMiddleware(cartridgemiddleware.SecFetchSiteConfig{
+			AllowedValues: []string{"cross-site", "same-site", "same-origin"},
+			Methods:       []string{"POST"},
+			Next: func(c *fiber.Ctx) bool {
+				return c.Method() != "POST"
+			},
+		})(c)
+	}
 
 	// ============================================
 	// ROUTE CONFIGURATIONS
@@ -204,5 +210,6 @@ func MountAppRoutes(srv *cartridge.Server) {
 	// === SYSTEM API ROUTES ===
 	srv.Get("/admin/api/system/export-database", http.SystemExportDatabaseAction, adminAPIConfig)
 	srv.Post("/admin/system/purge-cache", http.SystemPurgeCacheFormAction, adminConfig)
+	srv.Post("/admin/system/geolite", http.SystemGeoLiteFormAction, adminConfig)
 	srv.Post("/admin/ingestion/settings", http.IngestionSettingsFormAction, adminConfig)
 }

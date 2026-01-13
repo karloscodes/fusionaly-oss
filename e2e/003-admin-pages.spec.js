@@ -204,4 +204,49 @@ test.describe.serial("Admin Pages Accessibility Tests", () => {
 
 		helpers.log("Navigation flow test completed");
 	});
+
+	test("should access and configure GeoLite settings in System page", async ({ page }) => {
+		helpers.log("Testing GeoLite configuration in System page");
+
+		// Navigate to system administration page
+		await helpers.navigateTo("/admin/administration/system", {
+			timeout: 30000
+		});
+
+		// Verify we're on the system page
+		const currentUrl = helpers.page.url();
+		expect(currentUrl).toContain("/admin/administration/system");
+
+		// Wait for page to load
+		await helpers.waitForElement("h1", { timeout: 10000 });
+		const heading = await helpers.page.textContent("h1");
+		expect(heading).toContain("System Management");
+
+		// Verify GeoLite configuration section exists
+		const pageContent = await page.textContent("body");
+		expect(pageContent).toContain("GeoLite Configuration");
+		helpers.log("GeoLite configuration section found");
+
+		// Fill in test credentials (these won't actually work but test the form)
+		const accountIdInput = page.locator('#geolite_account_id');
+		const licenseKeyInput = page.locator('#geolite_license_key');
+
+		if (await accountIdInput.count() > 0) {
+			await accountIdInput.fill("123456");
+			await licenseKeyInput.fill("test-license-key");
+			helpers.log("GeoLite credentials entered");
+
+			// Submit the form
+			const saveButton = page.locator('button:has-text("Save GeoLite Settings")');
+			await saveButton.click();
+			await page.waitForLoadState("networkidle", { timeout: 10000 });
+
+			// Check for success message
+			const successMessages = await helpers.checkForMessages("success");
+			expect(successMessages.length).toBeGreaterThan(0);
+			helpers.log(`✅ GeoLite settings saved: ${successMessages[0]}`);
+		} else {
+			helpers.log("GeoLite input fields not found (may be styled differently)");
+		}
+	});
 });

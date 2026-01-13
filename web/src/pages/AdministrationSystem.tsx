@@ -11,12 +11,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { FlashMessageDisplay } from "@/components/ui/flash-message";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
 	Database,
 	FileText,
 	Download,
 	Trash2,
 	RefreshCw,
+	Globe,
 } from "lucide-react";
 import type { FlashMessage } from "@/types";
 import { AdministrationLayout } from "@/components/administration-layout";
@@ -26,14 +29,21 @@ interface AdministrationSystemProps {
 	error?: string;
 	show_logs?: boolean;
 	logs?: string;
+	geolite_account_id?: string;
+	geolite_license_key?: string;
+	geolite_last_update?: string;
+	geolite_db_exists?: boolean;
 	[key: string]: unknown;
 }
 
 export const AdministrationSystem: FC = () => {
 	const { props } = usePage<AdministrationSystemProps>();
-	const { flash, error, show_logs, logs: serverLogs } = props;
+	const { flash, error, show_logs, logs: serverLogs, geolite_account_id, geolite_license_key, geolite_last_update, geolite_db_exists } = props;
 	const [exportLoading, setExportLoading] = useState(false);
 	const [localFlash, setLocalFlash] = useState<FlashMessage | null>(null);
+	const [geoAccountId, setGeoAccountId] = useState(geolite_account_id || "");
+	const [geoLicenseKey, setGeoLicenseKey] = useState(geolite_license_key || "");
+	const [geoSaving, setGeoSaving] = useState(false);
 
 	// Use server logs if available
 	const logs = serverLogs || "";
@@ -124,6 +134,17 @@ export const AdministrationSystem: FC = () => {
 		setTimeout(() => setLocalFlash(null), 3000);
 	};
 
+	const handleSaveGeoLite = () => {
+		setGeoSaving(true);
+		router.post("/admin/system/geolite", {
+			geolite_account_id: geoAccountId,
+			geolite_license_key: geoLicenseKey,
+		}, {
+			preserveScroll: true,
+			onFinish: () => setGeoSaving(false),
+		});
+	};
+
 	// Combine server flash and local flash
 	const displayFlash = flash || localFlash;
 
@@ -138,6 +159,89 @@ export const AdministrationSystem: FC = () => {
 				</div>
 
 				<FlashMessageDisplay flash={displayFlash} error={error} />
+
+				{/* GeoLite Configuration */}
+				<Card className="border-black shadow-sm">
+					<CardHeader className="pb-4">
+						<div className="flex justify-between items-center">
+							<CardTitle className="text-lg flex items-center gap-2">
+								<Globe className="h-5 w-5" /> GeoLite Configuration
+							</CardTitle>
+						</div>
+						<CardDescription>
+							Configure MaxMind GeoLite2 credentials for automatic database updates.
+						</CardDescription>
+					</CardHeader>
+					<CardContent className="space-y-4">
+						<div className="bg-blue-50 p-4 rounded-lg border border-blue-200 mb-4">
+							<p className="text-sm text-blue-900">
+								Get your free credentials at{" "}
+								<a
+									href="https://www.maxmind.com/en/geolite2/signup"
+									target="_blank"
+									rel="noopener noreferrer"
+									className="underline"
+								>
+									maxmind.com
+								</a>
+								. Go to Account &rarr; Manage License Keys.
+							</p>
+						</div>
+
+						<div className="space-y-2">
+							<Label htmlFor="geolite_account_id">Account ID</Label>
+							<Input
+								id="geolite_account_id"
+								type="text"
+								value={geoAccountId}
+								onChange={(e) => setGeoAccountId(e.target.value)}
+								placeholder="e.g., 123456"
+							/>
+						</div>
+
+						<div className="space-y-2">
+							<Label htmlFor="geolite_license_key">License Key</Label>
+							<Input
+								id="geolite_license_key"
+								type="password"
+								value={geoLicenseKey}
+								onChange={(e) => setGeoLicenseKey(e.target.value)}
+								placeholder="Your MaxMind license key"
+							/>
+						</div>
+
+						<Button
+							onClick={handleSaveGeoLite}
+							disabled={geoSaving}
+							className="bg-black hover:bg-gray-800 text-white rounded-md"
+						>
+							{geoSaving ? "Saving..." : "Save GeoLite Settings"}
+						</Button>
+
+						{/* Status information */}
+						<div className="pt-4 mt-4 border-t border-gray-200 space-y-2">
+							<div className="flex items-center gap-2 text-sm">
+								<span className="text-gray-600">Database Status:</span>
+								{geolite_db_exists ? (
+									<span className="text-green-600 font-medium">Downloaded</span>
+								) : (
+									<span className="text-amber-600 font-medium">Not downloaded</span>
+								)}
+							</div>
+							{geolite_last_update && (
+								<div className="flex items-center gap-2 text-sm">
+									<span className="text-gray-600">Last Updated:</span>
+									<span className="text-gray-900">{geolite_last_update}</span>
+								</div>
+							)}
+							{!geolite_db_exists && !geolite_last_update && (geoAccountId && geoLicenseKey) && (
+								<p className="text-xs text-gray-500">
+									Database will be downloaded automatically within 24 hours after saving credentials.
+								</p>
+							)}
+						</div>
+					</CardContent>
+				</Card>
 
 				{/* Cache Management */}
 				<Card className="border-black shadow-sm">

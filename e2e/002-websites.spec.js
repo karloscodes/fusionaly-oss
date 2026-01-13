@@ -269,6 +269,61 @@ test.describe("Website Management Flow", () => {
 
 		helpers.log("✅ End-to-end website creation flow completed successfully");
 	});
+
+	test("should edit website settings (conversion goals and subdomain tracking)", async ({ page }) => {
+		helpers.log("Testing website edit functionality");
+
+		// Create a website first
+		const editDomain = `edit-test-${Date.now()}.com`;
+		const result = await createWebsite(editDomain);
+		expect(result.success).toBe(true);
+		helpers.log("Test website created for editing");
+
+		// Extract website ID from URL (e.g., /admin/websites/123/setup)
+		const setupUrl = result.url;
+		const websiteIdMatch = setupUrl.match(/\/admin\/websites\/(\d+)/);
+		expect(websiteIdMatch).toBeTruthy();
+		const websiteId = websiteIdMatch[1];
+		helpers.log(`Website ID: ${websiteId}`);
+
+		// Navigate to edit page
+		await helpers.navigateTo(`/admin/websites/${websiteId}/edit`, {
+			waitForSelector: 'h1',
+			timeout: 20000
+		});
+
+		// Verify we're on the edit page
+		const currentUrl = helpers.page.url();
+		expect(currentUrl).toContain(`/admin/websites/${websiteId}/edit`);
+		helpers.log("Edit page loaded");
+
+		// The domain should be displayed (read-only)
+		const pageContent = await page.textContent('body');
+		expect(pageContent).toContain(editDomain);
+		helpers.log("Domain is displayed on edit page");
+
+		// Toggle subdomain tracking if the switch exists
+		const subdomainSwitch = page.locator('button[role="switch"]');
+		if (await subdomainSwitch.count() > 0) {
+			await subdomainSwitch.click();
+			helpers.log("Subdomain tracking toggle clicked");
+		}
+
+		// Submit the form
+		const saveButton = page.locator('button[type="submit"]');
+		await saveButton.click();
+		await page.waitForLoadState("networkidle", { timeout: 10000 });
+		helpers.log("Form submitted");
+
+		// Verify we stayed on edit page or got success message
+		const afterSubmitUrl = page.url();
+		expect(afterSubmitUrl).toContain(`/admin/websites/${websiteId}/edit`);
+
+		// Check for success flash message
+		const successMessages = await helpers.checkForMessages("success");
+		expect(successMessages.length).toBeGreaterThan(0);
+		helpers.log(`✅ Website settings saved successfully: ${successMessages[0]}`);
+	});
 });
 
 

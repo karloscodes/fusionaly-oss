@@ -25,12 +25,14 @@ type Scheduler struct {
 	isProcessing    bool
 
 	// Job instances
-	eventProcessor *EventProcessorJob
-	cleanupJob     *CleanupJob
+	eventProcessor   *EventProcessorJob
+	cleanupJob       *CleanupJob
+	geoLiteUpdater   *GeoLiteUpdaterJob
 
 	// Tickers for each job type
 	eventTicker   *time.Ticker
 	cleanupTicker *time.Ticker
+	geoLiteTicker *time.Ticker
 }
 
 func NewScheduler(dbManager *database.DBManager, logger *slog.Logger) (*Scheduler, error) {
@@ -50,6 +52,7 @@ func NewScheduler(dbManager *database.DBManager, logger *slog.Logger) (*Schedule
 	// Initialize job instances
 	s.eventProcessor = NewEventProcessorJob(dbManager, logger)
 	s.cleanupJob = NewCleanupJob(dbManager, logger, cfg)
+	s.geoLiteUpdater = NewGeoLiteUpdaterJob(dbManager, logger, cfg)
 
 	return s, nil
 }
@@ -103,6 +106,9 @@ func (s *Scheduler) Start() error {
 
 	// Start cleanup job
 	s.startCleanupJob()
+
+	// Start GeoLite updater job
+	s.startGeoLiteUpdaterJob()
 
 	s.logger.Info("Background jobs started",
 		slog.Bool("enabled", s.enabled),
@@ -159,6 +165,33 @@ func (s *Scheduler) startCleanupJob() {
 	}()
 }
 
+func (s *Scheduler) startGeoLiteUpdaterJob() {
+	// Check every 24 hours, but only update if 7 days have passed
+	interval := 24 * time.Hour
+	s.logger.Info("Starting GeoLite updater job", slog.Duration("check_interval", interval))
+	s.geoLiteTicker = time.NewTicker(interval)
+
+	go func() {
+		// Run initial check (will skip if already up-to-date or not configured)
+		s.logger.Info("Running initial GeoLite check...")
+		if err := s.geoLiteUpdater.Run(); err != nil {
+			s.logger.Error("Error in initial GeoLite updater job", slog.Any("error", err))
+		}
+
+		for {
+			select {
+			case <-s.geoLiteTicker.C:
+				if err := s.geoLiteUpdater.Run(); err != nil {
+					s.logger.Error("Error in GeoLite updater job", slog.Any("error", err))
+				}
+			case <-s.ctx.Done():
+				s.logger.Info("GeoLite updater job stopped")
+				return
+			}
+		}
+	}()
+}
+
 // Stop halts all background jobs.
 // Implements cartridge.BackgroundWorker interface.
 func (s *Scheduler) Stop() {
@@ -170,6 +203,9 @@ func (s *Scheduler) Stop() {
 	}
 	if s.cleanupTicker != nil {
 		s.cleanupTicker.Stop()
+	}
+	if s.geoLiteTicker != nil {
+		s.geoLiteTicker.Stop()
 	}
 
 	s.cancel()

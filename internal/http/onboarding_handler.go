@@ -13,6 +13,7 @@ import (
 	"gorm.io/gorm"
 
 	"fusionaly/internal/onboarding"
+	"fusionaly/internal/settings"
 )
 
 const (
@@ -271,7 +272,7 @@ func completeOnboarding(db *gorm.DB, logger *slog.Logger, c *fiber.Ctx, sessionM
 	return nil
 }
 
-// OnboardingGeoLiteFormAction handles GeoLite acknowledgment form submission (PRG pattern)
+// OnboardingGeoLiteFormAction handles GeoLite configuration form submission (PRG pattern)
 func OnboardingGeoLiteFormAction(ctx *cartridge.Context) error {
 	// Get session ID from cookie
 	sessionID := ctx.Cookies(onboardingSessionCookieName)
@@ -294,6 +295,23 @@ func OnboardingGeoLiteFormAction(ctx *cartridge.Context) error {
 	if session.Step != onboarding.StepGeoLite {
 		flash.SetFlash(ctx.Ctx, "error", "Invalid step")
 		return ctx.Redirect("/setup", fiber.StatusFound)
+	}
+
+	// Get GeoLite credentials from form (optional)
+	action := ctx.FormValue("action")
+	if action != "skip" {
+		accountID := strings.TrimSpace(ctx.FormValue("geolite_account_id"))
+		licenseKey := strings.TrimSpace(ctx.FormValue("geolite_license_key"))
+
+		// Only save if both fields are provided
+		if accountID != "" && licenseKey != "" {
+			if err := settings.SaveGeoLiteCredentials(db, accountID, licenseKey); err != nil {
+				ctx.Logger.Error("Failed to save GeoLite credentials", slog.Any("error", err))
+				// Don't fail onboarding for this - user can configure later
+			} else {
+				ctx.Logger.Info("GeoLite credentials saved during onboarding")
+			}
+		}
 	}
 
 	// Complete the onboarding by creating the user
