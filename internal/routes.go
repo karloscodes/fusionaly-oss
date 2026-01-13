@@ -73,7 +73,12 @@ func MountAppRoutes(srv *cartridge.Server) {
 	// Rejects "none" (direct navigation) and missing headers (curl, Postman, scripts)
 	// Bypassed in dev/test since headless browsers may send different headers
 	secFetchForEvents := func(c *fiber.Ctx) error {
+		// Bypass for non-production environments
 		if !cfg.IsProduction() {
+			return c.Next()
+		}
+		// Bypass for E2E tests (Playwright sends this header)
+		if c.Get("X-Test-Source") == "playwright-e2e" {
 			return c.Next()
 		}
 		return cartridgemiddleware.SecFetchSiteMiddleware(cartridgemiddleware.SecFetchSiteConfig{
