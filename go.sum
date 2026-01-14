@@ -41,8 +41,6 @@ github.com/jinzhu/inflection v1.0.0 h1:K317FqzuhWc8YvSVlFMCCUb36O/S9MCKRDI7QkRKD
 github.com/jinzhu/inflection v1.0.0/go.mod h1:h+uFLlag+Qp1Va5pdKtLDYj+kHp5pxUVkryuEj+Srlc=
 github.com/jinzhu/now v1.1.5 h1:/o9tlHleP7gOFmsnYNz3RGnqzefHA47wQpKrrdTIwXQ=
 github.com/jinzhu/now v1.1.5/go.mod h1:d3SSVoowX0Lcu0IBviAWJpolVfI5UJVZZ7cO71lE/z8=
-github.com/karloscodes/cartridge v0.0.0-20251222092441-ce62aed5d842 h1:dvCpFBCQO7lzQTJKpoHQ/HjP6YpbUziXiPtXIIWEVBI=
-github.com/karloscodes/cartridge v0.0.0-20251222092441-ce62aed5d842/go.mod h1:RjcYtbq3kyikk9hlCLxvjnmKqMgE8DV4U1tD0GZbDGs=
 github.com/karloscodes/cartridge v0.0.0-20251222114404-bef7175e3857 h1:FGoRbgvv937lXCN8JsIo4DsCl3J/8hGhZlJPKxRHGtY=
 github.com/karloscodes/cartridge v0.0.0-20251222114404-bef7175e3857/go.mod h1:RjcYtbq3kyikk9hlCLxvjnmKqMgE8DV4U1tD0GZbDGs=
 github.com/klauspost/compress v1.18.2 h1:iiPHWW0YrcFgpBYhsA6D1+fqHssJscY/Tm/y2Uqnapk=

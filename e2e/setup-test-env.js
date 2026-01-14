@@ -148,9 +148,8 @@ async function setupTestEnvironment() {
 
 		// Create localhost website for event ingestion tests
 		// This is needed because the SDK validates the origin against registered websites
-		const dbPath = path.join(projectRoot, "storage", "fusionaly-test.db");
 		runCommand(
-			`sqlite3 "${dbPath}" "INSERT OR IGNORE INTO websites (domain, created_at) VALUES ('localhost', datetime('now'));"`,
+			`"${fnctlPath}" create-website localhost`,
 			"Creating localhost website for event tests",
 			{
 				env: { ...process.env, FUSIONALY_ENV: "test" },

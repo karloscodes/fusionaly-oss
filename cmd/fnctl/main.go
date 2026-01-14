@@ -19,6 +19,7 @@ import (
 	"fusionaly/internal"
 	"fusionaly/internal/seeder"
 	"fusionaly/internal/users"
+	"fusionaly/internal/websites"
 
 	"log/slog"
 )
@@ -41,6 +42,7 @@ type Command interface {
 var commands = []Command{
 	&CreateAdminUserCommand{},
 	&ChangeAdminPasswordCommand{},
+	&CreateWebsiteCommand{},
 	&MigrateCommand{},
 	&SeedCommand{},
 	&StatusCommand{},
@@ -231,6 +233,42 @@ func (c *ChangeAdminPasswordCommand) Execute(ctx context.Context, app *internal.
 	}
 
 	fmt.Println("Password updated successfully")
+	return nil
+}
+
+// CreateWebsiteCommand implements the command to create a website
+type CreateWebsiteCommand struct{}
+
+func (c *CreateWebsiteCommand) Name() string        { return "create-website" }
+func (c *CreateWebsiteCommand) Description() string { return "Creates a website for tracking" }
+
+func (c *CreateWebsiteCommand) Execute(ctx context.Context, app *internal.Application, args []string) error {
+	if len(args) < 1 {
+		return fmt.Errorf("usage: %s <domain>", c.Name())
+	}
+
+	domain := args[0]
+
+	if app == nil {
+		return fmt.Errorf("app initialization failed, cannot connect to database")
+	}
+
+	db := app.DBManager.GetConnection()
+
+	// Check if website already exists
+	var existing websites.Website
+	if err := db.Where("domain = ?", domain).First(&existing).Error; err == nil {
+		log.Printf("Website %s already exists (ID: %d)", domain, existing.ID)
+		return nil
+	}
+
+	// Create new website
+	website := &websites.Website{Domain: domain}
+	if err := websites.CreateWebsite(db, website); err != nil {
+		return fmt.Errorf("failed to create website: %w", err)
+	}
+
+	log.Printf("Website %s created successfully (ID: %d)", domain, website.ID)
 	return nil
 }
 

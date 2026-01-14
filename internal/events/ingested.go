@@ -151,24 +151,6 @@ func prepareTempEvent(db *gorm.DB, logger *slog.Logger, input *CollectEventInput
 
 	// Try to find the website with the complete hostname first
 	websiteID, err := websites.GetWebsiteOrNotFound(db, urlData.hostname)
-
-	// In non-production environments, auto-create localhost website for testing
-	cfg := config.GetConfig()
-	if err != nil && !cfg.IsProduction() && (urlData.hostname == "localhost" || urlData.hostname == "127.0.0.1") {
-		logger.Debug("Creating localhost website for testing", slog.String("hostname", urlData.hostname))
-		website := &websites.Website{Domain: urlData.hostname}
-		if createErr := websites.CreateWebsite(db, website); createErr != nil {
-			// If creation failed, try to find it again (race condition)
-			websiteID, err = websites.GetWebsiteOrNotFound(db, urlData.hostname)
-			if err != nil {
-				logger.Error("Failed to create or find localhost website", slog.Any("error", err))
-				return nil, err
-			}
-		} else {
-			websiteID = website.ID
-			err = nil
-		}
-	}
 	baseDomain := websites.BaseDomainForHost(urlData.hostname)
 	websiteDomain := baseDomain
 
