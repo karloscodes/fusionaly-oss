@@ -10,7 +10,7 @@ before:
 builds:
   - id: fusionaly-manager
     main: ./cmd/manager
-    binary: fusionaly-manager
+    binary: fusionaly
     env:
       - CGO_ENABLED=0
     goos:
@@ -141,11 +141,11 @@ release:
 
     ### Installation
 
-    Download the manager and run:
+    Download and run:
     ```bash
-    curl -L https://github.com/karloscodes/fusionaly-oss/releases/download/{{ .Tag }}/fusionaly-manager-linux-$(uname -m | sed 's/x86_64/amd64/' | sed 's/aarch64/arm64/') -o fusionaly-manager
-    chmod +x fusionaly-manager
-    sudo ./fusionaly-manager install
+    curl -L https://github.com/karloscodes/fusionaly-oss/releases/download/{{ .Tag }}/fusionaly-linux-$(uname -m | sed 's/x86_64/amd64/' | sed 's/aarch64/arm64/') -o fusionaly
+    chmod +x fusionaly
+    sudo ./fusionaly install
     ```
 
     ### Docker

@@ -13,8 +13,8 @@ const (
 	DefaultCronFile = "/etc/cron.d/fusionaly-update"
 	// DefaultInstallDir is the default installation directory
 	DefaultInstallDir = "/opt/fusionaly"
-	// DefaultBinaryPath is the path to the fusionaly-manager binary
-	DefaultBinaryPath = "/usr/local/bin/fusionaly-manager"
+	// DefaultBinaryPath is the path to the fusionaly binary
+	DefaultBinaryPath = "/usr/local/bin/fusionaly"
 	// DefaultCronSchedule is the default schedule for the cron job (3:00 AM daily)
 	DefaultCronSchedule = "0 3 * * *"
 )

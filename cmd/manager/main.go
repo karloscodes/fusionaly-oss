@@ -272,7 +272,7 @@ func printVersion() {
 }
 
 func printUsage() {
-	fmt.Println("Usage: fusionaly-manager [command] [options]")
+	fmt.Println("Usage: fusionaly [command] [options]")
 	fmt.Println("\nCommands:")
 	fmt.Println("  install                     Install Fusionaly")
 	fmt.Println("  update                      Update an existing installation")

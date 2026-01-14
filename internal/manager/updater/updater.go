@@ -23,7 +23,7 @@ import (
 const (
 	GitHubRepo        = "karloscodes/fusionaly-oss"
 	GitHubAPIURL      = "https://api.github.com/repos/" + GitHubRepo + "/releases/latest"
-	BinaryInstallPath = "/usr/local/bin/fusionaly-manager"
+	BinaryInstallPath = "/usr/local/bin/fusionaly" // Keep simple name for backward compatibility
 )
 
 type Updater struct {
@@ -94,9 +94,9 @@ func (u *Updater) Run(currentVersion string) error {
 			if downloadURL == "" {
 				downloadURL = u.config.GetData().InstallerURL
 				if downloadURL == "" || downloadURL == fmt.Sprintf("https://github.com/%s/releases/latest", config.GithubRepo) {
-					// Use fusionaly-manager naming pattern (matches GoReleaser output)
-					downloadURL = fmt.Sprintf("https://github.com/%s/releases/download/v%s/fusionaly-manager-linux-%s", GitHubRepo, latestVersion, arch)
-					u.logger.Info("Using manager binary URL: %s", downloadURL)
+					// Use fusionaly naming pattern (matches GoReleaser output)
+					downloadURL = fmt.Sprintf("https://github.com/%s/releases/download/v%s/fusionaly-linux-%s", GitHubRepo, latestVersion, arch)
+					u.logger.Info("Using binary URL: %s", downloadURL)
 				}
 			}
 
@@ -162,8 +162,8 @@ func (u *Updater) getLatestVersionAndBinaryURL() (string, string, error) {
 	}
 
 	arch := runtime.GOARCH
-	// Manager binary naming pattern (matches GoReleaser output)
-	expectedAsset := fmt.Sprintf("fusionaly-manager-linux-%s", arch)
+	// Binary naming pattern (matches GoReleaser output)
+	expectedAsset := fmt.Sprintf("fusionaly-linux-%s", arch)
 
 	var binaryURL string
 
@@ -178,7 +178,7 @@ func (u *Updater) getLatestVersionAndBinaryURL() (string, string, error) {
 		return latestVersion, "", fmt.Errorf("no binary found for architecture %s in release v%s (expected %s)", arch, latestVersion, expectedAsset)
 	}
 
-	u.logger.Info("Found manager binary: %s", binaryURL)
+	u.logger.Info("Found binary: %s", binaryURL)
 	return latestVersion, binaryURL, nil
 }
 
