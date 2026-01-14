@@ -76,6 +76,7 @@ dockers:
     extra_files:
       - go.mod
       - go.sum
+      - Makefile
       - cmd
       - internal
       - pkg
@@ -98,6 +99,7 @@ dockers:
     extra_files:
       - go.mod
       - go.sum
+      - Makefile
       - cmd
       - internal
       - pkg
