@@ -21,9 +21,9 @@ import (
 )
 
 const (
-	GitHubRepo        = "karloscodes/fusionaly-installer"
+	GitHubRepo        = "karloscodes/fusionaly-oss"
 	GitHubAPIURL      = "https://api.github.com/repos/" + GitHubRepo + "/releases/latest"
-	BinaryInstallPath = "/usr/local/bin/fusionaly" // Standard installation path
+	BinaryInstallPath = "/usr/local/bin/fusionaly-manager"
 )
 
 type Updater struct {
@@ -94,23 +94,9 @@ func (u *Updater) Run(currentVersion string) error {
 			if downloadURL == "" {
 				downloadURL = u.config.GetData().InstallerURL
 				if downloadURL == "" || downloadURL == fmt.Sprintf("https://github.com/%s/releases/latest", config.GithubRepo) {
-					// Try new naming pattern first
-					downloadURL = fmt.Sprintf("https://github.com/%s/releases/download/v%s/fusionaly-installer-v%s-%s", GitHubRepo, latestVersion, latestVersion, arch)
-					u.logger.Info("Trying new naming pattern URL: %s", downloadURL)
-
-					// Test if the new pattern URL is accessible
-					client := &http.Client{Timeout: 10 * time.Second}
-					resp, err := client.Head(downloadURL)
-					if err != nil || resp.StatusCode != http.StatusOK {
-						// Fall back to old naming pattern
-						downloadURL = fmt.Sprintf("https://github.com/%s/releases/download/v%s/fusionaly-v%s-%s", GitHubRepo, latestVersion, latestVersion, arch)
-						u.logger.Info("New pattern not accessible, falling back to old naming pattern URL: %s", downloadURL)
-					} else {
-						u.logger.Info("Using new naming pattern URL: %s", downloadURL)
-					}
-					if resp != nil {
-						resp.Body.Close()
-					}
+					// Use fusionaly-manager naming pattern (matches GoReleaser output)
+					downloadURL = fmt.Sprintf("https://github.com/%s/releases/download/v%s/fusionaly-manager-linux-%s", GitHubRepo, latestVersion, arch)
+					u.logger.Info("Using manager binary URL: %s", downloadURL)
 				}
 			}
 
@@ -176,39 +162,23 @@ func (u *Updater) getLatestVersionAndBinaryURL() (string, string, error) {
 	}
 
 	arch := runtime.GOARCH
-	// Try new naming pattern first (fusionaly-installer)
-	expectedAssetNew := fmt.Sprintf("fusionaly-installer-v%s-%s", latestVersion, arch)
-	// Fallback to old naming pattern for backwards compatibility
-	expectedAssetOld := fmt.Sprintf("fusionaly-v%s-%s", latestVersion, arch)
+	// Manager binary naming pattern (matches GoReleaser output)
+	expectedAsset := fmt.Sprintf("fusionaly-manager-linux-%s", arch)
 
 	var binaryURL string
-	var foundPattern string
 
-	// First try to find the new naming pattern
 	for _, asset := range release.Assets {
-		if asset.Name == expectedAssetNew {
+		if asset.Name == expectedAsset {
 			binaryURL = asset.BrowserURL
-			foundPattern = "new"
 			break
 		}
 	}
 
-	// If new pattern not found, try old pattern
 	if binaryURL == "" {
-		for _, asset := range release.Assets {
-			if asset.Name == expectedAssetOld {
-				binaryURL = asset.BrowserURL
-				foundPattern = "old"
-				break
-			}
-		}
+		return latestVersion, "", fmt.Errorf("no binary found for architecture %s in release v%s (expected %s)", arch, latestVersion, expectedAsset)
 	}
 
-	if binaryURL == "" {
-		return latestVersion, "", fmt.Errorf("no binary found for architecture %s in release v%s (tried both %s and %s)", arch, latestVersion, expectedAssetNew, expectedAssetOld)
-	}
-
-	u.logger.Info("Found binary using %s naming pattern: %s", foundPattern, binaryURL)
+	u.logger.Info("Found manager binary: %s", binaryURL)
 	return latestVersion, binaryURL, nil
 }
 
@@ -436,22 +406,14 @@ func compareVersions(v1, v2 string) int {
 }
 
 func extractVersionFromURL(url string) string {
+	// Extract version from release URL path like:
+	// https://github.com/karloscodes/fusionaly-oss/releases/download/v1.0.0/fusionaly-manager-linux-amd64
 	parts := strings.Split(url, "/")
-	for i, part := range parts {
-		if i < len(parts) {
-			filename := part
-			// Try new naming pattern first (fusionaly-installer)
-			if strings.HasPrefix(filename, "fusionaly-installer-v") {
-				version := strings.TrimPrefix(filename, "fusionaly-installer-v")
-				version = strings.TrimSuffix(version, "-amd64")
-				version = strings.TrimSuffix(version, "-arm64")
-				return version
-			}
-			// Fall back to old naming pattern for backwards compatibility
-			if strings.HasPrefix(filename, "fusionaly-v") {
-				version := strings.TrimPrefix(filename, "fusionaly-v")
-				version = strings.TrimSuffix(version, "-amd64")
-				version = strings.TrimSuffix(version, "-arm64")
+	for _, part := range parts {
+		if strings.HasPrefix(part, "v") && len(part) > 1 {
+			// Check if this looks like a version tag (v1.0.0, v1.2.3, etc.)
+			version := strings.TrimPrefix(part, "v")
+			if len(version) > 0 && (version[0] >= '0' && version[0] <= '9') {
 				return version
 			}
 		}

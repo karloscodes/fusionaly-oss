@@ -72,7 +72,7 @@ func TestGetBackupDir(t *testing.T) {
 
 func TestConstants(t *testing.T) {
 	assert.Equal(t, "/opt/fusionaly", DefaultInstallDir)
-	assert.Equal(t, "/usr/local/bin/fusionaly", DefaultBinaryPath)
+	assert.Equal(t, "/usr/local/bin/fusionaly-manager", DefaultBinaryPath)
 	assert.Equal(t, "/etc/cron.d/fusionaly-update", DefaultCronFile)
 	assert.Equal(t, "0 3 * * *", DefaultCronSchedule)
 }

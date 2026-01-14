@@ -19,7 +19,7 @@ import (
 
 const (
 	DefaultInstallDir   = "/opt/fusionaly"
-	DefaultBinaryPath   = "/usr/local/bin/fusionaly"
+	DefaultBinaryPath   = "/usr/local/bin/fusionaly-manager"
 	DefaultCronFile     = "/etc/cron.d/fusionaly-update"
 	DefaultCronSchedule = "0 3 * * *"
 )
