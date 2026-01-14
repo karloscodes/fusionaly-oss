@@ -54,5 +54,6 @@ plan.md
 *~
 .DS_Store
 
-# Scripts not needed in container
+# Scripts not needed in container (except entrypoint)
 scripts
+!scripts/entrypoint.sh
