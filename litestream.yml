@@ -14,7 +14,7 @@ dbs:
         interval: 24h      # Create daily snapshots
 
 exec:
-  - name: fusionaly
-    args: ["/app/fusionaly"]
+  - name: fusionaly-server
+    args: ["/app/fusionaly-server"]
     restart-on-exit: true
     restart-on-error: true

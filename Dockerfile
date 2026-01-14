@@ -25,7 +25,7 @@ COPY web/index.html web/vite.config.ts web/tsconfig*.json web/postcss.config.js 
 
 # Build binaries and web assets
 RUN mkdir -p dist && \
-  CGO_ENABLED=1 go build -o dist/fusionaly cmd/fusionaly/main.go && \
+  CGO_ENABLED=1 go build -o dist/fusionaly-server cmd/fusionaly/main.go && \
   CGO_ENABLED=1 go build -o dist/fnctl cmd/fnctl/main.go && \
   cd web && npm run build
 
@@ -38,7 +38,7 @@ RUN apk add --no-cache ca-certificates tzdata sqlite curl && \
   mkdir -p /app/logs /app/storage /app/web/dist /app/internal-storage
 
 # Copy compiled binaries and built assets from builder
-COPY --from=builder /app/dist/fusionaly /app/fusionaly
+COPY --from=builder /app/dist/fusionaly-server /app/fusionaly-server
 COPY --from=builder /app/dist/fnctl /app/fnctl
 COPY --from=builder /app/web/dist /app/web/dist
 
@@ -49,7 +49,7 @@ COPY --from=builder /app/web/dist /app/web/dist
 COPY scripts/entrypoint.sh /app/entrypoint.sh
 
 # Set permissions in one RUN command
-RUN chmod +x /app/entrypoint.sh /app/fusionaly /app/fnctl
+RUN chmod +x /app/entrypoint.sh /app/fusionaly-server /app/fnctl
 ENV FUSIONALY_ENV=production \
   FUSIONALY_STORAGE_PATH=/app/storage \
   FUSIONALY_GEO_DB_PATH=/app/internal-storage/GeoLite2-City.mmdb \

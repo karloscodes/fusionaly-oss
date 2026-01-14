@@ -36,7 +36,7 @@ case "$COMMAND" in
   server)
     log "Starting web server with ID ${SERVER_INSTANCE_ID}..."
     run_migrations
-    exec /app/fusionaly
+    exec /app/fusionaly-server
     ;;
 
   shell)
