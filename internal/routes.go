@@ -23,9 +23,9 @@ var publicCORSConfig = &cors.Config{
 	AllowHeaders: "Origin, Content-Type, Accept, Authorization, Referrer, User-Agent",
 }
 
-// MountAppRoutes mounts all application routes using cartridge's route API
-func MountAppRoutes(srv *cartridge.Server) {
-	// Create and set session manager
+// SetupSession configures session management on the server.
+// Exported for Pro to call before mounting its routes.
+func SetupSession(srv *cartridge.Server) {
 	cfg := config.GetConfig()
 	sessionMgr := cartridge.NewSessionManager(cartridge.SessionConfig{
 		CookieName: cfg.AppName + "_session",
@@ -35,6 +35,20 @@ func MountAppRoutes(srv *cartridge.Server) {
 		LoginPath:  "/login",
 	})
 	srv.SetSession(sessionMgr)
+}
+
+// MountAppRoutes mounts all application routes using cartridge's route API
+func MountAppRoutes(srv *cartridge.Server) {
+	// Create and set session manager
+	SetupSession(srv)
+	MountAppRoutesWithoutSession(srv)
+}
+
+// MountAppRoutesWithoutSession mounts routes without setting up session.
+// Used by Pro which sets up session separately.
+func MountAppRoutesWithoutSession(srv *cartridge.Server) {
+	cfg := config.GetConfig()
+	sessionMgr := srv.Session()
 
 	// ============================================
 	// PUBLIC ENDPOINT PROTECTION

@@ -37,7 +37,8 @@ func TestPublicEventsRouteRateLimited(t *testing.T) {
 		name := runtime.FuncForPC(reflect.ValueOf(handler).Pointer()).Name()
 		handlerNames = append(handlerNames, name)
 		// Check for either the raw limiter or our conditional wrapper
-		if strings.Contains(name, "middleware/limiter") || strings.Contains(name, "MountAppRoutes.func") {
+		// Note: Routes may be in MountAppRoutes or MountAppRoutesWithoutSession (for Pro)
+		if strings.Contains(name, "middleware/limiter") || strings.Contains(name, "MountAppRoutes") {
 			hasRateLimiter = true
 			break
 		}

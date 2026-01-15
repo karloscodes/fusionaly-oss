@@ -656,6 +656,12 @@ func ensureNonNil(items []analytics.MetricCountResult) []analytics.MetricCountRe
 
 // WebsiteDashboardAction handles the dashboard for a specific website at /admin/websites/:id
 func WebsiteDashboardAction(ctx *cartridge.Context) error {
+	return WebsiteDashboardActionWithComponent(ctx, "Dashboard")
+}
+
+// WebsiteDashboardActionWithComponent is like WebsiteDashboardAction but allows
+// specifying a custom Inertia component name. Used by Pro to render ProDashboard.
+func WebsiteDashboardActionWithComponent(ctx *cartridge.Context, component string) error {
 	// Get website ID from URL params
 	websiteId, err := ctx.ParamsInt("id")
 	if err != nil {
@@ -769,6 +775,6 @@ func WebsiteDashboardAction(ctx *cartridge.Context) error {
 		return flowData
 	})
 
-	return inertia.RenderPage(ctx.Ctx, "Dashboard", props)
+	return inertia.RenderPage(ctx.Ctx, component, props)
 }
 

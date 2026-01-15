@@ -12,6 +12,12 @@ import (
 
 // WebsiteLensAction renders the Lens page (Pro feature paywall in OSS)
 func WebsiteLensAction(ctx *cartridge.Context) error {
+	return WebsiteLensActionWithComponent(ctx, "Lens")
+}
+
+// WebsiteLensActionWithComponent renders the Lens page with a custom component name.
+// Pro uses this to render ProLens instead of Lens.
+func WebsiteLensActionWithComponent(ctx *cartridge.Context, component string) error {
 	websiteId, err := ctx.ParamsInt("id")
 	if err != nil {
 		ctx.Logger.Error("Invalid website ID in URL", slog.Any("error", err))
@@ -38,7 +44,7 @@ func WebsiteLensAction(ctx *cartridge.Context) error {
 		websitesData = []websites.Website{}
 	}
 
-	return inertia.RenderPage(ctx.Ctx, "Lens", inertia.Props{
+	return inertia.RenderPage(ctx.Ctx, component, inertia.Props{
 		"current_website_id": websiteId,
 		"website_domain":     website.Domain,
 		"websites":           websitesData,
