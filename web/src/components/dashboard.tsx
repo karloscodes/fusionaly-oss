@@ -80,6 +80,8 @@ interface DashboardComponentProps extends Partial<AnalyticsData> {
 	annotations?: Annotation[];
 	is_public_view?: boolean;
 	user_flow?: UserFlowLink[];
+	/** Optional slot for rendering content between header and hero metrics (used by Pro for insights) */
+	insightsSlot?: React.ReactNode;
 }
 
 export const Dashboard = (props: DashboardComponentProps) => {
@@ -688,6 +690,9 @@ export const Dashboard = (props: DashboardComponentProps) => {
 						websiteId={selectedWebsiteId}
 					/>
 				</div>
+
+				{/* Optional insights slot (used by Pro) */}
+				{props.insightsSlot}
 
 				{/* Hero Metrics Bar */}
 				<Deferred

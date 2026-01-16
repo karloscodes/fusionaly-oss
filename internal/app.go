@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/karloscodes/cartridge"
+	"github.com/karloscodes/cartridge/inertia"
 
 	"fusionaly/internal/config"
 	"fusionaly/internal/database"
@@ -25,6 +26,11 @@ func NewApp() (*Application, error) {
 
 // NewAppWithRoutes creates a new application with custom route mounting function
 func NewAppWithRoutes(cfg *config.Config, routeMount func(*cartridge.Server)) (*Application, error) {
+	// Enable Inertia dev mode in development (re-reads manifest on every request)
+	if cfg.IsDevelopment() {
+		inertia.SetDevMode(true)
+	}
+
 	// Create logger
 	logger := cartridge.NewLogger(cfg, nil)
 
@@ -60,6 +66,11 @@ func NewAppWithRoutes(cfg *config.Config, routeMount func(*cartridge.Server)) (*
 
 // NewAppWithConfig creates a new application with the provided config
 func NewAppWithConfig(cfg *config.Config) (*Application, error) {
+	// Enable Inertia dev mode in development (re-reads manifest on every request)
+	if cfg.IsDevelopment() {
+		inertia.SetDevMode(true)
+	}
+
 	// Create logger
 	logger := cartridge.NewLogger(cfg, nil)
 
