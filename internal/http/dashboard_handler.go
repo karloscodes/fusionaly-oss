@@ -654,6 +654,10 @@ func ensureNonNil(items []analytics.MetricCountResult) []analytics.MetricCountRe
 	return items
 }
 
+// DashboardPropsExtender is a function that can modify dashboard props before rendering.
+// Used by Pro to inject additional props like insights.
+type DashboardPropsExtender func(ctx *cartridge.Context, websiteID int, props map[string]interface{})
+
 // WebsiteDashboardAction handles the dashboard for a specific website at /admin/websites/:id
 func WebsiteDashboardAction(ctx *cartridge.Context) error {
 	return WebsiteDashboardActionWithComponent(ctx, "Dashboard")
@@ -662,6 +666,12 @@ func WebsiteDashboardAction(ctx *cartridge.Context) error {
 // WebsiteDashboardActionWithComponent is like WebsiteDashboardAction but allows
 // specifying a custom Inertia component name. Used by Pro to render ProDashboard.
 func WebsiteDashboardActionWithComponent(ctx *cartridge.Context, component string) error {
+	return WebsiteDashboardActionWithExtension(ctx, component, nil)
+}
+
+// WebsiteDashboardActionWithExtension is like WebsiteDashboardActionWithComponent but allows
+// an optional props extender function to add/modify props before rendering.
+func WebsiteDashboardActionWithExtension(ctx *cartridge.Context, component string, extender DashboardPropsExtender) error {
 	// Get website ID from URL params
 	websiteId, err := ctx.ParamsInt("id")
 	if err != nil {
@@ -774,6 +784,11 @@ func WebsiteDashboardActionWithComponent(ctx *cartridge.Context, component strin
 		}
 		return flowData
 	})
+
+	// Allow Pro to extend/override props (e.g., add insights)
+	if extender != nil {
+		extender(ctx, websiteId, props)
+	}
 
 	return inertia.RenderPage(ctx.Ctx, component, props)
 }

@@ -63,9 +63,18 @@ func MountAppRoutes(srv *cartridge.Server) {
 	internal.MountAppRoutesWithoutSession(srv)
 }
 
+// DashboardPropsExtender is a function that can modify dashboard props before rendering.
+type DashboardPropsExtender = http.DashboardPropsExtender
+
 // HandleDashboard renders the dashboard page with custom component
 func HandleDashboard(ctx *cartridge.Context, component string) error {
 	return http.WebsiteDashboardActionWithComponent(ctx, component)
+}
+
+// HandleDashboardWithExtension renders the dashboard with a props extender function.
+// Used by Pro to inject additional props like insights.
+func HandleDashboardWithExtension(ctx *cartridge.Context, component string, extender DashboardPropsExtender) error {
+	return http.WebsiteDashboardActionWithExtension(ctx, component, extender)
 }
 
 // HandleLens renders the lens page with custom component
@@ -75,10 +84,12 @@ func HandleLens(ctx *cartridge.Context, component string) error {
 
 // Onboarding functions
 var (
-	GetOnboardingSession      = onboarding.GetOnboardingSession
-	UpdateOnboardingSession   = onboarding.UpdateOnboardingSession
-	CompleteOnboardingSession = onboarding.CompleteOnboardingSession
-	CompleteOnboarding        = onboarding.CompleteOnboarding
+	IsOnboardingRequired         = onboarding.IsOnboardingRequired
+	GetOnboardingSession         = onboarding.GetOnboardingSession
+	UpdateOnboardingSession      = onboarding.UpdateOnboardingSession
+	CompleteOnboardingSession    = onboarding.CompleteOnboardingSession
+	CompleteOnboarding           = onboarding.CompleteOnboarding
+	GetOrCreateOnboardingSession = http.GetOrCreateOnboardingSession
 )
 
 // Settings functions
