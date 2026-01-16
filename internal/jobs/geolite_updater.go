@@ -12,8 +12,11 @@ import (
 	"strings"
 	"time"
 
+	"gorm.io/gorm"
+
 	"fusionaly/internal/config"
 	"fusionaly/internal/database"
+	"fusionaly/internal/pkg/geoip"
 	"fusionaly/internal/settings"
 )
 
@@ -76,6 +79,9 @@ func (j *GeoLiteUpdaterJob) Run() error {
 		j.logger.Error("Failed to update GeoLite database", slog.Any("error", err))
 		return err
 	}
+
+	// Reload the in-memory database so event processor can use it immediately
+	geoip.ReloadGeoDB()
 
 	// Update last update time
 	if err := j.setLastUpdateTime(time.Now()); err != nil {
@@ -204,6 +210,49 @@ func IsGeoLiteConfigured(dbManager *database.DBManager) bool {
 	db := dbManager.GetConnection()
 	accountID, licenseKey, _ := settings.GetGeoLiteCredentials(db)
 	return accountID != "" && licenseKey != ""
+}
+
+// TriggerImmediateDownload triggers an immediate GeoLite database download.
+// Use this after saving new credentials to avoid waiting for the scheduled job.
+// It runs in a goroutine to avoid blocking the caller.
+func TriggerImmediateDownload(db *gorm.DB, logger *slog.Logger, cfg *config.Config) {
+	go func() {
+		// Get credentials
+		accountID, licenseKey, err := settings.GetGeoLiteCredentials(db)
+		if err != nil {
+			logger.Debug("Failed to get GeoLite credentials for immediate download", slog.Any("error", err))
+			return
+		}
+
+		if accountID == "" || licenseKey == "" {
+			logger.Debug("GeoLite credentials not configured, skipping immediate download")
+			return
+		}
+
+		logger.Info("Starting immediate GeoLite database download")
+
+		// Create a minimal job structure just for download
+		job := &GeoLiteUpdaterJob{
+			dbManager: nil, // not needed for download
+			logger:    logger,
+			cfg:       cfg,
+		}
+
+		if err := job.downloadAndUpdate(licenseKey); err != nil {
+			logger.Error("Failed immediate GeoLite download", slog.Any("error", err))
+			return
+		}
+
+		// Reload the in-memory database so event processor can use it immediately
+		geoip.ReloadGeoDB()
+
+		// Update last update time directly
+		if err := settings.CreateOrUpdateSetting(db, KeyGeoLiteLastUpdate, time.Now().Format(time.RFC3339)); err != nil {
+			logger.Error("Failed to update last update time", slog.Any("error", err))
+		}
+
+		logger.Info("Immediate GeoLite database download completed successfully")
+	}()
 }
 
 // GetGeoLiteStatus returns the status of GeoLite configuration

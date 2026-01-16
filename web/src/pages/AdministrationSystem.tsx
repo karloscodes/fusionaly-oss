@@ -236,7 +236,7 @@ export const AdministrationSystem: FC = () => {
 							)}
 							{!geolite_db_exists && !geolite_last_update && (geoAccountId && geoLicenseKey) && (
 								<p className="text-xs text-gray-500">
-									Database will be downloaded automatically within 24 hours after saving credentials.
+									Database download will start shortly. Refresh this page in a minute to check status.
 								</p>
 							)}
 						</div>

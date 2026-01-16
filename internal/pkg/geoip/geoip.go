@@ -15,6 +15,7 @@ import (
 var (
 	geoDB  *geoip2.Reader
 	once   sync.Once
+	mu     sync.RWMutex
 	logger *slog.Logger
 )
 
@@ -116,7 +117,30 @@ func InitGeoDB() *geoip2.Reader {
 // GetGeoDB returns the GeoLite2 database reader, initializing it if necessary.
 func GetGeoDB() *geoip2.Reader {
 	once.Do(func() {
+		mu.Lock()
 		geoDB = InitGeoDB()
+		mu.Unlock()
 	})
+	mu.RLock()
+	defer mu.RUnlock()
 	return geoDB
+}
+
+// ReloadGeoDB reloads the GeoLite2 database from disk.
+// Call this after downloading a new database file.
+func ReloadGeoDB() {
+	mu.Lock()
+	defer mu.Unlock()
+
+	// Close existing database if open
+	if geoDB != nil {
+		geoDB.Close()
+	}
+
+	// Reinitialize
+	geoDB = InitGeoDB()
+
+	if geoDB != nil && logger != nil {
+		logger.Info("GeoLite2 database reloaded successfully")
+	}
 }

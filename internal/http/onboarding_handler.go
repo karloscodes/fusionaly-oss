@@ -12,6 +12,8 @@ import (
 	"github.com/karloscodes/cartridge/inertia"
 	"gorm.io/gorm"
 
+	"fusionaly/internal/config"
+	"fusionaly/internal/jobs"
 	"fusionaly/internal/onboarding"
 	"fusionaly/internal/settings"
 )
@@ -46,8 +48,8 @@ func OnboardingCheckAction(ctx *cartridge.Context) error {
 	})
 }
 
-// getOrCreateOnboardingSession gets existing session or creates a new one
-func getOrCreateOnboardingSession(ctx *cartridge.Context, db *gorm.DB) (*onboarding.OnboardingSession, error) {
+// GetOrCreateOnboardingSession gets existing session or creates a new one
+func GetOrCreateOnboardingSession(ctx *cartridge.Context, db *gorm.DB) (*onboarding.OnboardingSession, error) {
 	// Clear any existing authentication cookies to ensure clean onboarding
 	if ctx.Session != nil {
 		ctx.Session.ClearSession(ctx.Ctx)
@@ -110,7 +112,7 @@ func OnboardingPageAction(ctx *cartridge.Context) error {
 	}
 
 	// Get or create onboarding session
-	session, err := getOrCreateOnboardingSession(ctx, db)
+	session, err := GetOrCreateOnboardingSession(ctx, db)
 	if err != nil {
 		ctx.Logger.Error("Failed to get/create onboarding session", slog.Any("error", err))
 		flash.SetFlash(ctx.Ctx, "error", "Failed to start onboarding session")
@@ -310,6 +312,9 @@ func OnboardingGeoLiteFormAction(ctx *cartridge.Context) error {
 				// Don't fail onboarding for this - user can configure later
 			} else {
 				ctx.Logger.Info("GeoLite credentials saved during onboarding")
+				// Trigger immediate download in background
+				cfg := ctx.Config.(*config.Config)
+				jobs.TriggerImmediateDownload(db, ctx.Logger, cfg)
 			}
 		}
 	}

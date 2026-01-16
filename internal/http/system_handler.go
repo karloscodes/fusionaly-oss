@@ -251,6 +251,13 @@ func SystemGeoLiteFormAction(ctx *cartridge.Context) error {
 		slog.String("account_id", accountID),
 		slog.Bool("has_license_key", licenseKey != ""))
 
-	flash.SetFlash(ctx.Ctx, "success", "GeoLite settings saved successfully")
+	// Trigger immediate download if credentials were provided
+	if accountID != "" && licenseKey != "" {
+		cfg := ctx.Config.(*config.Config)
+		jobs.TriggerImmediateDownload(db, ctx.Logger, cfg)
+		flash.SetFlash(ctx.Ctx, "success", "GeoLite settings saved. Database download started in the background.")
+	} else {
+		flash.SetFlash(ctx.Ctx, "success", "GeoLite settings saved successfully")
+	}
 	return ctx.Redirect("/admin/administration/system", fiber.StatusFound)
 }
