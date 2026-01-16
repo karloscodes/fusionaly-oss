@@ -10,8 +10,10 @@ import (
 	"fusionaly/internal/http"
 	"fusionaly/internal/onboarding"
 	"fusionaly/internal/settings"
+	"fusionaly/internal/websites"
 
 	"github.com/karloscodes/cartridge"
+	"gorm.io/gorm"
 )
 
 // Re-export core types
@@ -96,3 +98,10 @@ var (
 var (
 	SaveGeoLiteCredentials = settings.SaveGeoLiteCredentials
 )
+
+// Websites functions
+
+// GetWebsitesForSelector returns a list of websites formatted for the frontend selector
+func GetWebsitesForSelector(db *gorm.DB) ([]map[string]interface{}, error) {
+	return websites.GetWebsitesForSelector(db)
+}
