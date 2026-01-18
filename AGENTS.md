@@ -291,11 +291,11 @@ JSON APIs (`ctx.JSON()`) are ONLY allowed for:
 
 ## Pro Extension Points
 
-OSS provides extension points for Pro in **two centralized locations**. Keep extensions minimal and centralized.
+OSS provides extension points for Pro in **two files**. Keep extensions minimal and centralized.
 
-### Go Backend: `app/app.go`
+### Go Backend: `app/extensions.go`
 
-Public API for Pro to extend OSS handlers:
+Single entry point for all Go exports:
 
 | Export | Purpose |
 |--------|---------|
@@ -306,20 +306,20 @@ Public API for Pro to extend OSS handlers:
 | Onboarding functions | Session management exports |
 | Settings functions | GeoLite credentials, etc. |
 
-### React Frontend: `web/src/pages/`
+### React Frontend: `web/src/extensions.ts`
 
-Content components exported for Pro to wrap with its own layout:
+Single entry point for all React exports:
 
-| Component | Content Export |
-|-----------|----------------|
-| `AdministrationAccount` | `AdministrationAccountContent` |
-| `AdministrationSystem` | `AdministrationSystemContent` |
-| `AdministrationIngestion` | `AdministrationIngestionContent` |
-| `Dashboard` | `insightsSlot` prop for Pro content injection |
+| Export | Purpose |
+|--------|---------|
+| `AdministrationAccountContent` | Account page content (wrap with Pro layout) |
+| `AdministrationSystemContent` | System page content (wrap with Pro layout) |
+| `AdministrationIngestionContent` | Ingestion page content (wrap with Pro layout) |
+| `Dashboard` | Dashboard with `insightsSlot` prop for Pro injection |
 
 **Rules for adding extension points:**
-1. Add Go exports only to `app/app.go` - never scatter across internal/
-2. Add React content exports only to the page file itself
+1. Go exports go in `app/extensions.go` only
+2. React exports go in `web/src/extensions.ts` only
 3. Document new exports in this section
 4. Keep extension surface minimal - resist feature creep
 
