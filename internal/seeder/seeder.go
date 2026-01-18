@@ -14,10 +14,10 @@ import (
 	"log/slog"
 
 	"github.com/karloscodes/cartridge"
+	"github.com/karloscodes/cartridge/sqlite"
 	"gorm.io/gorm"
 
 	"fusionaly/internal/events"
-	"fusionaly/internal/models"
 	"fusionaly/internal/settings"
 	"fusionaly/internal/users"
 	"fusionaly/internal/websites"
@@ -302,7 +302,7 @@ func (s *Seeder) seedWebsites(userID uint) ([]*websites.Website, error) {
 		}
 
 		// Use PerformWrite for transaction handling
-		err := models.PerformWrite(s.Logger, db, func(tx *gorm.DB) error {
+		err := sqlite.PerformWrite(s.Logger, db, func(tx *gorm.DB) error {
 			return tx.Create(&website).Error
 		})
 		if err != nil {
