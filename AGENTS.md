@@ -289,4 +289,40 @@ JSON APIs (`ctx.JSON()`) are ONLY allowed for:
 
 ---
 
+## Pro Extension Points
+
+OSS provides extension points for Pro in **two centralized locations**. Keep extensions minimal and centralized.
+
+### Go Backend: `app/app.go`
+
+Public API for Pro to extend OSS handlers:
+
+| Export | Purpose |
+|--------|---------|
+| `HandleDashboard(ctx, component)` | Render dashboard with custom component |
+| `HandleDashboardWithExtension(ctx, component, extender)` | Render dashboard with props extender |
+| `HandleLens(ctx, component)` | Render lens with custom component |
+| `DashboardPropsExtender` | Type for dashboard props extension function |
+| Onboarding functions | Session management exports |
+| Settings functions | GeoLite credentials, etc. |
+
+### React Frontend: `web/src/pages/`
+
+Content components exported for Pro to wrap with its own layout:
+
+| Component | Content Export |
+|-----------|----------------|
+| `AdministrationAccount` | `AdministrationAccountContent` |
+| `AdministrationSystem` | `AdministrationSystemContent` |
+| `AdministrationIngestion` | `AdministrationIngestionContent` |
+| `Dashboard` | `insightsSlot` prop for Pro content injection |
+
+**Rules for adding extension points:**
+1. Add Go exports only to `app/app.go` - never scatter across internal/
+2. Add React content exports only to the page file itself
+3. Document new exports in this section
+4. Keep extension surface minimal - resist feature creep
+
+---
+
 Keep AGENTS.md synchronized when workflows change.

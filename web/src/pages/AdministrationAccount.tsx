@@ -21,7 +21,8 @@ interface AdministrationAccountProps {
 	[key: string]: unknown;
 }
 
-export const AdministrationAccount: FC = () => {
+// Exported for Pro to wrap with its own layout
+export const AdministrationAccountContent: FC = () => {
 	const { props } = usePage<AdministrationAccountProps>();
 	const { flash, error } = props;
 
@@ -62,98 +63,103 @@ export const AdministrationAccount: FC = () => {
 	}, [passwordForm.data.new_password, passwordForm.data.confirm_password]);
 
 	return (
-		<AdministrationLayout currentPage="account">
-			<div className="space-y-6">
-				<div>
-					<h1 className="text-2xl font-bold text-gray-900">Account Settings</h1>
-					<p className="text-gray-600 mt-1">
-						Manage your password
-					</p>
-				</div>
-
-				<FlashMessageDisplay flash={flash} error={error} />
-
-				{/* Password Change Section */}
-				<Card className="border-black shadow-sm">
-					<CardHeader className="pb-4">
-						<div className="flex justify-between items-center">
-							<CardTitle className="text-lg flex items-center gap-2">
-								<Key className="h-5 w-5" /> Change Password
-							</CardTitle>
-						</div>
-						<CardDescription>
-							Update your account password for secure access.
-						</CardDescription>
-					</CardHeader>
-					<CardContent className="space-y-4">
-						<form onSubmit={handlePasswordSubmit} className="space-y-4">
-							<div className="space-y-2">
-								<label className="text-sm font-medium text-gray-700">
-									Current Password
-								</label>
-								<Input
-									type="password"
-									value={passwordForm.data.current_password}
-									onChange={(e) => passwordForm.setData("current_password", e.target.value)}
-									required
-									className="w-full"
-									disabled={passwordForm.processing}
-								/>
-								{passwordForm.errors.current_password && (
-									<p className="text-sm text-red-600">{passwordForm.errors.current_password}</p>
-								)}
-							</div>
-
-							<div className="space-y-2">
-								<label className="text-sm font-medium text-gray-700">
-									New Password
-								</label>
-								<Input
-									type="password"
-									value={passwordForm.data.new_password}
-									onChange={(e) => passwordForm.setData("new_password", e.target.value)}
-									required
-									minLength={8}
-									className="w-full"
-									disabled={passwordForm.processing}
-								/>
-								<p className="text-xs text-gray-500">
-									Minimum 8 characters required.
-								</p>
-								{passwordForm.errors.new_password && (
-									<p className="text-sm text-red-600">{passwordForm.errors.new_password}</p>
-								)}
-							</div>
-
-							<div className="space-y-2">
-								<label className="text-sm font-medium text-gray-700">
-									Confirm New Password
-								</label>
-								<Input
-									type="password"
-									value={passwordForm.data.confirm_password}
-									onChange={(e) => passwordForm.setData("confirm_password", e.target.value)}
-									required
-									minLength={8}
-									className="w-full"
-									disabled={passwordForm.processing}
-								/>
-								{passwordForm.errors.confirm_password && (
-									<p className="text-sm text-red-600">{passwordForm.errors.confirm_password}</p>
-								)}
-							</div>
-
-							<Button
-								type="submit"
-								disabled={passwordForm.processing}
-								className="bg-black hover:bg-gray-800 text-white rounded-md"
-							>
-								{passwordForm.processing ? "Updating..." : "Update Password"}
-							</Button>
-						</form>
-					</CardContent>
-				</Card>
+		<div className="space-y-6">
+			<div>
+				<h1 className="text-2xl font-bold text-gray-900">Account Settings</h1>
+				<p className="text-gray-600 mt-1">
+					Manage your password
+				</p>
 			</div>
-		</AdministrationLayout>
+
+			<FlashMessageDisplay flash={flash} error={error} />
+
+			{/* Password Change Section */}
+			<Card className="border-black shadow-sm">
+				<CardHeader className="pb-4">
+					<div className="flex justify-between items-center">
+						<CardTitle className="text-lg flex items-center gap-2">
+							<Key className="h-5 w-5" /> Change Password
+						</CardTitle>
+					</div>
+					<CardDescription>
+						Update your account password for secure access.
+					</CardDescription>
+				</CardHeader>
+				<CardContent className="space-y-4">
+					<form onSubmit={handlePasswordSubmit} className="space-y-4">
+						<div className="space-y-2">
+							<label className="text-sm font-medium text-gray-700">
+								Current Password
+							</label>
+							<Input
+								type="password"
+								value={passwordForm.data.current_password}
+								onChange={(e) => passwordForm.setData("current_password", e.target.value)}
+								required
+								className="w-full"
+								disabled={passwordForm.processing}
+							/>
+							{passwordForm.errors.current_password && (
+								<p className="text-sm text-red-600">{passwordForm.errors.current_password}</p>
+							)}
+						</div>
+
+						<div className="space-y-2">
+							<label className="text-sm font-medium text-gray-700">
+								New Password
+							</label>
+							<Input
+								type="password"
+								value={passwordForm.data.new_password}
+								onChange={(e) => passwordForm.setData("new_password", e.target.value)}
+								required
+								minLength={8}
+								className="w-full"
+								disabled={passwordForm.processing}
+							/>
+							<p className="text-xs text-gray-500">
+								Minimum 8 characters required.
+							</p>
+							{passwordForm.errors.new_password && (
+								<p className="text-sm text-red-600">{passwordForm.errors.new_password}</p>
+							)}
+						</div>
+
+						<div className="space-y-2">
+							<label className="text-sm font-medium text-gray-700">
+								Confirm New Password
+							</label>
+							<Input
+								type="password"
+								value={passwordForm.data.confirm_password}
+								onChange={(e) => passwordForm.setData("confirm_password", e.target.value)}
+								required
+								minLength={8}
+								className="w-full"
+								disabled={passwordForm.processing}
+							/>
+							{passwordForm.errors.confirm_password && (
+								<p className="text-sm text-red-600">{passwordForm.errors.confirm_password}</p>
+							)}
+						</div>
+
+						<Button
+							type="submit"
+							disabled={passwordForm.processing}
+							className="bg-black hover:bg-gray-800 text-white rounded-md"
+						>
+							{passwordForm.processing ? "Updating..." : "Update Password"}
+						</Button>
+					</form>
+				</CardContent>
+			</Card>
+		</div>
 	);
 };
+
+// Default export wraps content with OSS layout (unchanged behavior)
+export const AdministrationAccount: FC = () => (
+	<AdministrationLayout currentPage="account">
+		<AdministrationAccountContent />
+	</AdministrationLayout>
+);

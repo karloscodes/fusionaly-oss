@@ -28,7 +28,8 @@ interface AdministrationIngestionProps {
 	[key: string]: unknown;
 }
 
-export const AdministrationIngestion: FC = () => {
+// Exported for Pro to wrap with its own layout
+export const AdministrationIngestionContent: FC = () => {
 	const { props } = usePage<AdministrationIngestionProps>();
 	const { settings, flash, error } = props;
 	const [showCopySuccess, setShowCopySuccess] = useState<boolean>(false);
@@ -93,90 +94,95 @@ export const AdministrationIngestion: FC = () => {
 	const displayFlash = flash || localFlash;
 
 	return (
-		<AdministrationLayout currentPage="ingestion">
-			<div className="space-y-6">
-				<div>
-					<h1 className="text-2xl font-bold text-gray-900">Ingestion Settings</h1>
-					<p className="text-gray-600 mt-1">
-						Configure what data gets collected and tracked
-					</p>
-				</div>
-
-				<FlashMessageDisplay
-					flash={displayFlash}
-					error={error}
-					showSuccessMessage={showCopySuccess}
-					successMessage="IP address copied to clipboard!"
-				/>
-
-				<form onSubmit={handleSubmit}>
-					<Card className="border-black shadow-sm">
-						<CardHeader className="pb-4">
-							<div className="flex justify-between items-center">
-								<CardTitle className="text-lg flex items-center gap-2">
-									<Filter className="h-5 w-5" /> IP Address Exclusion
-								</CardTitle>
-							</div>
-							<CardDescription>
-								Exclude specific IP addresses from analytics tracking.
-							</CardDescription>
-						</CardHeader>
-						<CardContent className="space-y-6">
-							<div className="bg-gray-50 p-4 rounded-lg flex items-start gap-3 border">
-								<div className="shrink-0 mt-0.5">
-									<Info className="h-4 w-4 text-gray-600" />
-								</div>
-								<div className="text-sm text-gray-700">
-									<p>
-										Useful for excluding your own visits, internal team traffic,
-										or testing services.
-									</p>
-									<button
-										type="button"
-										onClick={handleFindMyIP}
-										className="inline-flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-black mt-2"
-									>
-										<ExternalLink className="h-3.5 w-3.5" />
-										Find and add my current IP address
-									</button>
-								</div>
-							</div>
-							<div>
-								<label
-									htmlFor="excluded_ips"
-									className="block text-sm font-medium mb-1.5"
-								>
-									Excluded IP Addresses
-								</label>
-								<Textarea
-									id="excluded_ips"
-									name="excluded_ips"
-									placeholder="Enter comma-separated IP addresses (e.g., 192.168.1.1, 10.0.0.1)"
-									value={form.data.excluded_ips}
-									onChange={(e) => form.setData("excluded_ips", e.target.value)}
-									disabled={form.processing}
-									className="h-36 w-full resize-y border-gray-300 focus:border-black focus:ring-black rounded-md"
-								/>
-								<p className="text-xs text-gray-500 mt-1.5">
-									Separate multiple IP addresses with commas.
-								</p>
-								{form.errors.excluded_ips && (
-									<p className="text-sm text-red-600 mt-1">{form.errors.excluded_ips}</p>
-								)}
-							</div>
-						</CardContent>
-						<CardFooter className="flex justify-end border-t pt-4">
-							<Button
-								type="submit"
-								disabled={form.processing}
-								className="bg-black hover:bg-gray-800 text-white rounded-md min-w-[140px]"
-							>
-								{form.processing ? "Saving..." : "Save Filtering"}
-							</Button>
-						</CardFooter>
-					</Card>
-				</form>
+		<div className="space-y-6">
+			<div>
+				<h1 className="text-2xl font-bold text-gray-900">Ingestion Settings</h1>
+				<p className="text-gray-600 mt-1">
+					Configure what data gets collected and tracked
+				</p>
 			</div>
-		</AdministrationLayout>
+
+			<FlashMessageDisplay
+				flash={displayFlash}
+				error={error}
+				showSuccessMessage={showCopySuccess}
+				successMessage="IP address copied to clipboard!"
+			/>
+
+			<form onSubmit={handleSubmit}>
+				<Card className="border-black shadow-sm">
+					<CardHeader className="pb-4">
+						<div className="flex justify-between items-center">
+							<CardTitle className="text-lg flex items-center gap-2">
+								<Filter className="h-5 w-5" /> IP Address Exclusion
+							</CardTitle>
+						</div>
+						<CardDescription>
+							Exclude specific IP addresses from analytics tracking.
+						</CardDescription>
+					</CardHeader>
+					<CardContent className="space-y-6">
+						<div className="bg-gray-50 p-4 rounded-lg flex items-start gap-3 border">
+							<div className="shrink-0 mt-0.5">
+								<Info className="h-4 w-4 text-gray-600" />
+							</div>
+							<div className="text-sm text-gray-700">
+								<p>
+									Useful for excluding your own visits, internal team traffic,
+									or testing services.
+								</p>
+								<button
+									type="button"
+									onClick={handleFindMyIP}
+									className="inline-flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-black mt-2"
+								>
+									<ExternalLink className="h-3.5 w-3.5" />
+									Find and add my current IP address
+								</button>
+							</div>
+						</div>
+						<div>
+							<label
+								htmlFor="excluded_ips"
+								className="block text-sm font-medium mb-1.5"
+							>
+								Excluded IP Addresses
+							</label>
+							<Textarea
+								id="excluded_ips"
+								name="excluded_ips"
+								placeholder="Enter comma-separated IP addresses (e.g., 192.168.1.1, 10.0.0.1)"
+								value={form.data.excluded_ips}
+								onChange={(e) => form.setData("excluded_ips", e.target.value)}
+								disabled={form.processing}
+								className="h-36 w-full resize-y border-gray-300 focus:border-black focus:ring-black rounded-md"
+							/>
+							<p className="text-xs text-gray-500 mt-1.5">
+								Separate multiple IP addresses with commas.
+							</p>
+							{form.errors.excluded_ips && (
+								<p className="text-sm text-red-600 mt-1">{form.errors.excluded_ips}</p>
+							)}
+						</div>
+					</CardContent>
+					<CardFooter className="flex justify-end border-t pt-4">
+						<Button
+							type="submit"
+							disabled={form.processing}
+							className="bg-black hover:bg-gray-800 text-white rounded-md min-w-[140px]"
+						>
+							{form.processing ? "Saving..." : "Save Filtering"}
+						</Button>
+					</CardFooter>
+				</Card>
+			</form>
+		</div>
 	);
 };
+
+// Default export wraps content with OSS layout (unchanged behavior)
+export const AdministrationIngestion: FC = () => (
+	<AdministrationLayout currentPage="ingestion">
+		<AdministrationIngestionContent />
+	</AdministrationLayout>
+);
