@@ -16,6 +16,7 @@ import (
 	"fusionaly/internal/manager/installer"
 	"fusionaly/internal/manager/logging"
 	"fusionaly/internal/manager/updater"
+	"fusionaly/internal/manager/upgrader"
 	"fusionaly/internal/manager/validation"
 )
 
@@ -59,6 +60,8 @@ func main() {
 			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
 		}
+	case "upgrade":
+		runUpgrade(logger, startTime)
 	case "version", "--version", "-v":
 		printVersion()
 	case "help", "--help", "-h":
@@ -267,6 +270,24 @@ func runAdminPasswordChange(logger *logging.Logger) error {
 	return nil
 }
 
+func runUpgrade(logger *logging.Logger, startTime time.Time) {
+	logger.Info("Upgrading to Fusionaly Pro...")
+
+	upg := upgrader.NewUpgrader(logger)
+	if err := upg.Run(); err != nil {
+		logger.Error("Upgrade failed: %v", err)
+		os.Exit(1)
+	}
+
+	elapsedTime := time.Since(startTime).Round(time.Second)
+	logger.Success("Upgrade completed in %s", elapsedTime)
+
+	domain := upg.GetDomain()
+	if domain != "" {
+		logger.Info("Visit https://%s to complete Pro setup", domain)
+	}
+}
+
 func printVersion() {
 	fmt.Println(currentManagerVersion)
 }
@@ -276,12 +297,10 @@ func printUsage() {
 	fmt.Println("\nCommands:")
 	fmt.Println("  install                     Install Fusionaly")
 	fmt.Println("  update                      Update an existing installation")
+	fmt.Println("  upgrade                     Upgrade from OSS to Fusionaly Pro")
 	fmt.Println("  reload                      Reload containers with latest .env config")
 	fmt.Println("  restore-db                  Interactively restore database from a backup")
 	fmt.Println("  change-admin-password       Change the admin user password")
 	fmt.Println("  version                     Show version information")
 	fmt.Println("  help                        Show this help message")
 }
-
-// Note: License key management is available in Fusionaly Pro.
-// See https://fusionaly.com/#pricing
