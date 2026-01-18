@@ -660,17 +660,11 @@ type DashboardPropsExtender func(ctx *cartridge.Context, websiteID int, props ma
 
 // WebsiteDashboardAction handles the dashboard for a specific website at /admin/websites/:id
 func WebsiteDashboardAction(ctx *cartridge.Context) error {
-	return WebsiteDashboardActionWithComponent(ctx, "Dashboard")
+	return WebsiteDashboardActionWithExtension(ctx, "Dashboard", nil)
 }
 
-// WebsiteDashboardActionWithComponent is like WebsiteDashboardAction but allows
-// specifying a custom Inertia component name. Used by Pro to render ProDashboard.
-func WebsiteDashboardActionWithComponent(ctx *cartridge.Context, component string) error {
-	return WebsiteDashboardActionWithExtension(ctx, component, nil)
-}
-
-// WebsiteDashboardActionWithExtension is like WebsiteDashboardActionWithComponent but allows
-// an optional props extender function to add/modify props before rendering.
+// WebsiteDashboardActionWithExtension renders the dashboard with optional props extender.
+// Pro uses this to render custom components and inject additional props like insights.
 func WebsiteDashboardActionWithExtension(ctx *cartridge.Context, component string, extender DashboardPropsExtender) error {
 	// Get website ID from URL params
 	websiteId, err := ctx.ParamsInt("id")

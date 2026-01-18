@@ -70,7 +70,7 @@ type DashboardPropsExtender = http.DashboardPropsExtender
 
 // HandleDashboard renders the dashboard page with custom component
 func HandleDashboard(ctx *cartridge.Context, component string) error {
-	return http.WebsiteDashboardActionWithComponent(ctx, component)
+	return http.WebsiteDashboardActionWithExtension(ctx, component, nil)
 }
 
 // HandleDashboardWithExtension renders the dashboard with a props extender function.

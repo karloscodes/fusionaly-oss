@@ -310,16 +310,6 @@ func (r *TestRunner) CopyFileToVM(localPath, remotePath string) error {
 	return cmd.Run()
 }
 
-// Deprecated: Use CopyFileToVM for VM file copy in local mode
-func (r *TestRunner) CopyFileToVMOverSSH(localPath, remotePath string) error {
-	return fmt.Errorf("CopyFileToVMOverSSH is deprecated; use CopyFileToVM with multipass instead")
-}
-
-// Deprecated: Use RunMultipassCommand for VM command execution in local mode
-func (r *TestRunner) RunSSHCommand(command string) (string, error) {
-	return "", fmt.Errorf("RunSSHCommand is deprecated; use RunMultipassCommand with multipass instead")
-}
-
 // CheckServiceAvailability checks if the service is available at the given URL.
 // In VM mode, it uses multipass exec to curl from inside the VM. In direct mode, it curls locally.
 func (r *TestRunner) CheckServiceAvailability(url string, attempts int, t interface {
