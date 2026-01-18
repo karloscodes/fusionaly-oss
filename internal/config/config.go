@@ -41,7 +41,8 @@ type Config struct {
 	Environment           string   `mapstructure:"environment"`
 	LogLevel              LogLevel `mapstructure:"loglevel"`
 	PrivateKey            string `mapstructure:"privatekey"`
-	SessionTimeoutSeconds int    `mapstructure:"sessiontimeoutseconds"`
+	SessionTimeoutSeconds      int `mapstructure:"sessiontimeoutseconds"`
+	LoginSessionTimeoutSeconds int `mapstructure:"loginsessiontimeoutseconds"`
 	CSRFContextKey        string   `mapstructure:"-"`
 	AdminEmail            string   `mapstructure:"adminemail"`
 	Domain                string   `mapstructure:"domain"`
@@ -92,6 +93,7 @@ func GetConfig() *Config {
 		v.SetDefault("loglevel", string(LogLevelDebug))
 		v.SetDefault("privatekey", "88888888888888888888888888888888")
 		v.SetDefault("sessiontimeoutseconds", 1800)
+		v.SetDefault("loginsessiontimeoutseconds", 604800) // 1 week
 		v.SetDefault("storagepath", "storage")
 		v.SetDefault("geodbpath", "storage/GeoLite2-City.mmdb")
 		v.SetDefault("publicdir", "web/dist/assets")
@@ -113,6 +115,7 @@ func GetConfig() *Config {
 		v.BindEnv("loglevel", "FUSIONALY_LOG_LEVEL")
 		v.BindEnv("privatekey", "FUSIONALY_PRIVATE_KEY")
 		v.BindEnv("sessiontimeoutseconds", "FUSIONALY_SESSION_TIMEOUT_SECONDS")
+		v.BindEnv("loginsessiontimeoutseconds", "FUSIONALY_LOGIN_SESSION_TIMEOUT_SECONDS")
 		v.BindEnv("adminemail", "FUSIONALY_ADMIN_EMAIL")
 		v.BindEnv("domain", "FUSIONALY_DOMAIN")
 		v.BindEnv("storagepath", "FUSIONALY_STORAGE_PATH")
@@ -233,9 +236,16 @@ func (c *Config) GetSessionSecret() string {
 	return c.PrivateKey
 }
 
-// GetSessionTimeout returns the session timeout in seconds (implements cartridge.FactoryConfig interface).
+// GetSessionTimeout returns the analytics session timeout in seconds.
+// Used for visitor session tracking (when a visitor's session expires after inactivity).
 func (c *Config) GetSessionTimeout() int {
 	return c.SessionTimeoutSeconds
+}
+
+// GetLoginSessionTimeout returns the login session timeout in seconds.
+// Used for admin login cookie duration.
+func (c *Config) GetLoginSessionTimeout() int {
+	return c.LoginSessionTimeoutSeconds
 }
 
 // GetMaxOpenConns returns the appropriate MaxOpenConns value based on environment

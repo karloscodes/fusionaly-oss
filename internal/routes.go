@@ -30,7 +30,7 @@ func SetupSession(srv *cartridge.Server) {
 	sessionMgr := cartridge.NewSessionManager(cartridge.SessionConfig{
 		CookieName: cfg.AppName + "_session",
 		Secret:     cfg.GetSessionSecret(),
-		TTL:        time.Duration(cfg.GetSessionTimeout()) * time.Second,
+		TTL:        time.Duration(cfg.GetLoginSessionTimeout()) * time.Second,
 		Secure:     cfg.IsProduction(),
 		LoginPath:  "/login",
 	})
