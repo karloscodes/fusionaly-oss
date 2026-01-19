@@ -20,7 +20,7 @@ interface WebsiteLayoutProps {
 const getWebsiteNavRoutes = (websiteId: number) => [
 	{ path: `/admin/websites/${websiteId}/dashboard`, name: "Dashboard" },
 	{ path: `/admin/websites/${websiteId}/events`, name: "Events" },
-	{ path: `/admin/websites/${websiteId}/lens`, name: "Lens", badge: "AI" },
+	{ path: `/admin/websites/${websiteId}/lens`, name: "Ask", badge: "AI" },
 ];
 
 // Get the current page type from path (dashboard, events, lens, edit)
