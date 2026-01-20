@@ -79,7 +79,6 @@ dockers:
       - Makefile
       - cmd
       - internal
-      - pkg
       - api
       - web
       - scripts
@@ -102,7 +101,6 @@ dockers:
       - Makefile
       - cmd
       - internal
-      - pkg
       - api
       - web
       - scripts
