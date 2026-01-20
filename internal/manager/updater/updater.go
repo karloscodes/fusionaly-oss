@@ -60,10 +60,10 @@ func (u *Updater) Run(currentVersion string) error {
 		return fmt.Errorf("load config: %w", err)
 	}
 
-	u.logger.Info("Checking for updates from server")
-	if err := u.config.FetchFromServer(""); err != nil {
-		u.logger.Warn("Server config fetch failed, using local: %v", err)
-	}
+	dockerImages := u.config.GetDockerImages()
+	u.logger.Info("Using images from .env:")
+	u.logger.Info("  - App image: %s", dockerImages.AppImage)
+	u.logger.Info("  - Caddy image: %s", dockerImages.CaddyImage)
 
 	// Fetch the latest version from GitHub
 	latestVersion, binaryURL, err := u.getLatestVersionAndBinaryURL()
@@ -73,12 +73,6 @@ func (u *Updater) Run(currentVersion string) error {
 		if latestVersion == "" {
 			u.logger.Warn("Could not determine latest version from URL: %s", u.config.GetData().InstallerURL)
 		}
-	} else {
-		// Use the unified DockerImages struct to handle both images consistently
-		dockerImages := u.config.GetDockerImages()
-		u.logger.Info("Using images from config.json:")
-		u.logger.Info("  - App image: %s", dockerImages.AppImage)
-		u.logger.Info("  - Caddy image: %s", dockerImages.CaddyImage)
 	}
 
 	// Compare versions and update binary if necessary
@@ -92,12 +86,9 @@ func (u *Updater) Run(currentVersion string) error {
 
 			downloadURL := binaryURL
 			if downloadURL == "" {
-				downloadURL = u.config.GetData().InstallerURL
-				if downloadURL == "" || downloadURL == fmt.Sprintf("https://github.com/%s/releases/latest", config.GithubRepo) {
-					// Use fusionaly naming pattern (matches GoReleaser output)
-					downloadURL = fmt.Sprintf("https://github.com/%s/releases/download/v%s/fusionaly-linux-%s", GitHubRepo, latestVersion, arch)
-					u.logger.Info("Using binary URL: %s", downloadURL)
-				}
+				// Use fusionaly naming pattern (matches GoReleaser output)
+				downloadURL = fmt.Sprintf("https://github.com/%s/releases/download/v%s/fusionaly-linux-%s", GitHubRepo, latestVersion, arch)
+				u.logger.Info("Using binary URL: %s", downloadURL)
 			}
 
 			if err := u.updateBinary(downloadURL, BinaryInstallPath); err != nil {
@@ -183,7 +174,7 @@ func (u *Updater) getLatestVersionAndBinaryURL() (string, string, error) {
 }
 
 func (u *Updater) update() error {
-	totalSteps := 4
+	totalSteps := 3
 
 	u.logger.Info("Step 1/%d: Loading configuration", totalSteps)
 	data := u.config.GetData()
@@ -192,12 +183,7 @@ func (u *Updater) update() error {
 		return fmt.Errorf("failed to load config from %s: %w", envFile, err)
 	}
 
-	u.logger.Info("Step 2/%d: Checking for updates from server", totalSteps)
-	if err := u.config.FetchFromServer(""); err != nil {
-		u.logger.Warn("Server config fetch failed, using local config: %v", err)
-	}
-
-	u.logger.Info("Step 3/%d: Applying updates", totalSteps)
+	u.logger.Info("Step 2/%d: Applying updates", totalSteps)
 
 	mainDBPath := u.config.GetMainDBPath()
 	backupDir := u.config.GetData().BackupPath
@@ -223,7 +209,7 @@ func (u *Updater) update() error {
 		return fmt.Errorf("failed to update Docker containers: %w", err)
 	}
 
-	u.logger.Info("Step 4/%d: Updating cron job", totalSteps)
+	u.logger.Info("Step 3/%d: Updating cron job", totalSteps)
 	cronManager := cron.NewManager(u.logger)
 	if err := cronManager.SetupCronJob(); err != nil {
 		u.logger.Warn("Failed to update cron job: %v", err)

@@ -1,6 +1,6 @@
 services:
   caddy:
-    image: caddy:2.7-alpine
+    image: caddy:2.9-alpine
     container_name: fusionaly-caddy
     restart: unless-stopped
     ports:

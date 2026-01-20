@@ -106,8 +106,8 @@ func TestNewConfig_Defaults(t *testing.T) {
 	if data.AppImage != "karloscodes/fusionaly-beta:latest" {
 		t.Errorf("AppImage default = %q, want %q", data.AppImage, "karloscodes/fusionaly-beta:latest")
 	}
-	if data.CaddyImage != "caddy:2.7-alpine" {
-		t.Errorf("CaddyImage default = %q, want %q", data.CaddyImage, "caddy:2.7-alpine")
+	if data.CaddyImage != "caddy:2.9-alpine" {
+		t.Errorf("CaddyImage default = %q, want %q", data.CaddyImage, "caddy:2.9-alpine")
 	}
 	if data.InstallDir != "/opt/fusionaly" {
 		t.Errorf("InstallDir default = %q, want %q", data.InstallDir, "/opt/fusionaly")
@@ -408,28 +408,12 @@ func TestCollectFromEnvironment(t *testing.T) {
 	}
 }
 
-func TestFetchFromServer(t *testing.T) {
-	c := NewConfig(testLogger(t))
-
-	// Test with invalid URL (should not fail, just warn and continue)
-	err := c.FetchFromServer("https://invalid-url-that-does-not-exist.com")
-	if err != nil {
-		t.Errorf("FetchFromServer() should not fail on network errors, got: %v", err)
-	}
-
-	// Test with empty URL (uses default GitHub API)
-	err = c.FetchFromServer("")
-	if err != nil {
-		t.Errorf("FetchFromServer() with empty URL should not fail, got: %v", err)
-	}
-}
-
 func TestConfigurationValidation(t *testing.T) {
 	t.Run("ValidateCompleteConfiguration", func(t *testing.T) {
 		c := NewConfig(testLogger(t))
 		c.data.Domain = "metrics.company.com"
 		c.data.AppImage = "karloscodes/fusionaly:latest"
-		c.data.CaddyImage = "caddy:2.7-alpine"
+		c.data.CaddyImage = "caddy:2.9-alpine"
 		c.data.InstallDir = "/opt/fusionaly"
 		c.data.BackupPath = "/opt/fusionaly/backup"
 		c.data.PrivateKey = "this-is-a-very-long-private-key-that-meets-minimum-requirements"
@@ -466,7 +450,7 @@ func TestConfigurationDefaults(t *testing.T) {
 		
 		expectedDefaults := map[string]string{
 			"AppImage":   "karloscodes/fusionaly-beta:latest",
-			"CaddyImage": "caddy:2.7-alpine",
+			"CaddyImage": "caddy:2.9-alpine",
 			"InstallDir": "/opt/fusionaly",
 		}
 		

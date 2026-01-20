@@ -27,7 +27,7 @@ services:
       start_period: 15s
 
   caddy:
-    image: caddy:2.7-alpine
+    image: caddy:2.9-alpine
     container_name: caddy-devbox
     environment:
       - DOMAIN=localhost

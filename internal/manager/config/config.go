@@ -4,14 +4,12 @@ import (
 	"bufio"
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"syscall"
 
@@ -22,21 +20,18 @@ import (
 	"fusionaly/internal/manager/validation"
 )
 
-// GithubRepo is the centralized GitHub repository URL slug
-const GithubRepo = "karloscodes/fusionaly-installer"
-
 // ConfigData holds the configuration
 type ConfigData struct {
-	Domain       string   // Local: User-provided
-	AppImage     string   // GitHub Release/Default: e.g., "karloscodes/fusionaly-beta:latest"
-	CaddyImage   string   // GitHub Release/Default: e.g., "caddy:2.7-alpine"
-	InstallDir   string   // Default: e.g., "/opt/fusionaly"
-	BackupPath   string   // Default: SQLite backup location
-	PrivateKey   string   // Generated: secure random key for FUSIONALY_PRIVATE_KEY
-	Version      string   // GitHub Release: Version of the fusionaly binary (optional)
-	InstallerURL string   // GitHub Release: URL to download new fusionaly binary
+	Domain       string   // User-provided domain
+	AppImage     string   // Docker image for Fusionaly app
+	CaddyImage   string   // Docker image for Caddy reverse proxy
+	InstallDir   string   // Installation directory
+	BackupPath   string   // SQLite backup location
+	PrivateKey   string   // Secure random key for FUSIONALY_PRIVATE_KEY
+	Version      string   // Version of the fusionaly binary
+	InstallerURL string   // URL to download new fusionaly binary
 	DNSWarnings  []string // DNS configuration warnings
-	User         string   // Database: Admin user email from users table
+	User         string   // Admin user email from users table
 	LicenseKey   string   // License key for the application
 }
 
@@ -51,14 +46,14 @@ func NewConfig(logger *logging.Logger) *Config {
 	return &Config{
 		logger: logger,
 		data: ConfigData{
-			Domain:       "", // Required from user
+			Domain:       "",
 			AppImage:     "karloscodes/fusionaly-beta:latest",
-			CaddyImage:   "caddy:2.7-alpine",
+			CaddyImage:   "caddy:2.9-alpine",
 			InstallDir:   "/opt/fusionaly",
 			BackupPath:   "/opt/fusionaly/storage/backups",
 			PrivateKey:   "",
 			Version:      "latest",
-			InstallerURL: fmt.Sprintf("https://github.com/%s/releases/latest", GithubRepo),
+			InstallerURL: "https://github.com/karloscodes/fusionaly-oss/releases/latest",
 		},
 	}
 }
@@ -259,7 +254,7 @@ func (c *Config) collectFromEnvironment() error {
 	c.data.InstallDir = "/opt/fusionaly"
 	c.data.BackupPath = filepath.Join(c.data.InstallDir, "backups")
 	c.data.AppImage = "karloscodes/fusionaly-beta:latest"
-	c.data.CaddyImage = "caddy:2.7-alpine"
+	c.data.CaddyImage = "caddy:2.9-alpine"
 
 	return nil
 }
@@ -593,122 +588,6 @@ func (c *Config) readPassword(reader *bufio.Reader, prompt string) (string, erro
 	}
 
 	return strings.TrimSpace(string(passwordBytes)), nil
-}
-
-// FetchFromServer fetches config from the latest GitHub release
-func (c *Config) FetchFromServer(_ string) error {
-	url := fmt.Sprintf("https://api.github.com/repos/%s/releases/latest", GithubRepo)
-	c.logger.Info("Fetching latest release from GitHub: %s", url)
-
-	resp, err := http.Get(url)
-	if err != nil || resp.StatusCode != http.StatusOK {
-		c.logger.Warn("Failed to fetch latest release: %v", err)
-		if resp != nil {
-			c.logger.Warn("GitHub API returned status: %s", resp.Status)
-		}
-		c.logger.Info("Falling back to hardcoded default configuration")
-		return nil
-	}
-	defer resp.Body.Close()
-
-	var release struct {
-		TagName string `json:"tag_name"`
-		Assets  []struct {
-			Name        string `json:"name"`
-			DownloadURL string `json:"browser_download_url"`
-		} `json:"assets"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
-		c.logger.Warn("Failed to decode GitHub release data: %v", err)
-		c.logger.Info("Falling back to hardcoded default configuration")
-		return nil
-	}
-
-	version := strings.TrimPrefix(release.TagName, "v")
-	if version == "" {
-		c.logger.Warn("No valid version found in release tag: %s", release.TagName)
-		c.logger.Info("Falling back to hardcoded default configuration")
-		return nil
-	}
-
-	var configURL string
-	// Try new naming pattern first (fusionaly-installer)
-	binaryNameNew := fmt.Sprintf("fusionaly-installer-v%s-%s", version, runtime.GOARCH)
-	// Fallback to old naming pattern for backwards compatibility
-	binaryNameOld := fmt.Sprintf("fusionaly-v%s-%s", version, runtime.GOARCH)
-	var binaryURL string
-	var foundPattern string
-
-	for _, asset := range release.Assets {
-		switch asset.Name {
-		case "config.json":
-			configURL = asset.DownloadURL
-		case binaryNameNew:
-			binaryURL = asset.DownloadURL
-			foundPattern = "new"
-		case binaryNameOld:
-			// Only use old pattern if new pattern wasn't found
-			if binaryURL == "" {
-				binaryURL = asset.DownloadURL
-				foundPattern = "old"
-			}
-		}
-	}
-
-	if configURL != "" {
-		if err := c.fetchConfigJSON(configURL); err != nil {
-			c.logger.Warn("Failed to fetch config.json from %s: %v", configURL, err)
-		}
-	} else {
-		c.logger.Warn("config.json not found in latest release assets")
-	}
-
-	c.data.Version = version
-	if binaryURL != "" {
-		c.data.InstallerURL = binaryURL
-		if foundPattern != "" {
-			c.logger.Info("Found binary using %s naming pattern", foundPattern)
-		}
-	} else {
-		c.logger.Warn("Binary %s not found in latest release, keeping default URL", binaryNameNew)
-	}
-
-	c.logger.Success("Fetched configuration from GitHub release %s", release.TagName)
-	return nil
-}
-
-// fetchConfigJSON fetches and applies config.json from a URL
-func (c *Config) fetchConfigJSON(url string) error {
-	c.logger.Info("Fetching config.json from %s", url)
-	resp, err := http.Get(url)
-	if err != nil {
-		return fmt.Errorf("failed to fetch config.json: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to fetch config.json: status: %s", resp.Status)
-	}
-
-	var serverData struct {
-		AppImage   string `json:"app_image"`
-		CaddyImage string `json:"caddy_image"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&serverData); err != nil {
-		return fmt.Errorf("failed to decode config.json: %w", err)
-	}
-
-	// Only apply server AppImage if local config is using default beta image
-	// This preserves Pro image settings configured locally via .env
-	if serverData.AppImage != "" && c.data.AppImage == "karloscodes/fusionaly-beta:latest" {
-		c.data.AppImage = serverData.AppImage
-	}
-	if serverData.CaddyImage != "" {
-		c.data.CaddyImage = serverData.CaddyImage
-	}
-
-	c.logger.Success("Applied config.json from release")
-	return nil
 }
 
 // isLocalhostDomain checks if the domain is localhost or a localhost variant

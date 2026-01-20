@@ -173,13 +173,6 @@ func (i *Installer) configureSystem() error {
 		}
 	}
 	
-	// Fetch server configuration
-	if err := i.config.FetchFromServer(""); err != nil {
-		i.logger.Warn("Using defaults due to server config fetch failure: %v", err)
-	} else {
-		i.logger.Debug("Server configuration fetched")
-	}
-	
 	// Validate final configuration
 	if err := i.config.Validate(); err != nil {
 		return fmt.Errorf("invalid configuration: %w", err)
@@ -341,13 +334,6 @@ func (i *Installer) Run() error {
 			return fmt.Errorf("failed to save updated config to %s: %w", envFile, err)
 		}
 		i.logger.InfoWithTime("Updated configuration with fresh user input")
-	}
-
-	i.logger.Info("Fetching server configuration...")
-	if err := i.config.FetchFromServer(""); err != nil {
-		i.logger.Warn("Using defaults due to server config fetch failure: %v", err)
-	} else {
-		i.logger.Success("Server configuration fetched")
 	}
 
 	if err := i.config.Validate(); err != nil {
