@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -83,44 +82,19 @@ func MountAppRoutesWithoutSession(srv *cartridge.Server) {
 		cartridgemiddleware.WithDuration(time.Minute),
 	))
 
-	// Sec-Fetch-Site middleware for event ingestion endpoints (production only)
-	// Only allows browser-initiated requests from web pages (cross-site, same-site, same-origin)
-	// Rejects "none" (direct navigation) and missing headers (curl, Postman, scripts)
-	// Bypassed in dev/test since headless browsers may send different headers
-	secFetchForEvents := func(c *fiber.Ctx) error {
-		// Bypass for non-production environments
-		if !cfg.IsProduction() {
-			return c.Next()
-		}
-		// Bypass for E2E tests (Playwright sends this header)
-		if c.Get("X-Test-Source") == "playwright-e2e" {
-			return c.Next()
-		}
-		// Bypass for localhost requests (always dev/test traffic)
-		origin := c.Get("Origin")
-		if strings.Contains(origin, "localhost") || strings.Contains(origin, "127.0.0.1") {
-			return c.Next()
-		}
-		return cartridgemiddleware.SecFetchSiteMiddleware(cartridgemiddleware.SecFetchSiteConfig{
-			AllowedValues: []string{"cross-site", "same-site", "same-origin"},
-			Methods:       []string{"POST"},
-			Next: func(c *fiber.Ctx) bool {
-				return c.Method() != "POST"
-			},
-		})(c)
-	}
-
 	// ============================================
 	// ROUTE CONFIGURATIONS
 	// ============================================
 
 	// Public API config (event ingestion)
-	// Rate limiting + CORS + Sec-Fetch-Site validation
+	// Rate limiting + CORS only - Sec-Fetch-Site removed as it blocks some
+	// legitimate browser requests (sendBeacon, older browsers, Safari quirks)
+	// Rate limiting provides sufficient protection for public analytics endpoints
 	publicAPIConfig := &cartridge.RouteConfig{
 		EnableCORS:         true,
 		WriteConcurrency:   false,
-		EnableSecFetchSite: cartridge.Bool(false), // Use custom middleware instead
-		CustomMiddleware:   []fiber.Handler{publicRateLimiter, secFetchForEvents},
+		EnableSecFetchSite: cartridge.Bool(false),
+		CustomMiddleware:   []fiber.Handler{publicRateLimiter},
 		CORSConfig:         publicCORSConfig,
 	}
 
