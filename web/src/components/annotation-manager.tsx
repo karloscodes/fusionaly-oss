@@ -137,7 +137,7 @@ export const AnnotationForm = ({ websiteId, annotation, onClose, initialDate }: 
 							variant="outline"
 							className={cn(
 								"w-full justify-start text-left font-normal",
-								!selectedDate && "text-muted-foreground"
+								!selectedDate && "text-gray-500"
 							)}
 						>
 							<CalendarIcon className="mr-2 h-4 w-4" />
@@ -160,7 +160,7 @@ export const AnnotationForm = ({ websiteId, annotation, onClose, initialDate }: 
 								<select
 									value={hours}
 									onChange={(e) => setHours(e.target.value)}
-									className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+									className="h-9 rounded-md border border-gray-300 bg-white px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-black"
 								>
 									{hourOptions.map((h) => (
 										<option key={h} value={h}>{h}</option>
@@ -170,7 +170,7 @@ export const AnnotationForm = ({ websiteId, annotation, onClose, initialDate }: 
 								<select
 									value={minutes}
 									onChange={(e) => setMinutes(e.target.value)}
-									className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+									className="h-9 rounded-md border border-gray-300 bg-white px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-black"
 								>
 									{minuteOptions.map((m) => (
 										<option key={m} value={m}>{m}</option>

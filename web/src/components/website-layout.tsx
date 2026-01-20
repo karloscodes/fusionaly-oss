@@ -78,9 +78,9 @@ export function WebsiteLayout({
 	};
 
 	return (
-		<div className="min-h-screen bg-background">
+		<div className="min-h-screen bg-white">
 			{/* Navigation Banner */}
-			<nav className="border-b border-border">
+			<nav className="border-b border-gray-200">
 				<div className="max-w-7xl mx-auto px-4">
 					<div className="flex h-14 items-center justify-between">
 						{/* Left side: Back + Website name + Sub-nav */}
@@ -88,7 +88,7 @@ export function WebsiteLayout({
 							{/* Back to websites list */}
 							<Link
 								href="/admin"
-								className="flex items-center text-muted-foreground hover:text-foreground transition-colors"
+								className="flex items-center text-gray-500 hover:text-gray-900 transition-colors"
 								title="Back to websites"
 							>
 								<ArrowLeft className="w-4 h-4" />
@@ -100,8 +100,8 @@ export function WebsiteLayout({
 								<div className="relative" ref={dropdownRef}>
 									<button
 										onClick={() => websites.length > 1 && setIsDropdownOpen(!isDropdownOpen)}
-										className={`flex items-center gap-1.5 text-sm font-semibold text-foreground ${
-											websites.length > 1 ? "hover:text-primary cursor-pointer" : ""
+										className={`flex items-center gap-1.5 text-sm font-semibold text-gray-900 ${
+											websites.length > 1 ? "hover:text-black cursor-pointer" : ""
 										}`}
 									>
 										<span>{websiteDomain}</span>
@@ -147,7 +147,7 @@ export function WebsiteLayout({
 
 								<Link
 									href={`/admin/websites/${websiteId}/edit`}
-									className="text-muted-foreground hover:text-foreground transition-colors"
+									className="text-gray-500 hover:text-gray-900 transition-colors"
 									title="Website settings"
 								>
 									<Settings className="w-4 h-4" />
@@ -155,17 +155,17 @@ export function WebsiteLayout({
 							</div>
 
 							{/* Separator */}
-							<span className="text-muted-foreground/30">|</span>
+							<span className="text-gray-500/30">|</span>
 
 							{/* Sub-navigation with active underline */}
 							{navRoutes.map((route) => (
 								<Link
 									key={route.path}
 									href={route.path}
-									className={`relative text-sm font-medium transition-colors hover:text-foreground py-4 ${
+									className={`relative text-sm font-medium transition-colors hover:text-gray-900 py-4 ${
 										isCurrentPath(route.path)
-											? "text-foreground"
-											: "text-muted-foreground"
+											? "text-gray-900"
+											: "text-gray-500"
 									}`}
 								>
 									<span className="relative inline-flex items-center">
@@ -191,10 +191,10 @@ export function WebsiteLayout({
 						<div className="flex items-center space-x-4">
 							<Link
 								href="/admin/administration/ingestion"
-								className={`relative text-sm font-medium transition-colors hover:text-foreground py-4 ${
+								className={`relative text-sm font-medium transition-colors hover:text-gray-900 py-4 ${
 									currentPath?.startsWith("/admin/administration")
-										? "text-foreground"
-										: "text-muted-foreground"
+										? "text-gray-900"
+										: "text-gray-500"
 								}`}
 							>
 								Settings
@@ -207,7 +207,7 @@ export function WebsiteLayout({
 								href="#"
 								id="logout"
 								onClick={handleLogout}
-								className="text-sm font-medium transition-colors hover:text-primary text-muted-foreground"
+								className="text-sm font-medium transition-colors hover:text-black text-gray-500"
 							>
 								Logout
 							</a>

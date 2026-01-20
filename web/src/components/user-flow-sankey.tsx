@@ -401,7 +401,7 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 						<GitBranch className="w-4 h-4" />
 						<span className="font-medium">Visitor Flows</span>
 					</div>
-					<p className="text-muted-foreground">
+					<p className="text-gray-500">
 						No user flow data available for the selected time period.
 					</p>
 				</CardContent>
@@ -450,7 +450,7 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 					<div className="flex items-center gap-2">
 						<GitBranch className="w-4 h-4" />
 						<span className="font-medium">Visitor Flows</span>
-						<span className="text-xs text-muted-foreground ml-2">
+						<span className="text-xs text-gray-500 ml-2">
 							Entry pages → Navigation → Exit pages
 						</span>
 					</div>
@@ -810,7 +810,7 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 						</div>
 					)}
 					{!selectedLink && !selectedNode && (
-						<div className="flex items-center gap-3 text-xs text-muted-foreground px-1">
+						<div className="flex items-center gap-3 text-xs text-gray-500 px-1">
 							<div className="flex items-center gap-1.5">
 								<MousePointer className="w-3 h-3" />
 								<span>Click streams or pages for details</span>

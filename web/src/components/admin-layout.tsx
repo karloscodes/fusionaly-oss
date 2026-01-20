@@ -33,16 +33,16 @@ export function AdminLayout({ children, currentPath }: AdminLayoutProps) {
 	};
 
 	return (
-		<div className="min-h-screen bg-background">
+		<div className="min-h-screen bg-white">
 			{/* Navigation Banner */}
-			<nav className="border-b border-border">
+			<nav className="border-b border-gray-200">
 				<div className="max-w-7xl mx-auto px-4">
 					<div className="flex h-14 items-center justify-between">
 						{/* Left side: Logo + App name */}
 						<div className="flex items-center space-x-4">
 							<Link
 								href="/admin"
-								className="flex items-center gap-2 text-foreground hover:text-primary transition-colors"
+								className="flex items-center gap-2 text-gray-900 hover:text-black transition-colors"
 							>
 								<FusionalyLogo className="w-6 h-6" />
 								<span className="text-lg font-bold tracking-tight">Fusionaly</span>
@@ -53,10 +53,10 @@ export function AdminLayout({ children, currentPath }: AdminLayoutProps) {
 						<div className="flex items-center space-x-4">
 							<Link
 								href="/admin/administration/ingestion"
-								className={`relative text-sm font-medium transition-colors hover:text-foreground py-4 ${
+								className={`relative text-sm font-medium transition-colors hover:text-gray-900 py-4 ${
 									isCurrentPath("/admin/administration")
-										? "text-foreground"
-										: "text-muted-foreground"
+										? "text-gray-900"
+										: "text-gray-500"
 								}`}
 							>
 								Settings
@@ -69,7 +69,7 @@ export function AdminLayout({ children, currentPath }: AdminLayoutProps) {
 								href="#"
 								id="logout"
 								onClick={handleLogout}
-								className="text-sm font-medium transition-colors hover:text-primary text-muted-foreground"
+								className="text-sm font-medium transition-colors hover:text-black text-gray-500"
 							>
 								Logout
 							</a>
