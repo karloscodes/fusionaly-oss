@@ -53,7 +53,7 @@ RUN chmod +x /app/entrypoint.sh /app/fusionaly-server /app/fnctl
 ENV FUSIONALY_ENV=production \
   FUSIONALY_STORAGE_PATH=/app/storage \
   FUSIONALY_GEO_DB_PATH=/app/internal-storage/GeoLite2-City.mmdb \
-  FUSIONALY_PUBLIC_DIR=/app/web/dist \
+  FUSIONALY_PUBLIC_DIR=/app/web/dist/assets \
   FUSIONALY_LOGS_DIR=/app/logs \
   FUSIONALY_APP_PORT=8080
 
