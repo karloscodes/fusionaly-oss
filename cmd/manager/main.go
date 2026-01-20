@@ -271,6 +271,30 @@ func runAdminPasswordChange(logger *logging.Logger) error {
 }
 
 func runUpgrade(logger *logging.Logger, startTime time.Time) {
+	fmt.Println("Upgrade to Fusionaly Pro")
+	fmt.Println("========================")
+	fmt.Println()
+	fmt.Println("This will:")
+	fmt.Println("  - Back up your current database")
+	fmt.Println("  - Switch to the Pro Docker image")
+	fmt.Println("  - Restart containers")
+	fmt.Println()
+
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Print("Proceed with upgrade? [Y/n]: ")
+
+	confirmation, err := reader.ReadString('\n')
+	if err != nil {
+		logger.Error("Failed to read confirmation: %v", err)
+		os.Exit(1)
+	}
+
+	confirmation = strings.TrimSpace(strings.ToLower(confirmation))
+	if confirmation != "" && confirmation != "yes" && confirmation != "y" {
+		logger.Info("Upgrade cancelled by user")
+		os.Exit(0)
+	}
+
 	logger.Info("Upgrading to Fusionaly Pro...")
 
 	upg := upgrader.NewUpgrader(logger)
