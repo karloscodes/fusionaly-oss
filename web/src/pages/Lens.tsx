@@ -66,10 +66,10 @@ export const Lens: React.FC = () => {
 								<InfinityIcon className="w-8 h-8 text-white" />
 							</div>
 							<CardTitle className="text-2xl">
-								Lens is a Pro Feature
+								Ask AI is a Pro Feature
 							</CardTitle>
 							<CardDescription className="text-base">
-								Unlock AI-powered analytics with Fusionaly Pro
+								Explore your data beyond the dashboard. Ask anything, dig deeper, save questions for later.
 							</CardDescription>
 						</CardHeader>
 						<CardContent className="space-y-6">
@@ -103,9 +103,6 @@ export const Lens: React.FC = () => {
 										<ExternalLink className="w-4 h-4" />
 									</a>
 								</Button>
-								<p className="text-xs text-gray-500">
-									Start with a 14-day free trial
-								</p>
 							</div>
 						</CardContent>
 					</Card>

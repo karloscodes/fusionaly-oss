@@ -168,6 +168,13 @@ func MountAppRoutesWithoutSession(srv *cartridge.Server) {
 
 	srv.Get("/_demo", http.DemoIndexAction)
 
+	// === PUBLIC DASHBOARD SHARING ===
+	// Rate limited to prevent abuse (same as public API)
+	publicDashboardConfig := &cartridge.RouteConfig{
+		CustomMiddleware: []fiber.Handler{publicRateLimiter},
+	}
+	srv.Get("/share/:token", http.PublicDashboardAction, publicDashboardConfig)
+
 	// === PUBLIC API ROUTES ===
 	srv.Post("/x/api/v1/events", v1.CreateEventPublicAPIHandler, publicAPIConfig)
 	srv.Options("/x/api/v1/events", func(ctx *cartridge.Context) error {
@@ -223,6 +230,10 @@ func MountAppRoutesWithoutSession(srv *cartridge.Server) {
 	srv.Post("/admin/websites/:id/annotations", http.AnnotationCreateAction, adminConfig)
 	srv.Post("/admin/websites/:id/annotations/:annotationId", http.AnnotationUpdateAction, adminConfig)
 	srv.Post("/admin/websites/:id/annotations/:annotationId/delete", http.AnnotationDeleteAction, adminConfig)
+
+	// Dashboard sharing
+	srv.Post("/admin/websites/:id/share/enable", http.EnableShareAction, adminConfig)
+	srv.Post("/admin/websites/:id/share/disable", http.DisableShareAction, adminConfig)
 
 	// === ADMINISTRATION ROUTES ===
 	srv.Get("/admin/administration", http.AdministrationIndexAction, adminConfig)

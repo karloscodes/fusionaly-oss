@@ -760,6 +760,7 @@ func WebsiteDashboardActionWithExtension(ctx *cartridge.Context, component strin
 	props["website_domain"] = website.Domain
 	props["websites"] = websitesData
 	props["annotations"] = annotationsList
+	props["share_token"] = website.ShareToken
 
 	// Insights are a Pro feature - return empty array for OSS
 	props["insights"] = []interface{}{}

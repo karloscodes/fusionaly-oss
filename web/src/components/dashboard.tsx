@@ -25,6 +25,8 @@ import {
 	Smartphone,
 	Check,
 	GitBranch,
+	Share2,
+	Copy,
 } from "lucide-react";
 import { HeroMetricsBar, createMetric } from "@/components/hero-metrics-bar";
 import DataTable from "./data-table";
@@ -73,13 +75,15 @@ const formatSessionDuration = (seconds: number): string => {
 // We no longer need the inline onboarding component since we redirect to /admin/websites/new
 // This helps maintain consistency and avoids duplicated code
 
-interface DashboardComponentProps extends Partial<AnalyticsData> {
+export interface DashboardComponentProps extends Partial<AnalyticsData> {
 	current_website_id?: number;
 	flash?: FlashMessage | null;
 	error?: string | null;
 	annotations?: Annotation[];
 	is_public_view?: boolean;
 	user_flow?: UserFlowLink[];
+	/** Share token for public dashboard URL (null if not shared) */
+	share_token?: string | null;
 	/** Optional slot for rendering content between header and hero metrics (used by Pro for insights) */
 	insightsSlot?: React.ReactNode;
 }
@@ -124,6 +128,9 @@ export const Dashboard = (props: DashboardComponentProps) => {
 	// State for creating new annotation when clicking on chart
 	const [createAnnotationOpen, setCreateAnnotationOpen] = useState(false);
 	const [createAnnotationDate, setCreateAnnotationDate] = useState<string | undefined>(undefined);
+
+	// State for share link copy feedback
+	const [shareCopied, setShareCopied] = useState(false);
 
 	// Add effect to sync URL params with state
 
@@ -680,15 +687,62 @@ export const Dashboard = (props: DashboardComponentProps) => {
 
 			<div className="flex flex-col gap-6">
 				<div className="flex flex-wrap justify-between items-center gap-4">
-					<h1 className="font-bold text-gray-900 flex items-center text-2xl">
-						<LayoutDashboard className="w-6 h-6 mr-2 inline" />
-						Dashboard
-					</h1>
-					<TimeRangeSelector
-						timeRanges={timeRanges}
-						currentTimeRange={timeRange}
-						websiteId={selectedWebsiteId}
-					/>
+					<div className="flex items-center gap-3">
+						<h1 className="font-bold text-gray-900 flex items-center text-2xl">
+							<LayoutDashboard className="w-6 h-6 mr-2 inline" />
+							Dashboard
+						</h1>
+						{/* Share Dashboard - next to title, hidden in public view */}
+						{!props.is_public_view && (
+							<>
+								{props.share_token ? (
+									<div className="flex items-center gap-2">
+										<button
+											type="button"
+											onClick={() => {
+												const shareUrl = `${window.location.origin}/share/${props.share_token}`;
+												navigator.clipboard.writeText(shareUrl);
+												setShareCopied(true);
+												setTimeout(() => setShareCopied(false), 2000);
+											}}
+											className="px-3 py-1.5 text-sm border rounded bg-black text-white flex items-center"
+										>
+											{shareCopied ? (
+												<><Check className="h-4 w-4 mr-1" /> Copied</>
+											) : (
+												<><Copy className="h-4 w-4 mr-1" /> Copy link</>
+											)}
+										</button>
+										<form action={`/admin/websites/${selectedWebsiteId}/share/disable`} method="POST">
+											<button
+												type="submit"
+												className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700"
+											>
+												Disable
+											</button>
+										</form>
+									</div>
+								) : (
+									<form action={`/admin/websites/${selectedWebsiteId}/share/enable`} method="POST">
+										<button
+											type="submit"
+											className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 flex items-center"
+										>
+											<Share2 className="h-4 w-4 mr-1" />
+											Share
+										</button>
+									</form>
+								)}
+							</>
+						)}
+					</div>
+					{!props.is_public_view && (
+						<TimeRangeSelector
+							timeRanges={timeRanges}
+							currentTimeRange={timeRange}
+							websiteId={selectedWebsiteId}
+						/>
+					)}
 				</div>
 
 				{/* Optional insights slot (used by Pro) */}

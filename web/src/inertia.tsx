@@ -6,6 +6,7 @@ import './index.css'
 import { Home } from './pages/Home'
 import { Login } from './pages/Login'
 import Dashboard from './pages/Dashboard'
+import PublicDashboard from './pages/PublicDashboard'
 import Websites from './pages/Websites'
 import WebsiteNew from './pages/WebsiteNew'
 import WebsiteSetup from './pages/WebsiteSetup'
@@ -23,6 +24,7 @@ const pages: Record<string, any> = {
   Home,
   Login,
   Dashboard,
+  PublicDashboard,
   Websites,
   WebsiteNew,
   WebsiteSetup,

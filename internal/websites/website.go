@@ -27,6 +27,7 @@ type Website struct {
 	ID          uint      `gorm:"primaryKey;autoIncrement" json:"id"`
 	Domain      string    `gorm:"unique;not null" json:"domain"`          // Base domain, e.g., "example.com"
 	PrivacyMode string    `gorm:"default:'tracking'" json:"privacy_mode"` // "privacy" (daily rotation) or "tracking" (stable IDs)
+	ShareToken  *string   `gorm:"uniqueIndex" json:"share_token"`         // If set, dashboard is publicly shared at /share/{token}
 	CreatedAt   time.Time `json:"created_at"`
 }
 

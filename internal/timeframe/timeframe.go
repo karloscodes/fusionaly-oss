@@ -547,3 +547,25 @@ func truncateToBucket(t time.Time, bucketSize TimeFrameBucketSize) time.Time {
 		return utc
 	}
 }
+
+// Last30Days returns a TimeFrame for the last 30 days in the given timezone
+func Last30Days(tz string) *TimeFrame {
+	loc, err := time.LoadLocation(tz)
+	if err != nil {
+		loc = time.UTC
+	}
+
+	now := time.Now().In(loc)
+	to := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 0, loc)
+	from := to.AddDate(0, 0, -29) // 30 days including today
+	from = time.Date(from.Year(), from.Month(), from.Day(), 0, 0, 0, 0, loc)
+
+	return &TimeFrame{
+		From:       from.UTC(),
+		To:         to.UTC(),
+		Label:      TimeFrameRangeLabelLast30Days,
+		BucketSize: TimeFrameBucketSizeDay,
+		dbFormat:   DailyTimeFrame.DBFormat,
+		Tz:         loc,
+	}
+}
