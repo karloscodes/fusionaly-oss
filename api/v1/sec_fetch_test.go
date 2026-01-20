@@ -3,42 +3,66 @@ package v1
 import (
 	"bytes"
 	"encoding/json"
+	"log/slog"
 	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	cartridgemiddleware "github.com/karloscodes/cartridge/middleware"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/stretchr/testify/assert"
 
 	"fusionaly/internal/events"
 )
 
-// TestSecFetchSiteProtection verifies that the Sec-Fetch-Site middleware
-// blocks server-to-server requests while allowing legitimate browser requests
-func TestSecFetchSiteProtection(t *testing.T) {
-	// Create a minimal Fiber app with the middleware
-	app := fiber.New()
-
-	// Apply the same middlewares as production (strict check + validation)
-	strictSecFetchCheck := func(c *fiber.Ctx) error {
-		if c.Method() == "POST" && c.Get("Sec-Fetch-Site") == "" {
-			return c.SendStatus(fiber.StatusForbidden)
-		}
+// secFetchSiteValidator is the same middleware used in production routes.go
+// Duplicated here to test in isolation without full app setup.
+func secFetchSiteValidator(c *fiber.Ctx) error {
+	if c.Method() != fiber.MethodPost {
 		return c.Next()
 	}
 
-	secFetchForEvents := cartridgemiddleware.SecFetchSiteMiddleware(cartridgemiddleware.SecFetchSiteConfig{
-		AllowedValues: []string{"cross-site", "same-site", "same-origin", "none"},
-		Methods:       []string{"POST"},
-	})
+	secFetchSite := c.Get("Sec-Fetch-Site")
 
-	// Mock handler that just returns 200
-	app.Post("/x/api/v1/events", strictSecFetchCheck, secFetchForEvents, func(c *fiber.Ctx) error {
+	if secFetchSite == "" {
+		slog.Warn("blocked_event",
+			slog.String("reason", "missing_sec_fetch_site"),
+			slog.String("origin", c.Get("Origin")),
+			slog.String("ip", c.IP()),
+			slog.String("user_agent", c.Get("User-Agent")),
+			slog.String("path", c.Path()),
+		)
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+			"error": "browser_required",
+		})
+	}
+
+	switch secFetchSite {
+	case "cross-site", "same-site", "same-origin":
+		return c.Next()
+	default:
+		slog.Warn("blocked_event",
+			slog.String("reason", "invalid_sec_fetch_site"),
+			slog.String("value", secFetchSite),
+			slog.String("origin", c.Get("Origin")),
+			slog.String("ip", c.IP()),
+			slog.String("user_agent", c.Get("User-Agent")),
+			slog.String("path", c.Path()),
+		)
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+			"error": "browser_required",
+		})
+	}
+}
+
+// TestSecFetchSiteProtection verifies that the Sec-Fetch-Site middleware
+// blocks server-to-server requests while allowing legitimate browser requests
+func TestSecFetchSiteProtection(t *testing.T) {
+	app := fiber.New()
+	app.Post("/x/api/v1/events", secFetchSiteValidator, func(c *fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusOK)
 	})
 
-	// Create test event payload
 	eventData := CreateEventParams{
 		URL:       "https://example.com/page",
 		Referrer:  "https://google.com",
@@ -73,13 +97,13 @@ func TestSecFetchSiteProtection(t *testing.T) {
 			description:        "Browser request from same origin",
 		},
 		{
-			name:               "Allow none (direct navigation)",
+			name:               "Block none (direct navigation)",
 			secFetchSiteHeader: "none",
-			expectedStatus:     fiber.StatusOK,
-			description:        "Direct navigation (rare for POST but valid)",
+			expectedStatus:     fiber.StatusForbidden,
+			description:        "Direct navigation should be blocked for POST events",
 		},
 		{
-			name:               "Block request without Sec-Fetch-Site (server-to-server)",
+			name:               "Block request without Sec-Fetch-Site",
 			secFetchSiteHeader: "",
 			expectedStatus:     fiber.StatusForbidden,
 			description:        "Server-to-server request (curl, Postman, scripts) - BLOCKED",
@@ -93,7 +117,6 @@ func TestSecFetchSiteProtection(t *testing.T) {
 			req.Header.Set("User-Agent", "Mozilla/5.0 (Test Browser)")
 			req.Header.Set("Origin", "https://example.com")
 
-			// Set Sec-Fetch-Site header (or omit it to simulate server-to-server)
 			if tt.secFetchSiteHeader != "" {
 				req.Header.Set("Sec-Fetch-Site", tt.secFetchSiteHeader)
 			}
@@ -101,34 +124,64 @@ func TestSecFetchSiteProtection(t *testing.T) {
 			resp, err := app.Test(req, -1)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expectedStatus, resp.StatusCode, tt.description)
-
-			if tt.expectedStatus == fiber.StatusForbidden {
-				t.Logf("✅ Successfully blocked: %s", tt.description)
-			} else {
-				t.Logf("✅ Successfully allowed: %s", tt.description)
-			}
 		})
 	}
+}
+
+// TestSecFetchSiteWithCORS verifies that 403 responses include CORS headers
+// This was a bug where blocked requests had no CORS headers, causing browser errors
+func TestSecFetchSiteWithCORS(t *testing.T) {
+	app := fiber.New()
+
+	// Apply CORS first (same order as production)
+	app.Use(cors.New(cors.Config{
+		AllowOrigins: "*",
+		AllowMethods: "POST,GET,OPTIONS",
+		AllowHeaders: "Origin, Content-Type, Accept",
+	}))
+
+	app.Post("/x/api/v1/events", secFetchSiteValidator, func(c *fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusOK)
+	})
+
+	eventData := CreateEventParams{
+		URL:       "https://example.com/page",
+		Timestamp: time.Now(),
+		EventType: events.EventTypePageView,
+	}
+	jsonPayload, _ := json.Marshal(eventData)
+
+	t.Run("403 response includes CORS headers", func(t *testing.T) {
+		req := httptest.NewRequest("POST", "/x/api/v1/events", bytes.NewReader(jsonPayload))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Origin", "https://example.com")
+		// No Sec-Fetch-Site header - should get 403
+
+		resp, err := app.Test(req, -1)
+		assert.NoError(t, err)
+		assert.Equal(t, fiber.StatusForbidden, resp.StatusCode)
+
+		// CORS headers must be present on 403 responses
+		assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"),
+			"403 response must include CORS headers so browser can read the error")
+	})
+
+	t.Run("OPTIONS preflight works", func(t *testing.T) {
+		req := httptest.NewRequest("OPTIONS", "/x/api/v1/events", nil)
+		req.Header.Set("Origin", "https://example.com")
+		req.Header.Set("Access-Control-Request-Method", "POST")
+
+		resp, err := app.Test(req, -1)
+		assert.NoError(t, err)
+		assert.Equal(t, fiber.StatusNoContent, resp.StatusCode)
+		assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
+	})
 }
 
 // TestServerToServerBlocking demonstrates that common spoofing attempts are blocked
 func TestServerToServerBlocking(t *testing.T) {
 	app := fiber.New()
-
-	// Apply the same middlewares as production
-	strictSecFetchCheck := func(c *fiber.Ctx) error {
-		if c.Method() == "POST" && c.Get("Sec-Fetch-Site") == "" {
-			return c.SendStatus(fiber.StatusForbidden)
-		}
-		return c.Next()
-	}
-
-	secFetchForEvents := cartridgemiddleware.SecFetchSiteMiddleware(cartridgemiddleware.SecFetchSiteConfig{
-		AllowedValues: []string{"cross-site", "same-site", "same-origin", "none"},
-		Methods:       []string{"POST"},
-	})
-
-	app.Post("/x/api/v1/events", strictSecFetchCheck, secFetchForEvents, func(c *fiber.Ctx) error {
+	app.Post("/x/api/v1/events", secFetchSiteValidator, func(c *fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusOK)
 	})
 
@@ -137,7 +190,7 @@ func TestServerToServerBlocking(t *testing.T) {
 		Referrer:  "https://google.com",
 		Timestamp: time.Now(),
 		EventType: events.EventTypePageView,
-		UserAgent: "curl/7.68.0", // Spoofed user agent
+		UserAgent: "curl/7.68.0",
 	}
 	jsonPayload, _ := json.Marshal(eventData)
 
@@ -171,12 +224,6 @@ func TestServerToServerBlocking(t *testing.T) {
 			origin:      "https://example.com",
 			description: "Node.js server-side fetch",
 		},
-		{
-			name:        "wget request",
-			userAgent:   "Wget/1.20.3",
-			origin:      "https://example.com",
-			description: "wget command",
-		},
 	}
 
 	for _, attempt := range spoofingAttempts {
@@ -184,16 +231,13 @@ func TestServerToServerBlocking(t *testing.T) {
 			req := httptest.NewRequest("POST", "/x/api/v1/events", bytes.NewReader(jsonPayload))
 			req.Header.Set("Content-Type", "application/json")
 			req.Header.Set("User-Agent", attempt.userAgent)
-			req.Header.Set("Origin", attempt.origin) // Spoofed Origin
-
-			// Note: Sec-Fetch-Site is NOT set (server-to-server requests can't set it)
+			req.Header.Set("Origin", attempt.origin)
+			// No Sec-Fetch-Site header - server-to-server requests can't set it
 
 			resp, err := app.Test(req, -1)
 			assert.NoError(t, err)
 			assert.Equal(t, fiber.StatusForbidden, resp.StatusCode,
 				"Should block %s", attempt.description)
-
-			t.Logf("✅ Successfully blocked: %s", attempt.description)
 		})
 	}
 }

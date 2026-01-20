@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"log/slog"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -82,19 +83,63 @@ func MountAppRoutesWithoutSession(srv *cartridge.Server) {
 		cartridgemiddleware.WithDuration(time.Minute),
 	))
 
+	// Sec-Fetch-Site validation for event ingestion endpoints
+	// Blocks non-browser requests (curl, scripts, bots) to prevent fake analytics data
+	// Runs in ALL environments (no dev/test bypasses) to catch issues before production
+	secFetchSiteValidator := func(c *fiber.Ctx) error {
+		// Only validate POST requests (event submissions)
+		if c.Method() != fiber.MethodPost {
+			return c.Next()
+		}
+
+		secFetchSite := c.Get("Sec-Fetch-Site")
+
+		// Block if header is missing - modern browsers always send it
+		if secFetchSite == "" {
+			slog.Warn("blocked_event",
+				slog.String("reason", "missing_sec_fetch_site"),
+				slog.String("origin", c.Get("Origin")),
+				slog.String("ip", c.IP()),
+				slog.String("user_agent", c.Get("User-Agent")),
+				slog.String("path", c.Path()),
+			)
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+				"error": "browser_required",
+			})
+		}
+
+		// Allow valid browser-initiated requests
+		switch secFetchSite {
+		case "cross-site", "same-site", "same-origin":
+			return c.Next()
+		default:
+			// Block "none" (direct navigation) and any unexpected values
+			slog.Warn("blocked_event",
+				slog.String("reason", "invalid_sec_fetch_site"),
+				slog.String("value", secFetchSite),
+				slog.String("origin", c.Get("Origin")),
+				slog.String("ip", c.IP()),
+				slog.String("user_agent", c.Get("User-Agent")),
+				slog.String("path", c.Path()),
+			)
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+				"error": "browser_required",
+			})
+		}
+	}
+
 	// ============================================
 	// ROUTE CONFIGURATIONS
 	// ============================================
 
 	// Public API config (event ingestion)
-	// Rate limiting + CORS only - Sec-Fetch-Site removed as it blocks some
-	// legitimate browser requests (sendBeacon, older browsers, Safari quirks)
-	// Rate limiting provides sufficient protection for public analytics endpoints
+	// Rate limiting + CORS + Sec-Fetch-Site validation
+	// CORS runs first (in cartridge), then our middleware, ensuring 403 responses have CORS headers
 	publicAPIConfig := &cartridge.RouteConfig{
 		EnableCORS:         true,
 		WriteConcurrency:   false,
-		EnableSecFetchSite: cartridge.Bool(false),
-		CustomMiddleware:   []fiber.Handler{publicRateLimiter},
+		EnableSecFetchSite: cartridge.Bool(false), // Using custom validator instead
+		CustomMiddleware:   []fiber.Handler{publicRateLimiter, secFetchSiteValidator},
 		CORSConfig:         publicCORSConfig,
 	}
 

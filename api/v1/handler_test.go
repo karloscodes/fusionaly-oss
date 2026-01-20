@@ -166,14 +166,8 @@ func TestCreateEventPublicAPIHandler(t *testing.T) {
 	})
 
 	t.Run("rejects request without Sec-Fetch-Site header (server-to-server)", func(t *testing.T) {
-		// Sec-Fetch-Site validation is only enabled in production
-		// In development/test environments, this middleware is bypassed to allow
-		// headless browser testing (Playwright, etc.) which may not send Sec-Fetch-Site headers
-		cfg := config.GetConfig()
-		if !cfg.IsProduction() {
-			t.Skip("Sec-Fetch-Site validation is only enabled in production")
-		}
-
+		// Sec-Fetch-Site validation runs in ALL environments (no bypasses)
+		// This ensures scripts/curl/bots cannot send fake analytics data
 		dbManager, _ := testsupport.SetupTestDBManager(t)
 		db := dbManager.GetConnection()
 		testsupport.CleanAllTables(db)
@@ -215,8 +209,7 @@ func TestCreateEventPublicAPIHandler(t *testing.T) {
 		err = json.Unmarshal(body, &respBody)
 		require.NoError(t, err)
 
-		assert.Equal(t, "forbidden", respBody["error"])
-		assert.Equal(t, "browser requests only", respBody["message"])
+		assert.Equal(t, "browser_required", respBody["error"])
 	})
 }
 
