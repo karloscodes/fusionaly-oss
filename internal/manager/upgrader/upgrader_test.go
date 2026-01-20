@@ -41,7 +41,7 @@ func TestUpgraderDetectsAlreadyPro(t *testing.T) {
 	// Create .env with Pro image already set
 	envContent := `FUSIONALY_DOMAIN=localhost
 APP_IMAGE=karloscodes/fusionaly-pro:latest
-CADDY_IMAGE=caddy:2.9-alpine
+CADDY_IMAGE=caddy:2.7-alpine
 INSTALL_DIR=` + tmpDir + `
 BACKUP_PATH=` + filepath.Join(tmpDir, "backups") + `
 FUSIONALY_PRIVATE_KEY=12345678901234567890123456789012
@@ -79,7 +79,7 @@ func TestUpgraderConfigSwitch(t *testing.T) {
 	// Create .env with OSS image
 	envContent := `FUSIONALY_DOMAIN=test.example.com
 APP_IMAGE=karloscodes/fusionaly-beta:latest
-CADDY_IMAGE=caddy:2.9-alpine
+CADDY_IMAGE=caddy:2.7-alpine
 INSTALL_DIR=` + tmpDir + `
 BACKUP_PATH=` + filepath.Join(tmpDir, "backups") + `
 FUSIONALY_PRIVATE_KEY=12345678901234567890123456789012
@@ -128,7 +128,7 @@ func TestGetDomain(t *testing.T) {
 
 	envContent := `FUSIONALY_DOMAIN=analytics.example.com
 APP_IMAGE=karloscodes/fusionaly-beta:latest
-CADDY_IMAGE=caddy:2.9-alpine
+CADDY_IMAGE=caddy:2.7-alpine
 INSTALL_DIR=` + tmpDir + `
 BACKUP_PATH=` + filepath.Join(tmpDir, "backups") + `
 FUSIONALY_PRIVATE_KEY=12345678901234567890123456789012

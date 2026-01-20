@@ -48,7 +48,7 @@ func NewConfig(logger *logging.Logger) *Config {
 		data: ConfigData{
 			Domain:       "",
 			AppImage:     "karloscodes/fusionaly-beta:latest",
-			CaddyImage:   "caddy:2.9-alpine",
+			CaddyImage:   "caddy:2.7-alpine",
 			InstallDir:   "/opt/fusionaly",
 			BackupPath:   "/opt/fusionaly/storage/backups",
 			PrivateKey:   "",
@@ -254,7 +254,7 @@ func (c *Config) collectFromEnvironment() error {
 	c.data.InstallDir = "/opt/fusionaly"
 	c.data.BackupPath = filepath.Join(c.data.InstallDir, "backups")
 	c.data.AppImage = "karloscodes/fusionaly-beta:latest"
-	c.data.CaddyImage = "caddy:2.9-alpine"
+	c.data.CaddyImage = "caddy:2.7-alpine"
 
 	return nil
 }
