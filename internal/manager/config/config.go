@@ -698,7 +698,9 @@ func (c *Config) fetchConfigJSON(url string) error {
 		return fmt.Errorf("failed to decode config.json: %w", err)
 	}
 
-	if serverData.AppImage != "" {
+	// Only apply server AppImage if local config is using default beta image
+	// This preserves Pro image settings configured locally via .env
+	if serverData.AppImage != "" && c.data.AppImage == "karloscodes/fusionaly-beta:latest" {
 		c.data.AppImage = serverData.AppImage
 	}
 	if serverData.CaddyImage != "" {
