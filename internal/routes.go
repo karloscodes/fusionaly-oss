@@ -218,6 +218,7 @@ func MountAppRoutesWithoutSession(srv *cartridge.Server) {
 
 	// === SYSTEM API ROUTES ===
 	srv.Get("/admin/api/system/export-database", http.SystemExportDatabaseAction, adminAPIConfig)
+	srv.Get("/admin/api/system/health", http.SystemHealthAction, adminAPIConfig)
 	srv.Post("/admin/system/purge-cache", http.SystemPurgeCacheFormAction, adminConfig)
 	srv.Post("/admin/system/geolite", http.SystemGeoLiteFormAction, adminConfig)
 	srv.Post("/admin/ingestion/settings", http.IngestionSettingsFormAction, adminConfig)

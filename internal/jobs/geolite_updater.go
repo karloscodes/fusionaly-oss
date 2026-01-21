@@ -26,7 +26,8 @@ const (
 	// MaxMind download URL template
 	MaxMindDownloadURL = "https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-City&license_key=%s&suffix=tar.gz"
 	// Settings keys for GeoLite
-	KeyGeoLiteLastUpdate = "geolite_last_update"
+	KeyGeoLiteLastUpdate   = "geolite_last_update"
+	KeyGeoLiteDownloadError = "geolite_download_error"
 )
 
 // GeoLiteUpdaterJob handles automatic GeoLite database updates
@@ -217,6 +218,9 @@ func IsGeoLiteConfigured(dbManager *database.DBManager) bool {
 // It runs in a goroutine to avoid blocking the caller.
 func TriggerImmediateDownload(db *gorm.DB, logger *slog.Logger, cfg *config.Config) {
 	go func() {
+		// Clear any previous error before starting
+		_ = settings.CreateOrUpdateSetting(db, KeyGeoLiteDownloadError, "")
+
 		// Get credentials
 		accountID, licenseKey, err := settings.GetGeoLiteCredentials(db)
 		if err != nil {
@@ -240,16 +244,25 @@ func TriggerImmediateDownload(db *gorm.DB, logger *slog.Logger, cfg *config.Conf
 
 		if err := job.downloadAndUpdate(licenseKey); err != nil {
 			logger.Error("Failed immediate GeoLite download", slog.Any("error", err))
+			// Store error for UI display
+			errMsg := err.Error()
+			if strings.Contains(errMsg, "401") {
+				errMsg = "Invalid credentials (401 Unauthorized). Check your Account ID and License Key."
+			} else if strings.Contains(errMsg, "403") {
+				errMsg = "Access denied (403 Forbidden). Your license may not include GeoLite2 access."
+			}
+			_ = settings.CreateOrUpdateSetting(db, KeyGeoLiteDownloadError, errMsg)
 			return
 		}
 
 		// Reload the in-memory database so event processor can use it immediately
 		geoip.ReloadGeoDB()
 
-		// Update last update time directly
+		// Update last update time and clear any previous error
 		if err := settings.CreateOrUpdateSetting(db, KeyGeoLiteLastUpdate, time.Now().Format(time.RFC3339)); err != nil {
 			logger.Error("Failed to update last update time", slog.Any("error", err))
 		}
+		_ = settings.CreateOrUpdateSetting(db, KeyGeoLiteDownloadError, "")
 
 		logger.Info("Immediate GeoLite database download completed successfully")
 	}()

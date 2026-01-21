@@ -1,5 +1,6 @@
-import { ReactNode } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { Link, router } from "@inertiajs/react";
+import { AlertTriangle } from "lucide-react";
 
 interface AdminLayoutProps {
 	children: ReactNode;
@@ -19,7 +20,24 @@ const FusionalyLogo = ({ className }: { className?: string }) => (
 	</svg>
 );
 
+interface SystemHealth {
+	healthy: boolean;
+	warning: string;
+}
+
 export function AdminLayout({ children, currentPath }: AdminLayoutProps) {
+	const [health, setHealth] = useState<SystemHealth | null>(null);
+
+	useEffect(() => {
+		// Fetch system health status
+		fetch("/admin/api/system/health")
+			.then((res) => res.json())
+			.then((data: SystemHealth) => setHealth(data))
+			.catch(() => {
+				// Silently fail - don't show warning if health check fails
+			});
+	}, []);
+
 	const handleLogout = (e: React.MouseEvent<HTMLAnchorElement>) => {
 		e.preventDefault();
 		router.post("/logout");
@@ -49,8 +67,19 @@ export function AdminLayout({ children, currentPath }: AdminLayoutProps) {
 							</Link>
 						</div>
 
-						{/* Right side: Settings + Logout */}
+						{/* Right side: Health warning + Settings + Logout */}
 						<div className="flex items-center space-x-4">
+							{/* System health warning indicator */}
+							{health && !health.healthy && (
+								<Link
+									href="/admin/administration/system"
+									className="flex items-center gap-1 text-amber-600 hover:text-amber-700 transition-colors"
+									title={health.warning}
+								>
+									<AlertTriangle className="h-5 w-5" />
+									<span className="text-sm font-medium hidden sm:inline">Issue</span>
+								</Link>
+							)}
 							<Link
 								href="/admin/administration/ingestion"
 								className={`relative text-sm font-medium transition-colors hover:text-gray-900 py-4 ${

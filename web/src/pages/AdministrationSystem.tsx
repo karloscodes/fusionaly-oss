@@ -20,6 +20,7 @@ import {
 	Trash2,
 	RefreshCw,
 	Globe,
+	AlertTriangle,
 } from "lucide-react";
 import type { FlashMessage } from "@/types";
 import { AdministrationLayout } from "@/components/administration-layout";
@@ -33,13 +34,14 @@ interface AdministrationSystemProps {
 	geolite_license_key?: string;
 	geolite_last_update?: string;
 	geolite_db_exists?: boolean;
+	geolite_download_error?: string;
 	[key: string]: unknown;
 }
 
 // Exported for Pro to wrap with its own layout
 export const AdministrationSystemContent: FC = () => {
 	const { props } = usePage<AdministrationSystemProps>();
-	const { flash, error, show_logs, logs: serverLogs, geolite_account_id, geolite_license_key, geolite_last_update, geolite_db_exists } = props;
+	const { flash, error, show_logs, logs: serverLogs, geolite_account_id, geolite_license_key, geolite_last_update, geolite_db_exists, geolite_download_error } = props;
 	const [exportLoading, setExportLoading] = useState(false);
 	const [localFlash, setLocalFlash] = useState<FlashMessage | null>(null);
 	const [geoAccountId, setGeoAccountId] = useState(geolite_account_id || "");
@@ -234,7 +236,16 @@ export const AdministrationSystemContent: FC = () => {
 								<span className="text-gray-900">{geolite_last_update}</span>
 							</div>
 						)}
-						{!geolite_db_exists && !geolite_last_update && (geoAccountId && geoLicenseKey) && (
+						{geolite_download_error && (
+							<div className="bg-red-50 p-3 rounded-lg border border-red-200 flex items-start gap-2">
+								<AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+								<div>
+									<p className="text-sm font-medium text-red-800">Download Failed</p>
+									<p className="text-sm text-red-700">{geolite_download_error}</p>
+								</div>
+							</div>
+						)}
+						{!geolite_db_exists && !geolite_last_update && !geolite_download_error && (geoAccountId && geoLicenseKey) && (
 							<p className="text-xs text-gray-500">
 								Database download will start shortly. Refresh this page in a minute to check status.
 							</p>

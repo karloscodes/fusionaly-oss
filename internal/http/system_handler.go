@@ -183,6 +183,9 @@ func AdministrationSystemPageAction(ctx *cartridge.Context) error {
 		}
 	}
 
+	// Get GeoLite download error (if any)
+	geoDownloadError, _ := settings.GetSetting(db, jobs.KeyGeoLiteDownloadError)
+
 	// Check if GeoLite database file exists
 	cfg := config.GetConfig()
 	geoDBPath := cfg.GeoDBPath
@@ -193,13 +196,49 @@ func AdministrationSystemPageAction(ctx *cartridge.Context) error {
 	geoDBExists := geoDBErr == nil
 
 	return inertia.RenderPage(ctx.Ctx, "AdministrationSystem", inertia.Props{
-		"websites":            websitesData,
-		"show_logs":           showLogs,
-		"logs":                logs,
-		"geolite_account_id":  geoAccountID,
-		"geolite_license_key": geoLicenseKey,
-		"geolite_last_update": geoLastUpdate,
-		"geolite_db_exists":   geoDBExists,
+		"websites":               websitesData,
+		"show_logs":              showLogs,
+		"logs":                   logs,
+		"geolite_account_id":     geoAccountID,
+		"geolite_license_key":    geoLicenseKey,
+		"geolite_last_update":    geoLastUpdate,
+		"geolite_db_exists":      geoDBExists,
+		"geolite_download_error": geoDownloadError,
+	})
+}
+
+// SystemHealthAction returns the system health status for UI warning indicators
+func SystemHealthAction(ctx *cartridge.Context) error {
+	db := ctx.DB()
+
+	// Check GeoLite status
+	geoAccountID, geoLicenseKey, _ := settings.GetGeoLiteCredentials(db)
+	geoConfigured := geoAccountID != "" && geoLicenseKey != ""
+
+	cfg := config.GetConfig()
+	geoDBPath := cfg.GeoDBPath
+	if geoDBPath == "" {
+		geoDBPath = filepath.Join("storage", "GeoLite2-City.mmdb")
+	}
+	_, geoDBErr := os.Stat(geoDBPath)
+	geoDBExists := geoDBErr == nil
+
+	geoDownloadError, _ := settings.GetSetting(db, jobs.KeyGeoLiteDownloadError)
+
+	// Determine overall health and warning message
+	var warning string
+	if geoConfigured && !geoDBExists && geoDownloadError != "" {
+		warning = "GeoLite database download failed"
+	} else if geoConfigured && !geoDBExists {
+		warning = "GeoLite database not yet downloaded"
+	}
+
+	return ctx.JSON(fiber.Map{
+		"healthy":            warning == "",
+		"warning":            warning,
+		"geolite_configured": geoConfigured,
+		"geolite_db_exists":  geoDBExists,
+		"geolite_error":      geoDownloadError,
 	})
 }
 
