@@ -90,7 +90,7 @@ func GetConfig() *Config {
 		v.SetDefault("appname", "fusionaly")
 		v.SetDefault("appport", "3000")
 		v.SetDefault("environment", Development)
-		v.SetDefault("loglevel", string(LogLevelInfo))
+		v.SetDefault("loglevel", "") // Let cartridge determine based on environment
 		v.SetDefault("privatekey", "88888888888888888888888888888888")
 		v.SetDefault("sessiontimeoutseconds", 1800)
 		v.SetDefault("loginsessiontimeoutseconds", 604800) // 1 week
