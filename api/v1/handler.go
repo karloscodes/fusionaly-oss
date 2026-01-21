@@ -35,13 +35,13 @@ type CreateEventParams struct {
 }
 
 func CreateEventPublicAPIHandler(ctx *cartridge.Context) error {
-	ctx.Logger.Info("Received event request", slog.String("method", ctx.Method()), slog.String("path", ctx.Path()))
+	ctx.Logger.Debug("Received event request", slog.String("method", ctx.Method()), slog.String("path", ctx.Path()))
 
 	userAgentHeader := ctx.Get("User-Agent")
 	if forwardedUA := ctx.Get("X-Forwarded-User-Agent"); forwardedUA != "" {
 		userAgentHeader = forwardedUA
 	}
-	ctx.Logger.Info("Received User-Agent header", slog.String("userAgent", userAgentHeader))
+	ctx.Logger.Debug("Received User-Agent header", slog.String("userAgent", userAgentHeader))
 
 	params, err := validateAndParseRequest(ctx.Ctx, ctx.DBManager, ctx.Logger)
 	if err != nil {
