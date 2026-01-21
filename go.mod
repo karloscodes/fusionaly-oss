@@ -5,7 +5,7 @@ go 1.25.5
 require (
 	github.com/gofiber/fiber/v2 v2.52.10
 	github.com/google/go-containerregistry v0.20.7
-	github.com/karloscodes/cartridge v0.0.0-20260121074651-931813ffe144
+	github.com/karloscodes/cartridge v0.0.0-20260121081851-e774ea741f19
 	github.com/oschwald/geoip2-golang v1.13.0
 	github.com/pariz/gountries v0.1.6
 	github.com/sirupsen/logrus v1.9.3
