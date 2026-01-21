@@ -46,11 +46,17 @@ func NewAppWithRoutes(cfg *config.Config, routeMount func(*cartridge.Server)) (*
 		return nil, fmt.Errorf("failed to initialize jobs: %w", err)
 	}
 
+	// Configure server with SecFetchSite for cross-origin analytics
+	// Analytics SDK sends events from customer sites (cross-site) to our API
+	serverConfig := cartridge.DefaultServerConfig()
+	serverConfig.SecFetchSiteAllowedValues = []string{"cross-site", "same-site", "same-origin"}
+
 	// Create the cartridge application with custom route mount
 	app, err := cartridge.NewApplication(cartridge.ApplicationOptions{
 		Config:            cfg,
 		Logger:            logger,
 		DBManager:         dbManager,
+		ServerConfig:      serverConfig,
 		RouteMountFunc:    routeMount,
 		BackgroundWorkers: []cartridge.BackgroundWorker{jobsManager},
 	})
@@ -86,11 +92,17 @@ func NewAppWithConfig(cfg *config.Config) (*Application, error) {
 		return nil, fmt.Errorf("failed to initialize jobs: %w", err)
 	}
 
+	// Configure server with SecFetchSite for cross-origin analytics
+	// Analytics SDK sends events from customer sites (cross-site) to our API
+	serverConfig := cartridge.DefaultServerConfig()
+	serverConfig.SecFetchSiteAllowedValues = []string{"cross-site", "same-site", "same-origin"}
+
 	// Create the cartridge application using NewApplication
 	app, err := cartridge.NewApplication(cartridge.ApplicationOptions{
 		Config:            cfg,
 		Logger:            logger,
 		DBManager:         dbManager,
+		ServerConfig:      serverConfig,
 		RouteMountFunc:    MountAppRoutes,
 		BackgroundWorkers: []cartridge.BackgroundWorker{jobsManager},
 	})

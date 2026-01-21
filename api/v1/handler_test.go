@@ -209,7 +209,9 @@ func TestCreateEventPublicAPIHandler(t *testing.T) {
 		err = json.Unmarshal(body, &respBody)
 		require.NoError(t, err)
 
-		assert.Equal(t, "browser_required", respBody["error"])
+		// Cartridge's SecFetchSite middleware response format
+		assert.Equal(t, "forbidden", respBody["error"])
+		assert.Equal(t, "browser requests only", respBody["message"])
 	})
 }
 
