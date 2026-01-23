@@ -47,7 +47,7 @@ function createProgressBar() {
     top: 0;
     left: 0;
     height: 3px;
-    background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+    background: #00D678;
     transition: width 0.3s ease;
     z-index: 9999;
     width: 0%;
