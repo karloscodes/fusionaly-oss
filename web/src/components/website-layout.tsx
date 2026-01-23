@@ -162,11 +162,7 @@ export function WebsiteLayout({
 								<Link
 									key={route.path}
 									href={route.path}
-									className={`relative text-sm font-medium transition-colors hover:text-gray-900 py-4 ${
-										isCurrentPath(route.path)
-											? "text-gray-900"
-											: "text-gray-500"
-									}`}
+									className={`relative text-sm font-medium transition-colors hover:text-gray-600 py-4 text-gray-900`}
 								>
 									<span className="relative inline-flex items-center">
 										{route.name}
@@ -191,11 +187,7 @@ export function WebsiteLayout({
 						<div className="flex items-center space-x-4">
 							<Link
 								href="/admin/administration/ingestion"
-								className={`relative text-sm font-medium transition-colors hover:text-gray-900 py-4 ${
-									currentPath?.startsWith("/admin/administration")
-										? "text-gray-900"
-										: "text-gray-500"
-								}`}
+								className={`relative text-sm font-medium transition-colors hover:text-gray-600 py-4 text-gray-900`}
 							>
 								Settings
 								{/* Active indicator - black underline */}
@@ -207,7 +199,7 @@ export function WebsiteLayout({
 								href="#"
 								id="logout"
 								onClick={handleLogout}
-								className="text-sm font-medium transition-colors hover:text-black text-gray-500"
+								className="text-sm font-medium transition-colors hover:text-gray-600 text-gray-900"
 							>
 								Logout
 							</a>
