@@ -1,7 +1,7 @@
 import { ReactNode, useState, useEffect, useRef } from "react";
 import { Link, router } from "@inertiajs/react";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Settings, ChevronDown, Check } from "lucide-react";
+import { ArrowLeft, Settings, ChevronDown, Check, AlertTriangle } from "lucide-react";
 
 interface Website {
 	id: number;
@@ -14,6 +14,11 @@ interface WebsiteLayoutProps {
 	websiteDomain: string;
 	currentPath?: string;
 	websites?: Website[];
+}
+
+interface SystemHealth {
+	healthy: boolean;
+	warning: string;
 }
 
 // Define website-scoped sub-navigation
@@ -42,6 +47,17 @@ export function WebsiteLayout({
 }: WebsiteLayoutProps) {
 	const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 	const dropdownRef = useRef<HTMLDivElement>(null);
+	const [health, setHealth] = useState<SystemHealth | null>(null);
+
+	useEffect(() => {
+		// Fetch system health status
+		fetch("/admin/api/system/health")
+			.then((res) => res.json())
+			.then((data: SystemHealth) => setHealth(data))
+			.catch(() => {
+				// Silently fail - don't show warning if health check fails
+			});
+	}, []);
 
 	const handleLogout = (e: React.MouseEvent<HTMLAnchorElement>) => {
 		e.preventDefault();
@@ -162,7 +178,7 @@ export function WebsiteLayout({
 								<Link
 									key={route.path}
 									href={route.path}
-									className={`relative text-sm font-medium transition-colors hover:text-gray-600 py-4 text-gray-900`}
+									className="relative text-sm font-medium transition-colors hover:text-gray-600 py-4 text-gray-900"
 								>
 									<span className="relative inline-flex items-center">
 										{route.name}
@@ -183,11 +199,22 @@ export function WebsiteLayout({
 							))}
 						</div>
 
-						{/* Right side: Settings + Logout */}
+						{/* Right side: Health warning + Settings + Logout */}
 						<div className="flex items-center space-x-4">
+							{/* System health warning indicator */}
+							{health && !health.healthy && (
+								<Link
+									href="/admin/administration/system"
+									className="flex items-center gap-1 text-amber-600 hover:text-amber-700 transition-colors"
+									title={health.warning}
+								>
+									<AlertTriangle className="h-5 w-5" />
+									<span className="text-sm font-medium hidden sm:inline">Issue</span>
+								</Link>
+							)}
 							<Link
 								href="/admin/administration/ingestion"
-								className={`relative text-sm font-medium transition-colors hover:text-gray-600 py-4 text-gray-900`}
+								className="relative text-sm font-medium transition-colors hover:text-gray-600 py-4 text-gray-900"
 							>
 								Settings
 								{/* Active indicator - black underline */}

@@ -75,7 +75,7 @@ export function AdminLayout({ children, currentPath }: AdminLayoutProps) {
 							)}
 							<Link
 								href="/admin/administration/ingestion"
-								className={`relative text-sm font-medium transition-colors hover:text-gray-600 py-4 text-gray-900`}
+								className="relative text-sm font-medium transition-colors hover:text-gray-600 py-4 text-gray-900"
 							>
 								Settings
 								{/* Active indicator - black underline */}

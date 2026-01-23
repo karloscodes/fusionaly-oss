@@ -47,6 +47,7 @@ export const AdministrationSystemContent: FC = () => {
 	const [geoAccountId, setGeoAccountId] = useState(geolite_account_id || "");
 	const [geoLicenseKey, setGeoLicenseKey] = useState(geolite_license_key || "");
 	const [geoSaving, setGeoSaving] = useState(false);
+	const [geoDownloading, setGeoDownloading] = useState(false);
 
 	// Use server logs if available
 	const logs = serverLogs || "";
@@ -148,6 +149,14 @@ export const AdministrationSystemContent: FC = () => {
 		});
 	};
 
+	const handleDownloadGeoLite = () => {
+		setGeoDownloading(true);
+		router.post("/admin/system/geolite/download", {}, {
+			preserveScroll: true,
+			onFinish: () => setGeoDownloading(false),
+		});
+	};
+
 	// Combine server flash and local flash
 	const displayFlash = flash || localFlash;
 
@@ -221,13 +230,36 @@ export const AdministrationSystemContent: FC = () => {
 					</Button>
 
 					{/* Status information */}
-					<div className="pt-4 mt-4 border-t border-gray-200 space-y-2">
-						<div className="flex items-center gap-2 text-sm">
-							<span className="text-gray-600">Database Status:</span>
-							{geolite_db_exists ? (
-								<span className="text-green-600 font-medium">Downloaded</span>
-							) : (
-								<span className="text-amber-600 font-medium">Not downloaded</span>
+					<div className="pt-4 mt-4 border-t border-gray-200 space-y-3">
+						<div className="flex items-center justify-between">
+							<div className="flex items-center gap-2 text-sm">
+								<span className="text-gray-600">Database Status:</span>
+								{geolite_db_exists ? (
+									<span className="text-green-600 font-medium">Downloaded</span>
+								) : (
+									<span className="text-amber-600 font-medium">Not downloaded</span>
+								)}
+							</div>
+							{geoAccountId && geoLicenseKey && (
+								<Button
+									onClick={handleDownloadGeoLite}
+									disabled={geoDownloading}
+									variant="outline"
+									size="sm"
+									className="border-black text-black hover:bg-gray-100"
+								>
+									{geoDownloading ? (
+										<>
+											<RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+											Downloading...
+										</>
+									) : (
+										<>
+											<Download className="h-4 w-4 mr-2" />
+											Download now
+										</>
+									)}
+								</Button>
 							)}
 						</div>
 						{geolite_last_update && (

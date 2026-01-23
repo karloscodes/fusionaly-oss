@@ -300,3 +300,23 @@ func SystemGeoLiteFormAction(ctx *cartridge.Context) error {
 	}
 	return ctx.Redirect("/admin/administration/system", fiber.StatusFound)
 }
+
+// SystemGeoLiteDownloadAction triggers an immediate GeoLite database download (Inertia)
+func SystemGeoLiteDownloadAction(ctx *cartridge.Context) error {
+	db := ctx.DB()
+
+	// Check if credentials are configured
+	accountID, licenseKey, _ := settings.GetGeoLiteCredentials(db)
+	if accountID == "" || licenseKey == "" {
+		flash.SetFlash(ctx.Ctx, "error", "GeoLite credentials not configured. Please enter your Account ID and License Key first.")
+		return ctx.Redirect("/admin/administration/system", fiber.StatusFound)
+	}
+
+	// Trigger immediate download
+	cfg := ctx.Config.(*config.Config)
+	jobs.TriggerImmediateDownload(db, ctx.Logger, cfg)
+
+	ctx.Logger.Info("Manual GeoLite database download triggered")
+	flash.SetFlash(ctx.Ctx, "success", "Database download started in the background. Refresh this page in a moment to check status.")
+	return ctx.Redirect("/admin/administration/system", fiber.StatusFound)
+}

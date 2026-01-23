@@ -221,5 +221,6 @@ func MountAppRoutesWithoutSession(srv *cartridge.Server) {
 	srv.Get("/admin/api/system/health", http.SystemHealthAction, adminAPIConfig)
 	srv.Post("/admin/system/purge-cache", http.SystemPurgeCacheFormAction, adminConfig)
 	srv.Post("/admin/system/geolite", http.SystemGeoLiteFormAction, adminConfig)
+	srv.Post("/admin/system/geolite/download", http.SystemGeoLiteDownloadAction, adminConfig)
 	srv.Post("/admin/ingestion/settings", http.IngestionSettingsFormAction, adminConfig)
 }

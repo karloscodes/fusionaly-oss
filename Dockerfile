@@ -35,15 +35,12 @@ WORKDIR /app
 
 # Install runtime dependencies and create directories in one layer
 RUN apk add --no-cache ca-certificates tzdata sqlite curl && \
-  mkdir -p /app/logs /app/storage /app/web/dist /app/internal-storage
+  mkdir -p /app/logs /app/storage /app/web/dist
 
 # Copy compiled binaries and built assets from builder
 COPY --from=builder /app/dist/fusionaly-server /app/fusionaly-server
 COPY --from=builder /app/dist/fnctl /app/fnctl
 COPY --from=builder /app/web/dist /app/web/dist
-
-# GeoLite2 database is optional - mount at runtime:
-# -v /path/to/GeoLite2-City.mmdb:/app/internal-storage/GeoLite2-City.mmdb
 
 # Copy entrypoint script
 COPY scripts/entrypoint.sh /app/entrypoint.sh
@@ -52,7 +49,7 @@ COPY scripts/entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh /app/fusionaly-server /app/fnctl
 ENV FUSIONALY_ENV=production \
   FUSIONALY_STORAGE_PATH=/app/storage \
-  FUSIONALY_GEO_DB_PATH=/app/internal-storage/GeoLite2-City.mmdb \
+  FUSIONALY_GEO_DB_PATH=/app/storage/GeoLite2-City.mmdb \
   FUSIONALY_PUBLIC_DIR=/app/web/dist/assets \
   FUSIONALY_LOGS_DIR=/app/logs \
   FUSIONALY_APP_PORT=8080
