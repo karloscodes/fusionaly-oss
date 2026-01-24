@@ -5,6 +5,7 @@ import { AlertTriangle } from "lucide-react";
 interface AdminLayoutProps {
 	children: ReactNode;
 	currentPath?: string;
+	badge?: ReactNode;
 }
 
 // Fusionaly Logo Component - Text wordmark with green underscore
@@ -19,7 +20,7 @@ interface SystemHealth {
 	warning: string;
 }
 
-export function AdminLayout({ children, currentPath }: AdminLayoutProps) {
+export function AdminLayout({ children, currentPath, badge }: AdminLayoutProps) {
 	const [health, setHealth] = useState<SystemHealth | null>(null);
 
 	useEffect(() => {
@@ -54,9 +55,10 @@ export function AdminLayout({ children, currentPath }: AdminLayoutProps) {
 						<div className="flex items-center space-x-4">
 							<Link
 								href="/admin"
-								className="flex items-center text-gray-900 hover:text-black transition-colors"
+								className="flex items-center gap-2 text-gray-900 hover:text-black transition-colors"
 							>
 								<FusionalyLogo />
+								{badge}
 							</Link>
 						</div>
 
