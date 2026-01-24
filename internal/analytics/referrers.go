@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"fusionaly/internal/events"
+	"fusionaly/internal/pkg/referrers"
 	"fusionaly/internal/websites"
 
 	"gorm.io/gorm"
@@ -158,11 +159,11 @@ func GetTopReferrersInTimeFrame(db *gorm.DB, params WebsiteScopedQueryParams) ([
 		normalizedCounts[normalized] += result.Count
 	}
 
-	// Convert to final results and sort
+	// Convert to final results with friendly names and sort
 	var results []MetricCountResult
-	for name, count := range normalizedCounts {
+	for hostname, count := range normalizedCounts {
 		results = append(results, MetricCountResult{
-			Name:  name,
+			Name:  referrers.FriendlyName(hostname),
 			Count: count,
 		})
 	}

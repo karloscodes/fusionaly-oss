@@ -9,6 +9,7 @@ import (
 	"fusionaly/internal/database"
 	"fusionaly/internal/http"
 	"fusionaly/internal/onboarding"
+	"fusionaly/internal/pkg/referrers"
 	"fusionaly/internal/settings"
 	"fusionaly/internal/websites"
 
@@ -105,3 +106,9 @@ var (
 func GetWebsitesForSelector(db *gorm.DB) ([]map[string]interface{}, error) {
 	return websites.GetWebsitesForSelector(db)
 }
+
+// Referrer functions
+
+// FriendlyReferrerName returns a human-friendly name for a referrer hostname.
+// Maps known sources like "news.ycombinator.com" to "Hacker News".
+var FriendlyReferrerName = referrers.FriendlyName
