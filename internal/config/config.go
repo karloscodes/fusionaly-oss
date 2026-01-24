@@ -281,8 +281,23 @@ func (c *Config) GetMaxIdleConns() int {
 }
 
 // GetLogLevel returns the log level as a string (implements cartridge.LogConfigProvider).
+// If not explicitly set, defaults based on environment:
+// - Production: warn (errors and warnings only, no query noise)
+// - Development: debug (verbose, shows GORM queries)
+// - Test: error (minimal output)
 func (c *Config) GetLogLevel() string {
-	return string(c.LogLevel)
+	if c.LogLevel != "" {
+		return string(c.LogLevel)
+	}
+	// Default based on environment
+	switch c.Environment {
+	case Production:
+		return string(LogLevelWarn)
+	case Test:
+		return string(LogLevelError)
+	default:
+		return string(LogLevelDebug)
+	}
 }
 
 // GetLogDirectory returns the logs directory (implements cartridge.LogConfigProvider).
