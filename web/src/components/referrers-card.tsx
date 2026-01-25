@@ -67,7 +67,7 @@ export const ReferrersCard = ({ data }: ReferrersCardProps) => {
 
 	return (
 		<Card className="border-black">
-			<CardContent className="p-6">
+			<CardContent className="p-4 sm:p-6">
 				<div className="flex justify-between items-center mb-4">
 					<div className="flex items-center gap-2">
 						{getIconForMetricType()}
@@ -78,8 +78,8 @@ export const ReferrersCard = ({ data }: ReferrersCardProps) => {
 							<DropdownMenuTrigger asChild>
 								<Button
 									variant="outline"
-									size="lg"
-									className="py-2 px-4 h-[38px]"
+									size="default"
+									className="py-1.5 sm:py-2 px-3 sm:px-4 h-auto sm:h-[38px] text-sm"
 								>
 									{getMetricDisplayName(selectedMetricType)}{" "}
 									<ChevronDown className="ml-1 h-3 w-3" />
@@ -157,7 +157,7 @@ export const ReferrersCard = ({ data }: ReferrersCardProps) => {
 					</div>
 				</div>
 
-				<div className="h-[380px] flex flex-col">
+				<div className="h-[320px] sm:h-[380px] flex flex-col">
 					<DataTable
 						data={displayData || []}
 						showPercentage={true}

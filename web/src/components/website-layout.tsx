@@ -171,14 +171,14 @@ export function WebsiteLayout({
 							</div>
 
 							{/* Separator */}
-							<span className="text-gray-500/30">|</span>
+							<span className="text-gray-500/30 hidden sm:inline">|</span>
 
 							{/* Sub-navigation with active underline */}
 							{navRoutes.map((route) => (
 								<Link
 									key={route.path}
 									href={route.path}
-									className="relative text-sm font-medium transition-colors hover:text-gray-600 py-4 text-gray-900"
+									className="relative text-sm font-medium transition-colors hover:text-gray-600 py-4 text-gray-900 hidden sm:block"
 								>
 									<span className="relative inline-flex items-center">
 										{route.name}
@@ -231,6 +231,32 @@ export function WebsiteLayout({
 								Logout
 							</a>
 						</div>
+					</div>
+
+					{/* Mobile sub-navigation */}
+					<div className="flex items-center space-x-4 overflow-x-auto sm:hidden border-t border-gray-100 -mx-4 px-4">
+						{navRoutes.map((route) => (
+							<Link
+								key={route.path}
+								href={route.path}
+								className="relative text-sm font-medium transition-colors hover:text-gray-600 py-3 text-gray-900 whitespace-nowrap"
+							>
+								<span className="relative inline-flex items-center">
+									{route.name}
+									{route.badge && (
+										<Badge
+											variant="default"
+											className="ml-1.5 bg-black text-white hover:bg-black/90 text-[9px] px-1 py-0 h-3.5 font-semibold"
+										>
+											{route.badge}
+										</Badge>
+									)}
+								</span>
+								{isCurrentPath(route.path) && (
+									<span className="absolute bottom-0 left-0 right-0 h-0.5 bg-black" />
+								)}
+							</Link>
+						))}
 					</div>
 				</div>
 			</nav>

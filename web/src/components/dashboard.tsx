@@ -785,25 +785,25 @@ export const Dashboard = (props: DashboardComponentProps) => {
 
 				{/* Main chart with internal toggles and restored height */}
 				<Card className="rounded-lg border border-black">
-					<CardContent className="p-6">
-						<div className="mb-4 flex justify-between items-center">
-							<div className="flex gap-2">
+					<CardContent className="p-4 sm:p-6">
+						<div className="mb-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+							<div className="flex flex-wrap gap-2">
 								<button
 									type="button"
 									onClick={() => setActiveChart("views")}
-									className={`px-4 py-2 text-sm border rounded ${activeChart === "views" ? "bg-black text-white" : "bg-white text-black"}`}
+									className={`px-3 sm:px-4 py-2 text-sm border rounded ${activeChart === "views" ? "bg-black text-white" : "bg-white text-black"}`}
 								>
 									Page Views
 								</button>
 								<button
 									type="button"
 									onClick={() => setActiveChart("visitors")}
-									className={`px-4 py-2 text-sm border rounded ${activeChart === "visitors" ? "bg-black text-white" : "bg-white text-black"}`}
+									className={`px-3 sm:px-4 py-2 text-sm border rounded ${activeChart === "visitors" ? "bg-black text-white" : "bg-white text-black"}`}
 								>
 									Visitors
 								</button>
 								{data.conversion_goals && data.conversion_goals.length > 0 && (
-									<div className="flex items-center space-x-3 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors">
+									<div className="flex items-center space-x-2 sm:space-x-3 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors">
 										<Checkbox
 											id="show-revenue"
 											checked={showRevenueLine}
@@ -831,7 +831,7 @@ export const Dashboard = (props: DashboardComponentProps) => {
 								/>
 							)}
 						</div>
-						<div className="h-[450px]">
+						<div className="h-[300px] sm:h-[450px]">
 							{" "}
 							{/* Restored height to 450px */}
 							<ResponsiveContainer width="100%" height="100%">
@@ -845,37 +845,37 @@ export const Dashboard = (props: DashboardComponentProps) => {
 				<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 					{/* Page Analytics Card - Left Column */}
 					<Card className="rounded-lg border border-black">
-						<CardContent className="p-6">
-							<div className="flex justify-between items-center mb-4">
+						<CardContent className="p-4 sm:p-6">
+							<div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
 								<div className="flex items-center gap-2">
 									<FileText className="w-4 h-4" />
 									<span>Pages</span>
 								</div>
-								<div className="flex space-x-2">
+								<div className="flex flex-wrap gap-1 sm:gap-2">
 									<button
 										type="button"
 										onClick={() => setPagesTab("pages")}
-										className={`px-4 py-2 text-sm border rounded ${pagesTab === "pages" ? "bg-black text-white" : "bg-white text-black"}`}
+										className={`px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border rounded ${pagesTab === "pages" ? "bg-black text-white" : "bg-white text-black"}`}
 									>
 										Top Pages
 									</button>
 									<button
 										type="button"
 										onClick={() => setPagesTab("entry")}
-										className={`px-4 py-2 text-sm border rounded ${pagesTab === "entry" ? "bg-black text-white" : "bg-white text-black"}`}
+										className={`px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border rounded ${pagesTab === "entry" ? "bg-black text-white" : "bg-white text-black"}`}
 									>
 										Entry Pages
 									</button>
 									<button
 										type="button"
 										onClick={() => setPagesTab("exit")}
-										className={`px-4 py-2 text-sm border rounded ${pagesTab === "exit" ? "bg-black text-white" : "bg-white text-black"}`}
+										className={`px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border rounded ${pagesTab === "exit" ? "bg-black text-white" : "bg-white text-black"}`}
 									>
 										Exit Pages
 									</button>
 								</div>
 							</div>
-							<div className="h-[380px] flex flex-col">
+							<div className="h-[320px] sm:h-[380px] flex flex-col">
 								{pagesTab === "pages" && (
 									<DataTable
 										data={data.top_urls}
@@ -924,14 +924,14 @@ export const Dashboard = (props: DashboardComponentProps) => {
 				<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 					{/* Countries Card - Left Column */}
 					<Card className="rounded-lg border border-black">
-						<CardContent className="p-6">
+						<CardContent className="p-4 sm:p-6">
 							<div className="flex justify-between items-center mb-4">
 								<div className="flex items-center gap-2">
 									<Globe className="w-4 h-4" />
 									<span>Countries</span>
 								</div>
 							</div>
-							<div className="h-[380px] flex flex-col">
+							<div className="h-[320px] sm:h-[380px] flex flex-col">
 								<DataTable
 									data={data.top_countries}
 									showPercentage={true}
@@ -948,37 +948,37 @@ export const Dashboard = (props: DashboardComponentProps) => {
 
 					{/* Device Analytics Card - Right Column */}
 					<Card className="rounded-lg border border-black">
-						<CardContent className="p-6">
-							<div className="flex justify-between items-center mb-4">
+						<CardContent className="p-4 sm:p-6">
+							<div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
 								<div className="flex items-center gap-2">
 									<Smartphone className="w-4 h-4" />
 									<span>Device Analytics</span>
 								</div>
-								<div className="flex space-x-2">
+								<div className="flex flex-wrap gap-1 sm:gap-2">
 									<button
 										type="button"
 										onClick={() => setDeviceTab("devices")}
-										className={`px-4 py-2 text-sm border rounded ${deviceTab === "devices" ? "bg-black text-white" : "bg-white text-black"}`}
+										className={`px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border rounded ${deviceTab === "devices" ? "bg-black text-white" : "bg-white text-black"}`}
 									>
 										Devices
 									</button>
 									<button
 										type="button"
 										onClick={() => setDeviceTab("browsers")}
-										className={`px-4 py-2 text-sm border rounded ${deviceTab === "browsers" ? "bg-black text-white" : "bg-white text-black"}`}
+										className={`px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border rounded ${deviceTab === "browsers" ? "bg-black text-white" : "bg-white text-black"}`}
 									>
 										Browsers
 									</button>
 									<button
 										type="button"
 										onClick={() => setDeviceTab("os")}
-										className={`px-4 py-2 text-sm border rounded ${deviceTab === "os" ? "bg-black text-white" : "bg-white text-black"}`}
+										className={`px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border rounded ${deviceTab === "os" ? "bg-black text-white" : "bg-white text-black"}`}
 									>
 										OSs
 									</button>
 								</div>
 							</div>
-							<div className="h-[380px] flex flex-col">
+							<div className="h-[320px] sm:h-[380px] flex flex-col">
 								{deviceTab === "devices" && (
 									<DataTable
 										data={data.top_devices}
@@ -1027,7 +1027,7 @@ export const Dashboard = (props: DashboardComponentProps) => {
 
 				{/* Full-width Events Card */}
 				<Card className="rounded-lg border border-black">
-					<CardContent className="p-6">
+					<CardContent className="p-4 sm:p-6">
 						<div className="flex justify-between items-center mb-4">
 							<div className="flex items-center gap-2">
 								<Zap className="w-4 h-4" />
@@ -1061,7 +1061,7 @@ export const Dashboard = (props: DashboardComponentProps) => {
 								)}
 							</div>
 						</div>
-						<div className="h-[380px] flex flex-col">
+						<div className="h-[320px] sm:h-[380px] flex flex-col">
 				<DataTable
 					data={data.top_custom_events}
 					showPercentage={true}
@@ -1087,6 +1087,7 @@ export const Dashboard = (props: DashboardComponentProps) => {
 						label: "",
 						align: "center",
 						widthClass: "w-12",
+						hideOnMobile: true,
 						render: (item) => {
 							const isGoal = data.conversion_goals && data.conversion_goals.includes(item.name);
 							return isGoal ? (
@@ -1097,12 +1098,13 @@ export const Dashboard = (props: DashboardComponentProps) => {
 							) : null;
 						}
 					},
-					{ name: "count", label: "Visitors" },
+					{ name: "count", label: "Visitors", widthClass: "w-20" },
 					{
 						name: "revenue",
 						label: "Revenue",
 						align: "right",
 						widthClass: "w-24",
+						hideOnMobile: true,
 						render: (item) => {
 							const amount = eventRevenueTotals[item.name] || 0;
 							if (amount <= 0) {
@@ -1113,9 +1115,10 @@ export const Dashboard = (props: DashboardComponentProps) => {
 					},
 					{
 						name: "conversion_rate",
-						label: "Conversion Rate",
+						label: "CVR",
 						align: "right",
-						widthClass: "w-28",
+						widthClass: "w-20",
+						hideOnMobile: true,
 						render: (item) => {
 							const rate = eventConversionRates[item.name];
 							if (rate === undefined) {

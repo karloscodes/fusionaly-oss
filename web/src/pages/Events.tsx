@@ -143,10 +143,10 @@ export function Events() {
 					/>
 
 				{/* Filters Bar */}
-				<div className="flex items-center justify-between gap-4 flex-wrap">
-					<div className="flex items-center gap-3 flex-wrap">
+				<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+					<div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:flex-wrap">
 						{/* Date Range */}
-						<div className="flex items-center gap-1">
+						<div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
 							{[
 								{ value: "today", label: "Today" },
 								{ value: "yesterday", label: "Yesterday" },
@@ -158,7 +158,7 @@ export function Events() {
 									key={range.value}
 									type="button"
 									onClick={() => handleQuickFilter("range", range.value)}
-									className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+									className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
 										filters.range === range.value
 											? "bg-gray-900 text-white"
 											: "bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900"
@@ -169,7 +169,7 @@ export function Events() {
 							))}
 						</div>
 
-						<div className="h-5 w-px bg-gray-200" />
+						<div className="hidden sm:block h-5 w-px bg-gray-200" />
 
 						{/* Type Filter */}
 						<div className="flex items-center gap-1">
@@ -208,30 +208,32 @@ export function Events() {
 							</button>
 						</div>
 
-						<div className="h-5 w-px bg-gray-200" />
+						<div className="hidden sm:block h-5 w-px bg-gray-200" />
 
 						{/* Search Inputs */}
-						<div className="relative">
-							<Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
-							<input
-								type="text"
-								placeholder="Referrer..."
-								value={filters.referrer}
-								onChange={(e) => handleFilterChange("referrer", e.target.value)}
-								onKeyPress={handleKeyPress}
-								className="w-32 pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent placeholder:text-gray-400"
-							/>
-						</div>
-						<div className="relative">
-							<Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
-							<input
-								type="text"
-								placeholder="Event Key..."
-								value={filters.event_key}
-								onChange={(e) => handleFilterChange("event_key", e.target.value)}
-								onKeyPress={handleKeyPress}
-								className="w-32 pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent placeholder:text-gray-400"
-							/>
+						<div className="flex items-center gap-2">
+							<div className="relative flex-1 sm:flex-none">
+								<Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+								<input
+									type="text"
+									placeholder="Referrer..."
+									value={filters.referrer}
+									onChange={(e) => handleFilterChange("referrer", e.target.value)}
+									onKeyPress={handleKeyPress}
+									className="w-full sm:w-28 lg:w-32 pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent placeholder:text-gray-400"
+								/>
+							</div>
+							<div className="relative flex-1 sm:flex-none">
+								<Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+								<input
+									type="text"
+									placeholder="Event Key..."
+									value={filters.event_key}
+									onChange={(e) => handleFilterChange("event_key", e.target.value)}
+									onKeyPress={handleKeyPress}
+									className="w-full sm:w-28 lg:w-32 pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent placeholder:text-gray-400"
+								/>
+							</div>
 						</div>
 					</div>
 

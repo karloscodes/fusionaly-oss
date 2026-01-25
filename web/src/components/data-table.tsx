@@ -12,6 +12,7 @@ interface DataTableColumn {
 	render?: (item: DataItem) => ReactNode;
 	align?: ColumnAlignment;
 	widthClass?: string;
+	hideOnMobile?: boolean;
 }
 
 interface DataTableProps {
@@ -109,10 +110,10 @@ const DataTable = ({
 				<>
 					{/* Column Headers */}
 					<div className="flex justify-between text-xs font-medium text-gray-500 py-2">
-						<span className="truncate mr-4 overflow-hidden max-w-[50%]">
+						<span className="truncate mr-4 overflow-hidden flex-1 min-w-0">
 							{columns[0].label}
 						</span>
-						<div className="flex items-center gap-4 tabular-nums">
+						<div className="flex items-center gap-3 sm:gap-6 tabular-nums">
 							{columns.slice(1).map((column) => {
 								const alignment =
 									column.align === "left"
@@ -121,11 +122,12 @@ const DataTable = ({
 											? "text-center"
 											: "text-right";
 								const width = column.widthClass ?? "w-16";
+								const hideOnMobile = column.hideOnMobile ? "hidden sm:block" : "";
 
 								return (
 									<span
 										key={column.name}
-										className={`${width} ${alignment}`}
+										className={`${width} ${alignment} ${hideOnMobile}`}
 									>
 										{column.label}
 									</span>
@@ -142,7 +144,7 @@ const DataTable = ({
 								key={`${item.name}-${item.count}`}
 								className="flex justify-between items-stretch hover:bg-gray-50 transition-colors"
 							>
-								<div className="flex-1 relative max-w-[50%] pr-2">
+								<div className="flex-1 relative min-w-0 pr-2">
 					<div
 						className="absolute inset-0 bg-blue-50/50"
 										style={{
@@ -159,7 +161,7 @@ const DataTable = ({
 									</div>
 								</div>
 
-								<div className="flex items-center gap-4 tabular-nums text-sm py-2 px-2 ml-auto">
+								<div className="flex items-center gap-3 sm:gap-6 tabular-nums text-sm py-2 px-2 ml-auto">
 									{columns.slice(1).map((column) => {
 										const alignment =
 											column.align === "left"
@@ -168,19 +170,21 @@ const DataTable = ({
 													? "text-center"
 													: "text-right";
 										const width = column.widthClass ?? "w-16";
+										const hideOnMobile = column.hideOnMobile ? "hidden sm:inline-block" : "";
 										const rawValue = column.render
 											? column.render(item)
 											: (item as unknown as Record<string, unknown>)[column.name];
 
-										const displayValue =
-											column.render || typeof rawValue !== "number"
+										const displayValue = column.render
+											? rawValue
+											: (typeof rawValue !== "number"
 												? rawValue ?? "—"
-												: formatNumber(rawValue);
+												: formatNumber(rawValue));
 
 										return (
 											<span
 												key={column.name}
-												className={`font-medium ${width} ${alignment}`}
+												className={`font-medium ${width} ${alignment} ${hideOnMobile}`}
 											>
 												{displayValue as ReactNode}
 											</span>
