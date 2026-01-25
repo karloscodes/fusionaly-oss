@@ -29,6 +29,9 @@ func PublicDashboardAction(ctx *cartridge.Context) error {
 		return ctx.Status(fiber.StatusNotFound).SendString("Dashboard not found")
 	}
 
+	// Cache public dashboards for 5 minutes - reduces DB load, CDN-friendly
+	ctx.Set("Cache-Control", "public, max-age=300")
+
 	// Parse timezone from cookie, default to UTC
 	tz := ctx.Cookies("_tz")
 	if tz == "" {
