@@ -1,14 +1,13 @@
 import { usePage } from "@inertiajs/react";
 import { Dashboard, DashboardComponentProps } from "@/components/dashboard";
-import { BarChart3, ExternalLink } from "lucide-react";
 
 type PublicDashboardProps = DashboardComponentProps & {
   website_domain: string;
 };
 
 // Fusionaly Logo Component
-const FusionalyLogo = ({ className = "" }: { className?: string }) => (
-  <span className={`font-semibold font-mono ${className}`}>
+const FusionalyLogo = () => (
+  <span className="text-lg font-semibold font-mono">
     fusionaly<span className="text-[#00D678]">_</span>
   </span>
 );
@@ -22,20 +21,25 @@ export default function PublicDashboard() {
       {/* Top Banner */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <BarChart3 className="w-4 h-4 text-[#00D678]" />
-            <FusionalyLogo className="text-sm text-gray-900" />
-            <span className="hidden sm:inline text-gray-400">·</span>
-            <span className="hidden sm:inline">Privacy-first analytics</span>
+          <div className="flex items-center gap-2">
+            <a
+              href="https://fusionaly.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:opacity-80 transition-opacity"
+            >
+              <FusionalyLogo />
+            </a>
+            <span className="text-gray-300">·</span>
+            <span className="text-sm text-gray-500">Simple analytics</span>
           </div>
           <a
             href="https://fusionaly.com"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm font-medium text-gray-700 hover:text-gray-900 flex items-center gap-1"
+            className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
           >
             Get your own
-            <ExternalLink className="w-3 h-3" />
           </a>
         </div>
       </div>
@@ -55,22 +59,19 @@ export default function PublicDashboard() {
         />
       </div>
 
-      {/* Bottom CTA */}
-      <div className="bg-gray-900 text-white">
-        <div className="max-w-7xl mx-auto px-4 py-12 text-center">
-          <h2 className="text-xl sm:text-2xl font-bold mb-3">
-            Want analytics like this for your site?
-          </h2>
-          <p className="text-gray-400 mb-6 max-w-md mx-auto">
-            <FusionalyLogo className="text-white" /> is open source, privacy-first analytics. Self-host for free or try Pro.
+      {/* Bottom CTA - subtle, not aggressive */}
+      <div className="border-t border-gray-200 bg-white">
+        <div className="max-w-7xl mx-auto px-4 py-10 text-center">
+          <p className="text-gray-600 mb-4">
+            Like what you see? Fusionaly is free and open source.
           </p>
           <a
             href="https://fusionaly.com"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-block bg-white text-gray-900 font-semibold px-6 py-3 rounded-lg hover:bg-gray-100 transition-colors"
+            className="inline-block text-sm font-medium text-gray-900 border border-gray-300 px-5 py-2.5 rounded-lg hover:border-gray-400 hover:bg-gray-50 transition-colors"
           >
-            Get Started Free
+            Learn more
           </a>
         </div>
       </div>
