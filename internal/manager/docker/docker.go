@@ -585,7 +585,7 @@ func (d *Docker) DeployApp(data config.ConfigData, name string) error {
 		"--pull", "always",
 		"-v", filepath.Join(data.InstallDir, "storage") + ":/app/storage",
 		"-v", filepath.Join(data.InstallDir, "logs") + ":/app/logs",
-		"-e", "FUSIONALY_LOG_LEVEL=debug",
+		"-e", "FUSIONALY_LOG_LEVEL=info",
 		"-e", "FUSIONALY_APP_PORT=8080",
 		"-e", "FUSIONALY_DOMAIN=" + data.Domain,
 		"-e", "FUSIONALY_PRIVATE_KEY=" + data.PrivateKey,
