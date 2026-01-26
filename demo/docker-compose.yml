@@ -1,6 +1,6 @@
 services:
   fusionaly-web:
-    image: karloscodes/fusionaly-beta:latest
+    image: karloscodes/fusionaly:latest
     pull_policy: always
     container_name: fusionaly-devbox
     environment:

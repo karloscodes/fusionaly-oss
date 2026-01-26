@@ -57,7 +57,7 @@ else
 fi
 
 print_info "Pulling latest Fusionaly image..."
-if docker pull karloscodes/fusionaly-oss:latest; then
+if docker pull karloscodes/fusionaly:latest; then
   print_status "Latest image pulled successfully"
 else
   print_warn "Could not pull latest image, using cached version"
