@@ -106,10 +106,10 @@ func MountAppRoutesWithoutSession(srv *cartridge.Server) {
 	}
 
 	// Onboarding config
-	// Strict rate limiting + no Sec-Fetch-Site (internal API calls)
+	// No rate limiting - one-time setup flow, not sensitive auth
+	// No Sec-Fetch-Site - internal page navigation
 	onboardingConfig := &cartridge.RouteConfig{
 		EnableSecFetchSite: cartridge.Bool(false),
-		CustomMiddleware:   []fiber.Handler{authRateLimiter},
 	}
 
 	// Get dependencies for middleware
