@@ -78,7 +78,7 @@ func TestUpgraderConfigSwitch(t *testing.T) {
 
 	// Create .env with OSS image
 	envContent := `FUSIONALY_DOMAIN=test.example.com
-APP_IMAGE=karloscodes/fusionaly-beta:latest
+APP_IMAGE=karloscodes/fusionaly:latest
 CADDY_IMAGE=caddy:2.7-alpine
 INSTALL_DIR=` + tmpDir + `
 BACKUP_PATH=` + filepath.Join(tmpDir, "backups") + `
@@ -98,7 +98,7 @@ FUSIONALY_PRIVATE_KEY=12345678901234567890123456789012
 
 	// Verify initial state is OSS
 	data := upg.config.GetData()
-	if data.AppImage != "karloscodes/fusionaly-beta:latest" {
+	if data.AppImage != "karloscodes/fusionaly:latest" {
 		t.Errorf("initial AppImage = %q, want OSS image", data.AppImage)
 	}
 
@@ -127,7 +127,7 @@ func TestGetDomain(t *testing.T) {
 	envFile := filepath.Join(tmpDir, ".env")
 
 	envContent := `FUSIONALY_DOMAIN=analytics.example.com
-APP_IMAGE=karloscodes/fusionaly-beta:latest
+APP_IMAGE=karloscodes/fusionaly:latest
 CADDY_IMAGE=caddy:2.7-alpine
 INSTALL_DIR=` + tmpDir + `
 BACKUP_PATH=` + filepath.Join(tmpDir, "backups") + `

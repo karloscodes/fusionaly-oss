@@ -103,8 +103,8 @@ func TestGeneratePrivateKey_Uniqueness(t *testing.T) {
 func TestNewConfig_Defaults(t *testing.T) {
 	c := NewConfig(testLogger(t))
 	data := c.data
-	if data.AppImage != "karloscodes/fusionaly-beta:latest" {
-		t.Errorf("AppImage default = %q, want %q", data.AppImage, "karloscodes/fusionaly-beta:latest")
+	if data.AppImage != "karloscodes/fusionaly:latest" {
+		t.Errorf("AppImage default = %q, want %q", data.AppImage, "karloscodes/fusionaly:latest")
 	}
 	if data.CaddyImage != "caddy:2.7-alpine" {
 		t.Errorf("CaddyImage default = %q, want %q", data.CaddyImage, "caddy:2.7-alpine")
@@ -449,7 +449,7 @@ func TestConfigurationDefaults(t *testing.T) {
 		data := c.GetData()
 		
 		expectedDefaults := map[string]string{
-			"AppImage":   "karloscodes/fusionaly-beta:latest",
+			"AppImage":   "karloscodes/fusionaly:latest",
 			"CaddyImage": "caddy:2.7-alpine",
 			"InstallDir": "/opt/fusionaly",
 		}

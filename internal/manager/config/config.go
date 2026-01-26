@@ -47,7 +47,7 @@ func NewConfig(logger *logging.Logger) *Config {
 		logger: logger,
 		data: ConfigData{
 			Domain:       "",
-			AppImage:     "karloscodes/fusionaly-beta:latest",
+			AppImage:     "karloscodes/fusionaly:latest",
 			CaddyImage:   "caddy:2.7-alpine",
 			InstallDir:   "/opt/fusionaly",
 			BackupPath:   "/opt/fusionaly/storage/backups",
@@ -253,7 +253,7 @@ func (c *Config) collectFromEnvironment() error {
 	// Set default values for other fields
 	c.data.InstallDir = "/opt/fusionaly"
 	c.data.BackupPath = filepath.Join(c.data.InstallDir, "backups")
-	c.data.AppImage = "karloscodes/fusionaly-beta:latest"
+	c.data.AppImage = "karloscodes/fusionaly:latest"
 	c.data.CaddyImage = "caddy:2.7-alpine"
 
 	return nil
