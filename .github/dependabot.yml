@@ -1,88 +1,61 @@
 version: 2
 updates:
-  # Enable version updates for Go modules
+  # Go modules - grouped, major/security only
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
       interval: "monthly"
-      day: "1"
-      time: "09:00"
-    open-pull-requests-limit: 5
-    reviewers:
-      - "karloscodes"
-    assignees:
-      - "karloscodes"
+    open-pull-requests-limit: 2
+    groups:
+      go-all:
+        patterns: ["*"]
     commit-message:
-      prefix: "deps"
-      prefix-development: "deps-dev"
-      include: "scope"
-    # Only major updates and security fixes
+      prefix: "deps(go)"
     ignore:
       - dependency-name: "*"
-        update-types:
-          ["version-update:semver-minor", "version-update:semver-patch"]
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
 
-  # Enable version updates for npm packages
+  # npm (web) - grouped, major/security only
   - package-ecosystem: "npm"
     directory: "/web"
     schedule:
       interval: "monthly"
-      day: "1"
-      time: "09:00"
     open-pull-requests-limit: 2
-    reviewers:
-      - "karloscodes"
-    assignees:
-      - "karloscodes"
+    groups:
+      npm-all:
+        patterns: ["*"]
     commit-message:
-      prefix: "deps"
-      prefix-development: "deps-dev"
-      include: "scope"
-    # Only major updates and security fixes
+      prefix: "deps(web)"
     ignore:
       - dependency-name: "*"
-        update-types:
-          ["version-update:semver-minor", "version-update:semver-patch"]
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
 
-  # Enable version updates for npm packages in e2e directory
+  # npm (e2e) - grouped, major/security only
   - package-ecosystem: "npm"
     directory: "/e2e"
     schedule:
       interval: "monthly"
-      day: "1"
-      time: "09:00"
     open-pull-requests-limit: 1
-    reviewers:
-      - "karloscodes"
-    assignees:
-      - "karloscodes"
+    groups:
+      e2e-all:
+        patterns: ["*"]
     commit-message:
-      prefix: "deps"
-      prefix-development: "deps-dev"
-      include: "scope"
-    # Only major updates and security fixes
+      prefix: "deps(e2e)"
     ignore:
       - dependency-name: "*"
-        update-types:
-          ["version-update:semver-minor", "version-update:semver-patch"]
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
 
-  # Enable version updates for GitHub Actions
+  # GitHub Actions - grouped, major/security only
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "monthly"
-      day: "1"
-      time: "09:00"
     open-pull-requests-limit: 1
-    reviewers:
-      - "karloscodes"
-    assignees:
-      - "karloscodes"
+    groups:
+      actions-all:
+        patterns: ["*"]
     commit-message:
       prefix: "ci"
-      include: "scope"
-    # Only major updates and security fixes
     ignore:
       - dependency-name: "*"
-        update-types:
-          ["version-update:semver-minor", "version-update:semver-patch"]
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
