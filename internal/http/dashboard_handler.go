@@ -18,6 +18,7 @@ import (
 	"fusionaly/internal/annotations"
 	"fusionaly/internal/events"
 	"fusionaly/internal/pkg/async"
+	"fusionaly/internal/settings"
 	"github.com/karloscodes/cartridge"
 	"github.com/karloscodes/cartridge/flash"
 	"github.com/karloscodes/cartridge/inertia"
@@ -77,8 +78,12 @@ func fetchMetrics(db *gorm.DB, timeFrame *timeframe.TimeFrame, websiteId int, lo
 	// Create a WebsiteScopedQueryParams to pass to all metrics functions
 	queryParams := analytics.NewWebsiteScopedQueryParams(timeFrame, websiteId)
 
-	// Conversion goals - Pro feature
-	conversionGoals := []string{}
+	// Load conversion goals from settings
+	conversionGoals, err := settings.GetWebsiteGoals(db, uint(websiteId))
+	if err != nil {
+		logger.Error("Error fetching conversion goals", slog.Any("error", err))
+		conversionGoals = []string{}
+	}
 
 	// Consolidated async tasks including both current and comparison metrics
 	tasks := []async.Task{
