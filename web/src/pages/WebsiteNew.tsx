@@ -45,9 +45,9 @@ const WebsiteNew: React.FC = () => {
         {/* Centered Card */}
         <div className="flex justify-center">
           <div className="w-full max-w-md">
-            <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+            <div className="bg-white border border-black rounded-xl overflow-hidden">
               {/* Card Header */}
-              <div className="px-6 py-5 border-b border-gray-100 bg-gray-50/50">
+              <div className="px-6 py-5 border-b border-gray-200">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-black rounded-lg">
                     <Globe className="w-5 h-5 text-white" />
@@ -64,7 +64,7 @@ const WebsiteNew: React.FC = () => {
                 <form onSubmit={handleSubmit} className="space-y-5">
 
                   <div>
-                    <label htmlFor="domain" className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="domain" className="block text-sm font-medium text-gray-900 mb-2">
                       Website Domain
                     </label>
                     <Input
@@ -121,7 +121,7 @@ const WebsiteNew: React.FC = () => {
               </div>
 
               {/* Card Footer */}
-              <div className="px-6 py-4 bg-gray-50/50 border-t border-gray-100">
+              <div className="px-6 py-4 border-t border-gray-200">
                 <p className="text-xs text-gray-500 text-center">
                   After creation, you'll receive a tracking script to add to your website.
                 </p>
