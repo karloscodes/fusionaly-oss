@@ -302,65 +302,7 @@
 // 		}
 // 	});
 
-// 	// PHASE 6: Admin Pages - Lens and Saved Queries
-// 	test("6. Admin Pages - Lens and Saved Queries", async ({ page }) => {
-// 		helpers.log("=== PHASE 6: LENS PAGE AND SAVED QUERIES ===");
-
-// 		await helpers.login(TEST_EMAIL, TEST_PASSWORD, { expectSuccess: true });
-
-// 		await helpers.navigateTo("/admin/lens");
-
-// 		// Verify lens page loads
-// 		await helpers.waitForElement('h1', { timeout: 10000 });
-// 		const heading = await page.textContent('h1');
-// 		expect(heading).toContain('Lens');
-
-// 		// Lens page MUST have proper interface
-// 		const newQueryButton = await page.locator('button:has-text("New Query")');
-// 		expect(await newQueryButton.isVisible()).toBe(true);
-// 		helpers.log("✅ Lens page has New Query button");
-
-// 		// Test the New Query functionality - MUST work
-// 		await newQueryButton.click();
-
-// 		// Query interface MUST open
-// 		const queryInterfaceElements = await Promise.all([
-// 			helpers.waitForElement('.fixed.inset-0.z-50', { timeout: 8000, silent: true }).then(() => true).catch(() => false),
-// 			helpers.waitForElement('[data-testid="query-builder"]', { timeout: 5000, silent: true }).then(() => true).catch(() => false),
-// 			helpers.waitForElement('textarea', { timeout: 5000, silent: true }).then(() => true).catch(() => false),
-// 			helpers.waitForElement('.modal', { timeout: 5000, silent: true }).then(() => true).catch(() => false),
-// 		]);
-
-// 		const hasQueryInterface = queryInterfaceElements.some(Boolean);
-// 		expect(hasQueryInterface).toBe(true);
-// 		helpers.log("✅ New Query interface opened successfully");
-
-// 		// Close interface - MUST have close functionality
-// 		const closeElements = await Promise.all([
-// 			page.locator('button[title*="Close"], button[aria-label*="Close"]').isVisible().catch(() => false),
-// 			page.locator('button:has-text("×"), button:has-text("✕")').isVisible().catch(() => false),
-// 			page.locator('.close-button').isVisible().catch(() => false),
-// 		]);
-
-// 		if (closeElements.some(Boolean)) {
-// 			await page.click('button[title*="Close"], button[aria-label*="Close"], button:has-text("×"), button:has-text("✕"), .close-button');
-// 		} else {
-// 			// Escape key must work as fallback
-// 			await page.keyboard.press('Escape');
-// 		}
-// 		await page.waitForTimeout(1000);
-// 		helpers.log("✅ Query interface closed successfully");
-
-// 		// Saved queries section MUST exist
-// 		const queriesContent = await page.textContent('body');
-// 		const hasQueriesSection = queriesContent.includes('saved queries') ||
-// 			queriesContent.includes('queries') ||
-// 			queriesContent.includes('No saved queries');
-// 		expect(hasQueriesSection).toBe(true);
-// 		helpers.log("✅ Saved queries section verified");
-// 	});
-
-// 	// PHASE 7: Settings - Form Submissions
+// 	// PHASE 6: Settings - Form Submissions (Lens/Ask AI moved to Pro)
 // 	test("7. Settings - Form Submissions", async ({ page }) => {
 // 		helpers.log("=== PHASE 7: SETTINGS FORM FUNCTIONALITY ===");
 
@@ -546,10 +488,9 @@
 // 		// Test direct admin access without auth - MUST redirect
 // 		const protectedRoutes = [
 // 			"/admin/dashboard",
-// 			"/admin/websites", 
+// 			"/admin/websites",
 // 			"/admin/settings",
-// 			"/admin/events",
-// 			"/admin/lens"
+// 			"/admin/events"
 // 		];
 
 // 		for (const route of protectedRoutes) {
@@ -571,9 +512,8 @@
 // 		const adminPages = [
 // 			"/admin/dashboard",
 // 			"/admin/websites",
-// 			"/admin/settings", 
-// 			"/admin/events",
-// 			"/admin/lens"
+// 			"/admin/settings",
+// 			"/admin/events"
 // 		];
 
 // 		for (const pagePath of adminPages) {
@@ -621,7 +561,6 @@
 // 			{ path: "/admin/dashboard", name: "Dashboard" },
 // 			{ path: "/admin/websites", name: "Websites" },
 // 			{ path: "/admin/events", name: "Events" },
-// 			{ path: "/admin/lens", name: "Lens" },
 // 			{ path: "/admin/settings", name: "Settings" }
 // 		];
 
@@ -667,10 +606,9 @@
 // 		helpers.log("🎉 === COMPLETE USER JOURNEY SUCCESSFUL ===");
 // 		helpers.log(`📊 Journey Summary:
 // 		✅ Onboarding completed with email-based setup
-// 		✅ Website management (create, edit, delete, validation)  
-// 		✅ All admin pages verified (Dashboard, Events, Lens, Settings)
+// 		✅ Website management (create, edit, delete, validation)
+// 		✅ All admin pages verified (Dashboard, Events, Settings)
 // 		✅ Settings forms tested across all tabs
-// 		✅ Saved queries functionality verified
 // 		✅ Event ingestion API integration verified
 // 		✅ Authentication and security testing completed
 // 		✅ Performance verification passed
