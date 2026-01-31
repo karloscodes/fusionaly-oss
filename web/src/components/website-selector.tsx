@@ -81,7 +81,7 @@ export const WebsiteSelector = ({
 			<div
 				data-testid="website-selector"
 				className={cn(
-					"inline-flex items-center gap-2 px-4 py-2 bg-gray-100 border-gray-300 border rounded text-gray-500 text-sm justify-center min-w-[200px]",
+					"inline-flex items-center gap-2 px-4 py-2 bg-black/5 border-black/20 border rounded text-black/50 text-sm justify-center min-w-[200px]",
 					className,
 				)}
 			>

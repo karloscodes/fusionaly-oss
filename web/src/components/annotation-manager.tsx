@@ -137,7 +137,7 @@ export const AnnotationForm = ({ websiteId, annotation, onClose, initialDate }: 
 							variant="outline"
 							className={cn(
 								"w-full justify-start text-left font-normal",
-								!selectedDate && "text-gray-500"
+								!selectedDate && "text-black/50"
 							)}
 						>
 							<CalendarIcon className="mr-2 h-4 w-4" />
@@ -160,7 +160,7 @@ export const AnnotationForm = ({ websiteId, annotation, onClose, initialDate }: 
 								<select
 									value={hours}
 									onChange={(e) => setHours(e.target.value)}
-									className="h-9 rounded-md border border-gray-300 bg-white px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-black"
+									className="h-9 rounded-md border border-black/20 bg-white px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-black"
 								>
 									{hourOptions.map((h) => (
 										<option key={h} value={h}>{h}</option>
@@ -170,7 +170,7 @@ export const AnnotationForm = ({ websiteId, annotation, onClose, initialDate }: 
 								<select
 									value={minutes}
 									onChange={(e) => setMinutes(e.target.value)}
-									className="h-9 rounded-md border border-gray-300 bg-white px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-black"
+									className="h-9 rounded-md border border-black/20 bg-white px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-black"
 								>
 									{minuteOptions.map((m) => (
 										<option key={m} value={m}>{m}</option>
@@ -283,11 +283,11 @@ export const AnnotationDetailDialog = ({
 						</DialogHeader>
 						<div className="space-y-4 py-2">
 							{annotation.description && (
-								<p className="text-sm text-gray-600 leading-relaxed">
+								<p className="text-sm text-black/60 leading-relaxed">
 									{annotation.description}
 								</p>
 							)}
-							<div className="flex items-center gap-2 text-sm text-gray-500">
+							<div className="flex items-center gap-2 text-sm text-black/50">
 								<CalendarIcon className="w-4 h-4" />
 								<span>{formatDate(annotation.annotation_date)}</span>
 							</div>

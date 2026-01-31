@@ -60,7 +60,7 @@ export const Lens: React.FC = () => {
 		>
 			<div className="py-8">
 				<div className="max-w-2xl mx-auto">
-					<Card className="border-2 border-dashed border-gray-300 bg-gray-50/50">
+					<Card className="border-2 border-dashed border-black/20 bg-black/5/50">
 						<CardHeader className="text-center pb-2">
 							<div className="mx-auto mb-4 w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center">
 								<InfinityIcon className="w-8 h-8 text-white" />
@@ -80,8 +80,8 @@ export const Lens: React.FC = () => {
 											<feature.icon className="w-5 h-5 text-indigo-600" />
 										</div>
 										<div>
-											<h3 className="font-medium text-gray-900">{feature.title}</h3>
-											<p className="text-sm text-gray-600">{feature.description}</p>
+											<h3 className="font-medium text-black">{feature.title}</h3>
+											<p className="text-sm text-black/60">{feature.description}</p>
 										</div>
 									</div>
 								))}
@@ -91,7 +91,7 @@ export const Lens: React.FC = () => {
 								<Button
 									asChild
 									size="lg"
-									className="bg-black hover:bg-gray-800 text-white gap-2"
+									className="bg-black hover:bg-black/80 text-white gap-2"
 								>
 									<a
 										href="https://fusionaly.com/#pricing"

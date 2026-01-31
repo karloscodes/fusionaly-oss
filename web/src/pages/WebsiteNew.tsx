@@ -47,14 +47,14 @@ const WebsiteNew: React.FC = () => {
           <div className="w-full max-w-md">
             <div className="bg-white border border-black rounded-xl overflow-hidden">
               {/* Card Header */}
-              <div className="px-6 py-5 border-b border-gray-200">
+              <div className="px-6 py-5 border-b border-black/10">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-black rounded-lg">
                     <Globe className="w-5 h-5 text-white" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-semibold text-gray-900">Add New Website</h2>
-                    <p className="text-sm text-gray-500">Start tracking analytics for your site</p>
+                    <h2 className="text-lg font-semibold text-black">Add New Website</h2>
+                    <p className="text-sm text-black/50">Start tracking analytics for your site</p>
                   </div>
                 </div>
               </div>
@@ -64,7 +64,7 @@ const WebsiteNew: React.FC = () => {
                 <form onSubmit={handleSubmit} className="space-y-5">
 
                   <div>
-                    <label htmlFor="domain" className="block text-sm font-medium text-gray-900 mb-2">
+                    <label htmlFor="domain" className="block text-sm font-medium text-black mb-2">
                       Website Domain
                     </label>
                     <Input
@@ -86,7 +86,7 @@ const WebsiteNew: React.FC = () => {
                         Please enter a valid domain name (e.g., example.com)
                       </p>
                     ) : (
-                      <p className="text-gray-500 mt-2 text-xs">
+                      <p className="text-black/50 mt-2 text-xs">
                         Enter your website domain without http:// or https://
                       </p>
                     )}
@@ -105,7 +105,7 @@ const WebsiteNew: React.FC = () => {
                     <Button
                       type="submit"
                       disabled={form.processing || !isValidDomain || form.data.domain.trim() === ''}
-                      className="flex-1 h-11 bg-black hover:bg-gray-800"
+                      className="flex-1 h-11 bg-black hover:bg-black/80"
                     >
                       {form.processing ? (
                         'Creating...'
@@ -121,8 +121,8 @@ const WebsiteNew: React.FC = () => {
               </div>
 
               {/* Card Footer */}
-              <div className="px-6 py-4 border-t border-gray-200">
-                <p className="text-xs text-gray-500 text-center">
+              <div className="px-6 py-4 border-t border-black/10">
+                <p className="text-xs text-black/50 text-center">
                   After creation, you'll receive a tracking script to add to your website.
                 </p>
               </div>

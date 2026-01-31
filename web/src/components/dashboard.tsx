@@ -510,7 +510,7 @@ export const Dashboard = (props: DashboardComponentProps) => {
 		if (!hasData) {
 			return (
 				<div className="flex h-64 w-full items-center justify-center">
-					<p className="text-gray-500">
+					<p className="text-black/50">
 						No data available for this time period
 					</p>
 				</div>
@@ -586,15 +586,15 @@ export const Dashboard = (props: DashboardComponentProps) => {
 						if (!active || !payload || payload.length === 0) return null;
 
 						return (
-							<div className="bg-gray-50 border border-gray-300 rounded-lg shadow-lg p-4 min-w-[180px]">
-								<div className="text-gray-900 text-sm font-semibold mb-3 pb-2 border-b border-gray-200">
+							<div className="bg-black/5 border border-black/20 rounded-lg shadow-lg p-4 min-w-[180px]">
+								<div className="text-black text-sm font-semibold mb-3 pb-2 border-b border-black/10">
 									{label}
 								</div>
 								<div className="space-y-1">
 									{payload.map((entry, index) => (
 										<div key={index} className="flex justify-between items-center text-sm gap-4">
-											<span className="text-gray-600">{entry.name}</span>
-											<span className="font-medium text-gray-900">
+											<span className="text-black/60">{entry.name}</span>
+											<span className="font-medium text-black">
 												{entry.name === "Revenue"
 													? `$${((entry.value as number) / 100).toFixed(2)}`
 													: formatNumber(entry.value as number)
@@ -604,8 +604,8 @@ export const Dashboard = (props: DashboardComponentProps) => {
 									))}
 								</div>
 								{props.current_website_id && !props.is_public_view && (
-									<div className="mt-2 pt-2 border-t border-gray-200">
-										<p className="text-xs text-gray-400">Click bar to add annotation</p>
+									<div className="mt-2 pt-2 border-t border-black/10">
+										<p className="text-xs text-black/40">Click bar to add annotation</p>
 									</div>
 								)}
 							</div>
@@ -688,7 +688,7 @@ export const Dashboard = (props: DashboardComponentProps) => {
 			<div className="flex flex-col gap-6">
 				<div className="flex flex-wrap justify-between items-center gap-4">
 					<div className="flex items-center gap-3">
-						<h1 className="font-bold text-gray-900 flex items-center text-2xl">
+						<h1 className="font-bold text-black flex items-center text-2xl">
 							<LayoutDashboard className="w-6 h-6 mr-2 inline" />
 							Dashboard
 						</h1>
@@ -716,7 +716,7 @@ export const Dashboard = (props: DashboardComponentProps) => {
 										<form action={`/admin/websites/${selectedWebsiteId}/share/disable`} method="POST">
 											<button
 												type="submit"
-												className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700"
+												className="px-3 py-1.5 text-sm text-black/50 hover:text-black/70"
 											>
 												Disable
 											</button>
@@ -726,7 +726,7 @@ export const Dashboard = (props: DashboardComponentProps) => {
 									<form action={`/admin/websites/${selectedWebsiteId}/share/enable`} method="POST">
 										<button
 											type="submit"
-											className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 flex items-center"
+											className="px-3 py-1.5 text-sm text-black/50 hover:text-black/70 flex items-center"
 										>
 											<Share2 className="h-4 w-4 mr-1" />
 											Share
@@ -803,7 +803,7 @@ export const Dashboard = (props: DashboardComponentProps) => {
 									Visitors
 								</button>
 								{data.conversion_goals && data.conversion_goals.length > 0 && (
-									<div className="flex items-center space-x-2 sm:space-x-3 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors">
+									<div className="flex items-center space-x-2 sm:space-x-3 px-3 py-2 bg-black/5 rounded-lg border border-black/10 hover:bg-black/5 transition-colors">
 										<Checkbox
 											id="show-revenue"
 											checked={showRevenueLine}
@@ -812,7 +812,7 @@ export const Dashboard = (props: DashboardComponentProps) => {
 										/>
 										<label
 											htmlFor="show-revenue"
-											className="text-sm font-medium text-gray-900 cursor-pointer select-none"
+											className="text-sm font-medium text-black cursor-pointer select-none"
 										>
 											Revenue
 										</label>
@@ -1017,7 +1017,7 @@ export const Dashboard = (props: DashboardComponentProps) => {
 								)}
 								{deviceTab === "os" && data && !data.top_operating_systems && (
 									<div className="flex items-center justify-center h-full">
-										<p className="text-gray-500">Operating systems data is currently unavailable. Please ensure the application is fully updated and try a hard refresh.</p>
+										<p className="text-black/50">Operating systems data is currently unavailable. Please ensure the application is fully updated and try a hard refresh.</p>
 									</div>
 								)}
 							</div>
@@ -1037,7 +1037,7 @@ export const Dashboard = (props: DashboardComponentProps) => {
 										<ShadcnTooltip open={tooltipOpen} onOpenChange={setTooltipOpen}>
 											<TooltipTrigger asChild>
 												<button
-													className="text-gray-400 hover:text-gray-600 cursor-pointer"
+													className="text-black/40 hover:text-black/60 cursor-pointer"
 													onClick={() => setTooltipOpen(!tooltipOpen)}
 												>
 													<svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1047,11 +1047,11 @@ export const Dashboard = (props: DashboardComponentProps) => {
 													</svg>
 												</button>
 											</TooltipTrigger>
-											<TooltipContent className="bg-gray-800 text-white border-gray-700">
+											<TooltipContent className="bg-black/80 text-white border-black/70">
 												<p className="mb-2">Configure which events are tracked as conversion goals</p>
 												<a
 													href={`/admin/websites/${selectedWebsiteId}/edit`}
-													className="text-white underline hover:text-gray-200"
+													className="text-white underline hover:text-black/20"
 												>
 													Edit Goals
 												</a>
@@ -1091,7 +1091,7 @@ export const Dashboard = (props: DashboardComponentProps) => {
 						render: (item) => {
 							const isGoal = data.conversion_goals && data.conversion_goals.includes(item.name);
 							return isGoal ? (
-								<span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border border-gray-800 text-gray-900 bg-white whitespace-nowrap">
+								<span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border border-black/80 text-black bg-white whitespace-nowrap">
 									<Check className="w-3 h-3" />
 									Goal
 								</span>
@@ -1146,7 +1146,7 @@ export const Dashboard = (props: DashboardComponentProps) => {
 						</CardHeader>
 						<CardContent className="pt-2">
 							<div className="h-64 flex items-center justify-center">
-								<p className="text-sm text-gray-500">Loading visitor flow data...</p>
+								<p className="text-sm text-black/50">Loading visitor flow data...</p>
 							</div>
 						</CardContent>
 					</Card>

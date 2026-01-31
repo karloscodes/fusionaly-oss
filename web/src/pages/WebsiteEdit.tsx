@@ -75,9 +75,9 @@ const ConversionGoalsSelector: React.FC<{
             placeholder="Search by event name..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full border border-gray-300 focus:border-black focus:ring-black rounded-md pl-9 py-2 text-sm"
+            className="w-full border border-black/20 focus:border-black focus:ring-black rounded-md pl-9 py-2 text-sm"
           />
-          <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+          <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-black/40">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="14"
@@ -105,20 +105,20 @@ const ConversionGoalsSelector: React.FC<{
             return (
               <div
                 key={event.event_name}
-                className="flex items-center px-4 py-2 border-b last:border-0 hover:bg-gray-50"
+                className="flex items-center px-4 py-2 border-b last:border-0 hover:bg-black/5"
               >
                 <input
                   type="checkbox"
                   id={`goal-${event.event_name}`}
                   checked={isChecked}
                   onChange={() => handleGoalToggle(event.event_name)}
-                  className="h-4 w-4 text-black focus:ring-black border-gray-300 rounded"
+                  className="h-4 w-4 text-black focus:ring-black border-black/20 rounded"
                 />
                 <label
                   htmlFor={`goal-${event.event_name}`}
                   className="ml-3 cursor-pointer flex-grow"
                 >
-                  <span className="font-medium text-gray-900">
+                  <span className="font-medium text-black">
                     {event.event_name}
                   </span>
                 </label>
@@ -127,10 +127,10 @@ const ConversionGoalsSelector: React.FC<{
           })
         ) : (
           <div className="p-6 text-center">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-black/60">
               No events found for this website{searchTerm ? " matching your search" : ""}.
             </p>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-black/50 mt-1">
               Events will appear here once your website starts tracking user interactions.
             </p>
           </div>
@@ -192,7 +192,7 @@ const WebsiteEdit: React.FC = () => {
           title={`Settings of ${website.domain}`}
           icon={Settings}
           leftContent={
-            <a href="/admin" className="text-gray-600 hover:text-gray-900 mr-4">
+            <a href="/admin" className="text-black/60 hover:text-black mr-4">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="20"
@@ -246,7 +246,7 @@ const WebsiteEdit: React.FC = () => {
                 </h2>
                 <div className="space-y-4">
                   <div>
-                    <label htmlFor="domain" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="domain" className="block text-sm font-medium text-black/70 mb-1">
                       Domain
                     </label>
                     <input
@@ -255,10 +255,10 @@ const WebsiteEdit: React.FC = () => {
                       id="domain"
                       value={website.domain}
                       readOnly
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-500 cursor-not-allowed sm:text-sm"
+                      className="block w-full px-3 py-2 border border-black/20 rounded-md shadow-sm bg-black/5 text-black/50 cursor-not-allowed sm:text-sm"
                       placeholder="example.com"
                     />
-                    <p className="mt-1 text-xs text-gray-500">
+                    <p className="mt-1 text-xs text-black/50">
                       Domain cannot be changed after website creation to preserve analytics data integrity.
                     </p>
                   </div>
@@ -266,7 +266,7 @@ const WebsiteEdit: React.FC = () => {
               </div>
 
               {/* Conversion Goals Section */}
-              <div className="pt-6 border-t border-gray-200">
+              <div className="pt-6 border-t border-black/10">
                 <h2 className="text-xl font-semibold flex items-center gap-2 mb-4">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -285,12 +285,12 @@ const WebsiteEdit: React.FC = () => {
                   </svg>
                   Conversion Goals
                 </h2>
-                <p className="text-sm text-gray-500 mb-4">
+                <p className="text-sm text-black/50 mb-4">
                   Select the events you want to track as conversion goals for this website.
                   These will be used in conversion rate calculations and funnel analysis.
                 </p>
 
-                <div className="bg-gray-50 border rounded-lg p-4 mb-4">
+                <div className="bg-black/5 border rounded-lg p-4 mb-4">
                   <div className="flex items-start gap-3">
                     <div className="shrink-0 mt-0.5">
                       <svg
@@ -303,14 +303,14 @@ const WebsiteEdit: React.FC = () => {
                         strokeWidth="2"
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        className="text-gray-600"
+                        className="text-black/60"
                       >
                         <circle cx="12" cy="12" r="10" />
                         <line x1="12" y1="16" x2="12" y2="12" />
                         <line x1="12" y1="8" x2="12.01" y2="8" />
                       </svg>
                     </div>
-                    <div className="text-sm text-gray-700">
+                    <div className="text-sm text-black/70">
                       <p>
                         Events are automatically collected when users interact with your website.
                         Choose which events represent important conversions for your business.
@@ -328,7 +328,7 @@ const WebsiteEdit: React.FC = () => {
 
               {/* Privacy Mode Section - Hidden but functional */}
               {/* Uncomment to allow users to toggle between privacy and tracking modes
-              <div className="pt-6 border-t border-gray-200">
+              <div className="pt-6 border-t border-black/10">
                 <h2 className="text-xl font-semibold flex items-center gap-2 mb-4">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -346,7 +346,7 @@ const WebsiteEdit: React.FC = () => {
                   </svg>
                   Privacy & Tracking Settings
                 </h2>
-                <p className="text-sm text-gray-500 mb-4">
+                <p className="text-sm text-black/50 mb-4">
                   Choose how visitor tracking works for this website. Both modes are privacy-compliant (no IP storage).
                 </p>
 
@@ -356,36 +356,36 @@ const WebsiteEdit: React.FC = () => {
                       <div className="flex-1">
                         <h3 className="font-medium mb-2">Tracking Mode</h3>
                         <div className="space-y-3">
-                          <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                          <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-black/5 transition-colors">
                             <input
                               type="radio"
                               name="privacy_mode_radio"
                               value="privacy"
                               checked={privacyMode === 'privacy'}
                               onChange={(e) => setPrivacyMode(e.target.value)}
-                              className="w-4 h-4 text-black border-gray-300 focus:ring-black"
+                              className="w-4 h-4 text-black border-black/20 focus:ring-black"
                             />
                             <div className="flex-1">
                               <div className="font-medium text-sm">Privacy Mode</div>
-                              <div className="text-xs text-gray-600 mt-1">
+                              <div className="text-xs text-black/60 mt-1">
                                 ✓ Visitor IDs rotate daily<br/>
                                 ✓ Aggregate analytics only<br/>
                                 ✗ No multi-day user journeys
                               </div>
                             </div>
                           </label>
-                          <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                          <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-black/5 transition-colors">
                             <input
                               type="radio"
                               name="privacy_mode_radio"
                               value="tracking"
                               checked={privacyMode === 'tracking'}
                               onChange={(e) => setPrivacyMode(e.target.value)}
-                              className="w-4 h-4 text-black border-gray-300 focus:ring-black"
+                              className="w-4 h-4 text-black border-black/20 focus:ring-black"
                             />
                             <div className="flex-1">
                               <div className="font-medium text-sm">Tracking Mode (Default)</div>
-                              <div className="text-xs text-gray-600 mt-1">
+                              <div className="text-xs text-black/60 mt-1">
                                 ✓ Stable visitor IDs (cross-session)<br/>
                                 ✓ Full journey tracking & cohorts<br/>
                                 ✓ Still privacy-compliant (hashed IDs only)
@@ -414,22 +414,22 @@ const WebsiteEdit: React.FC = () => {
               */}
 
               {/* Subdomain Tracking Section */}
-              <div className="pt-6 border-t border-gray-200">
+              <div className="pt-6 border-t border-black/10">
                 <h2 className="text-xl font-semibold flex items-center gap-2 mb-4">
                   <Info className="w-5 h-5 text-blue-500" />
                   Subdomain Tracking
                 </h2>
-                <p className="text-sm text-gray-500 mb-4">
+                <p className="text-sm text-black/50 mb-4">
                   Configure whether subdomains should be tracked as part of this website or separately.
                   This affects how referrals between subdomains are treated.
                 </p>
 
-                <div className="bg-gray-50 border rounded-lg p-4 mb-4">
+                <div className="bg-black/5 border rounded-lg p-4 mb-4">
                   <div className="flex items-start gap-3">
                     <div className="shrink-0 mt-0.5">
-                      <Info className="h-4 w-4 text-gray-600" />
+                      <Info className="h-4 w-4 text-black/60" />
                     </div>
-                    <div className="text-sm text-gray-700">
+                    <div className="text-sm text-black/70">
                       <p className="mb-2">
                         <strong>Subdomain tracking behavior:</strong>
                       </p>
@@ -445,7 +445,7 @@ const WebsiteEdit: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="font-medium">{website.domain}</h3>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-black/50">
                         Track all subdomains under {website.domain} as one website
                       </p>
                     </div>
@@ -456,25 +456,25 @@ const WebsiteEdit: React.FC = () => {
                         checked={subdomainTrackingEnabled}
                         onChange={(e) => setSubdomainTrackingEnabled(e.target.checked)}
                       />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-gray-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-black"></div>
+                      <div className="w-11 h-6 bg-black/10 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-black/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-black/20 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-black"></div>
                     </label>
                   </div>
                 </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="pt-6 border-t border-gray-200 flex justify-end gap-3">
+              <div className="pt-6 border-t border-black/10 flex justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => router.visit('/admin')}
-                  className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black"
+                  className="px-4 py-2 border border-black/20 rounded-md shadow-sm text-sm font-medium text-black/70 bg-white hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={form.processing}
-                  className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black disabled:opacity-70 disabled:cursor-not-allowed"
+                  className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-black hover:bg-black/80 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   {form.processing ? 'Saving...' : 'Save Changes'}
                 </button>

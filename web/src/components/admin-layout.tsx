@@ -48,14 +48,14 @@ export function AdminLayout({ children, currentPath, badge }: AdminLayoutProps) 
 	return (
 		<div className="min-h-screen bg-white">
 			{/* Navigation Banner */}
-			<nav className="border-b border-gray-200">
+			<nav className="border-b border-black/10">
 				<div className="max-w-7xl mx-auto px-4">
 					<div className="flex h-14 items-center justify-between">
 						{/* Left side: Logo + App name */}
 						<div className="flex items-center space-x-4">
 							<Link
 								href="/admin"
-								className="flex items-center gap-2 text-gray-900 hover:text-black transition-colors"
+								className="flex items-center gap-2 text-black hover:text-black transition-colors"
 							>
 								<FusionalyLogo />
 								{badge}
@@ -77,7 +77,7 @@ export function AdminLayout({ children, currentPath, badge }: AdminLayoutProps) 
 							)}
 							<Link
 								href="/admin/administration/ingestion"
-								className="relative text-sm font-medium transition-colors hover:text-gray-600 py-4 text-gray-900"
+								className="relative text-sm font-medium transition-colors hover:text-black/60 py-4 text-black"
 							>
 								Settings
 								{/* Active indicator - black underline */}
@@ -89,7 +89,7 @@ export function AdminLayout({ children, currentPath, badge }: AdminLayoutProps) 
 								href="#"
 								id="logout"
 								onClick={handleLogout}
-								className="text-sm font-medium transition-colors hover:text-gray-600 text-gray-900"
+								className="text-sm font-medium transition-colors hover:text-black/60 text-black"
 							>
 								Logout
 							</a>

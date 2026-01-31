@@ -44,9 +44,9 @@ export function AdministrationLayout({
 		<AdminLayout currentPath="/admin/administration/ingestion">
 			<div className="flex flex-col md:flex-row min-h-screen -mx-4">
 				{/* Sidebar - horizontal on mobile, vertical on desktop */}
-				<aside className="w-full md:w-64 border-b md:border-b-0 md:border-r border-gray-200 bg-white">
+				<aside className="w-full md:w-64 border-b md:border-b-0 md:border-r border-black/10 bg-white">
 					<div className="md:sticky md:top-0 py-4 md:py-6 px-4">
-						<h2 className="text-lg font-semibold text-gray-900 mb-3 md:mb-4 px-3">
+						<h2 className="text-lg font-semibold text-black mb-3 md:mb-4 px-3">
 							Administration
 						</h2>
 						<nav className="flex md:flex-col gap-1 md:gap-0 md:space-y-1 overflow-x-auto">
@@ -60,7 +60,7 @@ export function AdministrationLayout({
 										className={`flex items-center gap-2 md:gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${
 											isActive
 												? "bg-black text-white"
-												: "text-gray-700 hover:bg-gray-100"
+												: "text-black/70 hover:bg-black/5"
 										}`}
 									>
 										<Icon className="h-4 w-4" />

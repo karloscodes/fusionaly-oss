@@ -96,8 +96,8 @@ export const AdministrationIngestionContent: FC = () => {
 	return (
 		<div className="space-y-6">
 			<div>
-				<h1 className="text-2xl font-bold text-gray-900">Ingestion Settings</h1>
-				<p className="text-gray-600 mt-1">
+				<h1 className="text-2xl font-bold text-black">Ingestion Settings</h1>
+				<p className="text-black/60 mt-1">
 					Configure what data gets collected and tracked
 				</p>
 			</div>
@@ -122,11 +122,11 @@ export const AdministrationIngestionContent: FC = () => {
 						</CardDescription>
 					</CardHeader>
 					<CardContent className="space-y-6">
-						<div className="bg-gray-50 p-4 rounded-lg flex items-start gap-3 border">
+						<div className="bg-black/5 p-4 rounded-lg flex items-start gap-3 border">
 							<div className="shrink-0 mt-0.5">
-								<Info className="h-4 w-4 text-gray-600" />
+								<Info className="h-4 w-4 text-black/60" />
 							</div>
-							<div className="text-sm text-gray-700">
+							<div className="text-sm text-black/70">
 								<p>
 									Useful for excluding your own visits, internal team traffic,
 									or testing services.
@@ -134,7 +134,7 @@ export const AdministrationIngestionContent: FC = () => {
 								<button
 									type="button"
 									onClick={handleFindMyIP}
-									className="inline-flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-black mt-2"
+									className="inline-flex items-center gap-1 text-sm font-medium text-black/70 hover:text-black mt-2"
 								>
 									<ExternalLink className="h-3.5 w-3.5" />
 									Find and add my current IP address
@@ -155,9 +155,9 @@ export const AdministrationIngestionContent: FC = () => {
 								value={form.data.excluded_ips}
 								onChange={(e) => form.setData("excluded_ips", e.target.value)}
 								disabled={form.processing}
-								className="h-36 w-full resize-y border-gray-300 focus:border-black focus:ring-black rounded-md"
+								className="h-36 w-full resize-y border-black/20 focus:border-black focus:ring-black rounded-md"
 							/>
-							<p className="text-xs text-gray-500 mt-1.5">
+							<p className="text-xs text-black/50 mt-1.5">
 								Separate multiple IP addresses with commas.
 							</p>
 							{form.errors.excluded_ips && (
@@ -169,7 +169,7 @@ export const AdministrationIngestionContent: FC = () => {
 						<Button
 							type="submit"
 							disabled={form.processing}
-							className="bg-black hover:bg-gray-800 text-white rounded-md min-w-[140px]"
+							className="bg-black hover:bg-black/80 text-white rounded-md min-w-[140px]"
 						>
 							{form.processing ? "Saving..." : "Save Filtering"}
 						</Button>

@@ -401,7 +401,7 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 						<GitBranch className="w-4 h-4" />
 						<span className="font-medium">Visitor Flows</span>
 					</div>
-					<p className="text-gray-500">
+					<p className="text-black/50">
 						No user flow data available for the selected time period.
 					</p>
 				</CardContent>
@@ -450,7 +450,7 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 					<div className="flex items-center gap-2">
 						<GitBranch className="w-4 h-4" />
 						<span className="font-medium">Visitor Flows</span>
-						<span className="text-xs text-gray-500 ml-2">
+						<span className="text-xs text-black/50 ml-2">
 							Entry pages → Navigation → Exit pages
 						</span>
 					</div>
@@ -458,7 +458,7 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 						<button
 							type="button"
 							onClick={() => setIsFullscreen(true)}
-							className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+							className="p-1.5 hover:bg-black/5 rounded transition-colors"
 							title="Expand Visitor Flows"
 						>
 							<Maximize2 className="w-4 h-4" />
@@ -467,24 +467,24 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 				</div>
 				<div
 					ref={containerRef}
-					className={cn("relative overflow-auto border border-gray-200 rounded bg-white", isPanning ? "cursor-grabbing select-none" : "cursor-grab", isFullscreen && "flex-1")}
+					className={cn("relative overflow-auto border border-black/10 rounded bg-white", isPanning ? "cursor-grabbing select-none" : "cursor-grab", isFullscreen && "flex-1")}
 					style={!isFullscreen ? { height: `${containerHeight}px`, maxHeight: `${containerHeight}px` } : undefined}
 				>
 					{/* Controls */}
-					<div className="absolute top-2 right-2 z-10 flex gap-1 bg-white/90 backdrop-blur-sm border border-gray-300 rounded-md shadow-sm p-1">
+					<div className="absolute top-2 right-2 z-10 flex gap-1 bg-white/90 backdrop-blur-sm border border-black/20 rounded-md shadow-sm p-1">
 						<button
 							type="button"
 							onClick={() => setShowHelp(!showHelp)}
-							className={cn("p-1.5 rounded transition-colors", showHelp ? "bg-blue-100 text-blue-700" : "hover:bg-gray-100")}
+							className={cn("p-1.5 rounded transition-colors", showHelp ? "bg-blue-100 text-blue-700" : "hover:bg-black/5")}
 							title="How to use this chart"
 						>
 							<HelpCircle className="w-4 h-4" />
 						</button>
-						<div className="w-px bg-gray-300 mx-0.5" />
+						<div className="w-px bg-black/20 mx-0.5" />
 						<button
 							type="button"
 							onClick={() => setZoom((prev) => Math.min(2, prev * 1.2))}
-							className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+							className="p-1.5 hover:bg-black/5 rounded transition-colors"
 							title="Zoom In"
 						>
 							<ZoomIn className="w-4 h-4" />
@@ -492,7 +492,7 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 						<button
 							type="button"
 							onClick={() => setZoom((prev) => Math.max(0.3, prev / 1.2))}
-							className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+							className="p-1.5 hover:bg-black/5 rounded transition-colors"
 							title="Zoom Out"
 						>
 							<ZoomOut className="w-4 h-4" />
@@ -500,7 +500,7 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 						<button
 							type="button"
 							onClick={handleReset}
-							className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+							className="p-1.5 hover:bg-black/5 rounded transition-colors"
 							title="Reset View"
 						>
 							<RotateCcw className="w-4 h-4" />
@@ -509,7 +509,7 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 							<button
 								type="button"
 								onClick={() => setIsFullscreen(false)}
-								className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+								className="p-1.5 hover:bg-black/5 rounded transition-colors"
 								title="Close (Esc)"
 							>
 								<X className="w-4 h-4" />
@@ -519,30 +519,30 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 
 					{/* Help overlay */}
 					{showHelp && (
-						<div className="absolute top-14 right-2 z-20 w-64 bg-white border border-gray-300 rounded-lg shadow-lg p-4">
+						<div className="absolute top-14 right-2 z-20 w-64 bg-white border border-black/20 rounded-lg shadow-lg p-4">
 							<div className="flex items-center justify-between mb-3">
 								<h4 className="font-semibold text-sm">How to Read This Chart</h4>
-								<button type="button" onClick={() => setShowHelp(false)} className="p-1 hover:bg-gray-100 rounded">
+								<button type="button" onClick={() => setShowHelp(false)} className="p-1 hover:bg-black/5 rounded">
 									<X className="w-3 h-3" />
 								</button>
 							</div>
-							<div className="space-y-3 text-xs text-gray-600">
+							<div className="space-y-3 text-xs text-black/60">
 								<div>
-									<div className="font-medium text-gray-900 mb-1">What it shows</div>
+									<div className="font-medium text-black mb-1">What it shows</div>
 									<p>How visitors navigate your site. Each bar is a page URL at a specific step in the journey.</p>
 								</div>
 								<div>
-									<div className="font-medium text-gray-900 mb-1">Reading left to right</div>
+									<div className="font-medium text-black mb-1">Reading left to right</div>
 									<p><strong>Left:</strong> Entry pages (where visitors land)<br/>
 									<strong>Middle:</strong> Pages visited next<br/>
 									<strong>Right:</strong> Later pages in the journey</p>
 								</div>
 								<div>
-									<div className="font-medium text-gray-900 mb-1">Stream width</div>
+									<div className="font-medium text-black mb-1">Stream width</div>
 									<p>Thicker streams = more visitors taking that path</p>
 								</div>
 								<div>
-									<div className="font-medium text-gray-900 mb-1 flex items-center gap-1">
+									<div className="font-medium text-black mb-1 flex items-center gap-1">
 										<MousePointer className="w-3 h-3" /> Interactions
 									</div>
 									<ul className="list-disc list-inside space-y-0.5 pl-1">
@@ -551,7 +551,7 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 									</ul>
 								</div>
 								<div>
-									<div className="font-medium text-gray-900 mb-1 flex items-center gap-1">
+									<div className="font-medium text-black mb-1 flex items-center gap-1">
 										<Move className="w-3 h-3" /> Navigation
 									</div>
 									<ul className="list-disc list-inside space-y-0.5 pl-1">
@@ -560,7 +560,7 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 									</ul>
 								</div>
 								<div>
-									<div className="font-medium text-gray-900 mb-1">Color Legend</div>
+									<div className="font-medium text-black mb-1">Color Legend</div>
 									<div className="flex flex-wrap gap-1.5 mt-1">
 										{STEP_COLORS.slice(0, 4).map((color, i) => (
 											<div key={color} className="flex items-center gap-1">
@@ -810,7 +810,7 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 						</div>
 					)}
 					{!selectedLink && !selectedNode && (
-						<div className="flex items-center gap-3 text-xs text-gray-500 px-1">
+						<div className="flex items-center gap-3 text-xs text-black/50 px-1">
 							<div className="flex items-center gap-1.5">
 								<MousePointer className="w-3 h-3" />
 								<span>Click streams or pages for details</span>
