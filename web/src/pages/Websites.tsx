@@ -175,16 +175,16 @@ const Websites: React.FC = () => {
         {/* Hero Section */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
-            <h1 className="text-2xl font-bold text-black">Welcome back</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Welcome back</h1>
             <Button
               onClick={() => window.location.href = '/admin/websites/new'}
-              className="bg-black hover:bg-black/80"
+              className="bg-black hover:bg-gray-800"
             >
               <Plus className="h-4 w-4 mr-2" />
               Add Website
             </Button>
           </div>
-          <p className="text-black/60">
+          <p className="text-gray-600">
             {websites.length === 0
               ? "Get started by adding your first website to track"
               : `Managing ${websites.length} website${websites.length !== 1 ? 's' : ''}`
@@ -195,36 +195,36 @@ const Websites: React.FC = () => {
         {/* Stats Cards */}
         {websites.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <div className="bg-white border border-black/10 rounded-xl p-5">
+            <div className="bg-white border border-gray-200 rounded-xl p-5">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-blue-50 rounded-lg">
                   <Globe className="h-5 w-5 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-black">{websites.length}</p>
-                  <p className="text-sm text-black/60">Total Websites</p>
+                  <p className="text-2xl font-bold text-gray-900">{websites.length}</p>
+                  <p className="text-sm text-gray-600">Total Websites</p>
                 </div>
               </div>
             </div>
-            <div className="bg-white border border-black/10 rounded-xl p-5">
+            <div className="bg-white border border-gray-200 rounded-xl p-5">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-green-50 rounded-lg">
                   <TrendingUp className="h-5 w-5 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-black">{totalEvents.toLocaleString()}</p>
-                  <p className="text-sm text-black/60">Total Events</p>
+                  <p className="text-2xl font-bold text-gray-900">{totalEvents.toLocaleString()}</p>
+                  <p className="text-sm text-gray-600">Total Events</p>
                 </div>
               </div>
             </div>
-            <div className="bg-white border border-black/10 rounded-xl p-5">
+            <div className="bg-white border border-gray-200 rounded-xl p-5">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-purple-50 rounded-lg">
                   <Zap className="h-5 w-5 text-purple-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-black">{activeWebsites}</p>
-                  <p className="text-sm text-black/60">Collecting Data</p>
+                  <p className="text-2xl font-bold text-gray-900">{activeWebsites}</p>
+                  <p className="text-sm text-gray-600">Collecting Data</p>
                 </div>
               </div>
             </div>
@@ -235,35 +235,35 @@ const Websites: React.FC = () => {
         {recentWebsites.length > 0 && (
           <div className="mb-8">
             <div className="flex items-center gap-2 mb-4">
-              <Clock className="h-4 w-4 text-black/50" />
-              <h2 className="text-sm font-medium text-black/70 uppercase tracking-wide">Recently Accessed</h2>
+              <Clock className="h-4 w-4 text-gray-500" />
+              <h2 className="text-sm font-medium text-gray-700 uppercase tracking-wide">Recently Accessed</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {recentWebsites.map((website) => (
                 <Link
                   key={website.id}
                   href={`/admin/websites/${website.id}/dashboard`}
-                  className="bg-white border border-black/10 rounded-xl p-4 hover:border-black hover:shadow-sm transition-all group"
+                  className="bg-white border border-gray-200 rounded-xl p-4 hover:border-black hover:shadow-sm transition-all group"
                 >
                   <div className="flex items-center gap-3">
                     <img
                       src={`https://www.google.com/s2/favicons?domain=${website.domain}&sz=32`}
                       alt=""
-                      className="h-8 w-8 rounded-lg bg-black/5 p-1"
+                      className="h-8 w-8 rounded-lg bg-gray-100 p-1"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
                         target.style.display = 'none';
                       }}
                     />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-black group-hover:text-black truncate">
+                      <p className="text-sm font-semibold text-gray-900 group-hover:text-black truncate">
                         {website.domain}
                       </p>
-                      <p className="text-xs text-black/50">
+                      <p className="text-xs text-gray-500">
                         {(website.event_count || 0).toLocaleString()} events
                       </p>
                     </div>
-                    <ArrowRight className="h-4 w-4 text-black/40 group-hover:text-black transition-colors" />
+                    <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-gray-900 transition-colors" />
                   </div>
                 </Link>
               ))}
@@ -273,18 +273,18 @@ const Websites: React.FC = () => {
 
         {/* Empty State */}
         {websites.length === 0 ? (
-          <div className="bg-white border border-black/10 rounded-xl p-12 text-center">
+          <div className="bg-white border border-gray-200 rounded-xl p-12 text-center">
             <div className="max-w-md mx-auto">
               <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-6">
                 <Globe className="h-8 w-8 text-blue-600" />
               </div>
-              <h2 className="text-xl font-semibold text-black mb-2">No websites yet</h2>
-              <p className="text-black/60 mb-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">No websites yet</h2>
+              <p className="text-gray-600 mb-6">
                 Add your first website to start collecting analytics data. It only takes a minute to set up.
               </p>
               <Button
                 onClick={() => window.location.href = '/admin/websites/new'}
-                className="bg-black hover:bg-black/80"
+                className="bg-black hover:bg-gray-800"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Your First Website
@@ -293,12 +293,12 @@ const Websites: React.FC = () => {
           </div>
         ) : (
           /* Websites List */
-          <div className="bg-white border border-black/10 rounded-xl overflow-hidden">
-            <div className="px-5 py-4 border-b border-black/10 flex items-center justify-between">
-              <h2 className="font-semibold text-black">Your Websites</h2>
-              <span className="text-sm text-black/60">{websites.length} site{websites.length !== 1 ? 's' : ''}</span>
+          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <h2 className="font-semibold text-gray-900">Your Websites</h2>
+              <span className="text-sm text-gray-600">{websites.length} site{websites.length !== 1 ? 's' : ''}</span>
             </div>
-            <div className="divide-y divide-black/10">
+            <div className="divide-y divide-gray-100">
               {websites.map((website) => {
                 const websiteInsights = insightsByWebsite.get(website.id) || [];
                 const hasHighSeverity = websiteInsights.some(i => i.severity === 'high');
@@ -308,7 +308,7 @@ const Websites: React.FC = () => {
                 return (
                   <div
                     key={website.id}
-                    className="px-5 py-4 hover:bg-black/5 transition-colors"
+                    className="px-5 py-4 hover:bg-gray-50 transition-colors"
                   >
                     <div className="flex items-center justify-between">
                       {/* Left: Website info */}
@@ -317,7 +317,7 @@ const Websites: React.FC = () => {
                           <img
                             src={`https://www.google.com/s2/favicons?domain=${website.domain}&sz=32`}
                             alt=""
-                            className="h-8 w-8 rounded-lg bg-black/5 p-1"
+                            className="h-8 w-8 rounded-lg bg-gray-100 p-1"
                             onError={(e) => {
                               const target = e.target as HTMLImageElement;
                               target.style.display = 'none';
@@ -328,7 +328,7 @@ const Websites: React.FC = () => {
                           <div className="flex items-center gap-2">
                             <Link
                               href={`/admin/websites/${website.id}/dashboard`}
-                              className="text-sm font-semibold text-black hover:text-black transition-colors truncate"
+                              className="text-sm font-semibold text-gray-900 hover:text-black transition-colors truncate"
                             >
                               {website.domain}
                             </Link>
@@ -353,7 +353,7 @@ const Websites: React.FC = () => {
                                         <p key={idx} className="text-xs">{insight.title}</p>
                                       ))}
                                       {websiteInsights.length > 3 && (
-                                        <p className="text-xs text-black/40">+{websiteInsights.length - 3} more</p>
+                                        <p className="text-xs text-gray-400">+{websiteInsights.length - 3} more</p>
                                       )}
                                     </div>
                                   </TooltipContent>
@@ -361,7 +361,7 @@ const Websites: React.FC = () => {
                               </TooltipProvider>
                             )}
                           </div>
-                          <p className="text-xs text-black/60">
+                          <p className="text-xs text-gray-600">
                             Added {formatCreationDate(website.created_at)}
                           </p>
                         </div>
@@ -370,14 +370,14 @@ const Websites: React.FC = () => {
                       {/* Center: Stats */}
                       <div className="hidden md:flex items-center gap-6 px-4">
                         <div className="text-right">
-                          <p className="text-sm font-medium text-black">
+                          <p className="text-sm font-medium text-gray-900">
                             {(website.event_count || 0).toLocaleString()}
                           </p>
-                          <p className="text-xs text-black/60">events</p>
+                          <p className="text-xs text-gray-600">events</p>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <span className={`w-2 h-2 rounded-full ${(website.event_count || 0) > 0 ? 'bg-green-500' : 'bg-black/40'}`} />
-                          <span className={`text-xs font-medium ${(website.event_count || 0) > 0 ? 'text-green-600' : 'text-black/60'}`}>
+                          <span className={`w-2 h-2 rounded-full ${(website.event_count || 0) > 0 ? 'bg-green-500' : 'bg-gray-400'}`} />
+                          <span className={`text-xs font-medium ${(website.event_count || 0) > 0 ? 'text-green-600' : 'text-gray-600'}`}>
                             {(website.event_count || 0) > 0 ? 'Active' : 'Pending'}
                           </span>
                         </div>
@@ -395,7 +395,7 @@ const Websites: React.FC = () => {
                                   setSelectedWebsiteForIntegration(website);
                                   setShowIntegrationHelp(true);
                                 }}
-                                className="h-8 w-8 p-0 text-black/50 hover:text-black/70"
+                                className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700"
                               >
                                 <Code className="h-4 w-4" />
                               </Button>
@@ -411,7 +411,7 @@ const Websites: React.FC = () => {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => window.location.href = `/admin/websites/${website.id}/edit`}
-                                className="h-8 w-8 p-0 text-black/50 hover:text-black/70"
+                                className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700"
                               >
                                 <Settings className="h-4 w-4" />
                               </Button>
@@ -427,7 +427,7 @@ const Websites: React.FC = () => {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => setWebsiteToDelete(website)}
-                                className="h-8 w-8 p-0 text-black/50 hover:text-red-600"
+                                className="h-8 w-8 p-0 text-gray-500 hover:text-red-600"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -440,7 +440,7 @@ const Websites: React.FC = () => {
                           variant="ghost"
                           size="sm"
                           onClick={() => window.location.href = `/admin/websites/${website.id}/dashboard`}
-                          className="ml-2 text-black/50 hover:text-black/70"
+                          className="ml-2 text-gray-500 hover:text-gray-700"
                         >
                           <ArrowRight className="h-4 w-4" />
                         </Button>
@@ -487,10 +487,10 @@ const Websites: React.FC = () => {
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <p className="text-sm text-black/70 mb-3">
-                  Copy and paste this script into your website's HTML, preferably in the <code className="bg-black/5 px-1 rounded">&lt;head&gt;</code> section:
+                <p className="text-sm text-gray-700 mb-3">
+                  Copy and paste this script into your website's HTML, preferably in the <code className="bg-gray-100 px-1 rounded">&lt;head&gt;</code> section:
                 </p>
-                <div className="bg-black p-4 rounded-lg font-mono text-sm overflow-x-auto">
+                <div className="bg-gray-900 p-4 rounded-lg font-mono text-sm overflow-x-auto">
                   <code className="text-green-400">
                     {`<script defer src="${window.location.origin}/y/api/v1/sdk.js" data-website-id="${selectedWebsiteForIntegration?.id}"></script>`}
                   </code>

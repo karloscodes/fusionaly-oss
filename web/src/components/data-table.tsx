@@ -89,7 +89,7 @@ const DataTable = ({
 	return (
 		<div className="h-full flex flex-col">
 			{title && (
-				<div className="pb-2 border-b border-black/10">
+				<div className="pb-2 border-b border-gray-200">
 					<h3 className="font-medium text-base">{title}</h3>
 				</div>
 			)}
@@ -97,19 +97,19 @@ const DataTable = ({
 			{data.length === 0 ? (
 				<div className="flex-grow flex items-center justify-center">
 					<div className="flex flex-col items-center text-center">
-						<div className="w-16 h-16 rounded-full bg-black/5 flex items-center justify-center mb-3">
-							<FileBarChart className="h-8 w-8 text-black/40" />
+						<div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center mb-3">
+							<FileBarChart className="h-8 w-8 text-gray-400" />
 						</div>
-						<h3 className="text-sm font-medium text-black mb-1">
+						<h3 className="text-sm font-medium text-gray-900 mb-1">
 							No data available
 						</h3>
-						<p className="text-sm text-black/50 max-w-sm">{emptyMessage}</p>
+						<p className="text-sm text-gray-500 max-w-sm">{emptyMessage}</p>
 					</div>
 				</div>
 			) : (
 				<>
 					{/* Column Headers */}
-					<div className="flex justify-between text-xs font-medium text-black/50 py-2">
+					<div className="flex justify-between text-xs font-medium text-gray-500 py-2">
 						<span className="truncate mr-4 overflow-hidden flex-1 min-w-0">
 							{columns[0].label}
 						</span>
@@ -142,7 +142,7 @@ const DataTable = ({
 						{currentItems.map((item) => (
 							<div
 								key={`${item.name}-${item.count}`}
-								className="flex justify-between items-stretch hover:bg-black/5 transition-colors"
+								className="flex justify-between items-stretch hover:bg-gray-50 transition-colors"
 							>
 								<div className="flex-1 relative min-w-0 pr-2">
 					<div
@@ -207,14 +207,14 @@ const DataTable = ({
 							onClick={goToPreviousPage}
 							disabled={currentPage === 1 || totalPages <= 1}
 							className={`p-1 rounded flex items-center justify-center ${currentPage === 1 || totalPages <= 1
-								? "text-black/30 cursor-not-allowed"
-								: "text-black/60"
+								? "text-gray-300 cursor-not-allowed"
+								: "text-gray-600"
 								}`}
 							aria-label="Previous page"
 						>
 							<ChevronLeft className="w-3.5 h-3.5" />
 						</button>
-						<span className="text-black/60 font-medium text-xs flex items-center justify-center h-full">
+						<span className="text-gray-600 font-medium text-xs flex items-center justify-center h-full">
 							{currentPage} of {totalPages}
 						</span>
 						<button
@@ -222,8 +222,8 @@ const DataTable = ({
 							onClick={goToNextPage}
 							disabled={currentPage === totalPages || totalPages <= 1}
 							className={`p-1 rounded flex items-center justify-center ${currentPage === totalPages || totalPages <= 1
-								? "text-black/30 cursor-not-allowed"
-								: "text-black/60"
+								? "text-gray-300 cursor-not-allowed"
+								: "text-gray-600"
 								}`}
 							aria-label="Next page"
 						>

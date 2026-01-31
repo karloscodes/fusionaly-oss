@@ -160,8 +160,8 @@ export function Events() {
 									onClick={() => handleQuickFilter("range", range.value)}
 									className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
 										filters.range === range.value
-											? "bg-black text-white"
-											: "bg-white text-black/60 hover:bg-black/5 hover:text-black"
+											? "bg-gray-900 text-white"
+											: "bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900"
 									}`}
 								>
 									{range.label}
@@ -169,7 +169,7 @@ export function Events() {
 							))}
 						</div>
 
-						<div className="hidden sm:block h-5 w-px bg-black/10" />
+						<div className="hidden sm:block h-5 w-px bg-gray-200" />
 
 						{/* Type Filter */}
 						<div className="flex items-center gap-1">
@@ -178,8 +178,8 @@ export function Events() {
 								onClick={() => handleQuickFilter("type", "")}
 								className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
 									filters.type === ""
-										? "bg-black text-white"
-										: "bg-white text-black/60 hover:bg-black/5 hover:text-black"
+										? "bg-gray-900 text-white"
+										: "bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900"
 								}`}
 							>
 								All
@@ -189,8 +189,8 @@ export function Events() {
 								onClick={() => handleQuickFilter("type", "page")}
 								className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
 									filters.type === "page"
-										? "bg-black text-white"
-										: "bg-white text-black/60 hover:bg-black/5 hover:text-black"
+										? "bg-gray-900 text-white"
+										: "bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900"
 								}`}
 							>
 								Pages
@@ -200,38 +200,38 @@ export function Events() {
 								onClick={() => handleQuickFilter("type", "event")}
 								className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
 									filters.type === "event"
-										? "bg-black text-white"
-										: "bg-white text-black/60 hover:bg-black/5 hover:text-black"
+										? "bg-gray-900 text-white"
+										: "bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900"
 								}`}
 							>
 								Events
 							</button>
 						</div>
 
-						<div className="hidden sm:block h-5 w-px bg-black/10" />
+						<div className="hidden sm:block h-5 w-px bg-gray-200" />
 
 						{/* Search Inputs */}
 						<div className="flex items-center gap-2">
 							<div className="relative flex-1 sm:flex-none">
-								<Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-black/40" />
+								<Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
 								<input
 									type="text"
 									placeholder="Referrer..."
 									value={filters.referrer}
 									onChange={(e) => handleFilterChange("referrer", e.target.value)}
 									onKeyPress={handleKeyPress}
-									className="w-full sm:w-28 lg:w-32 pl-8 pr-3 py-1.5 text-xs border border-black/10 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent placeholder:text-black/40"
+									className="w-full sm:w-28 lg:w-32 pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent placeholder:text-gray-400"
 								/>
 							</div>
 							<div className="relative flex-1 sm:flex-none">
-								<Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-black/40" />
+								<Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
 								<input
 									type="text"
 									placeholder="Event Key..."
 									value={filters.event_key}
 									onChange={(e) => handleFilterChange("event_key", e.target.value)}
 									onKeyPress={handleKeyPress}
-									className="w-full sm:w-28 lg:w-32 pl-8 pr-3 py-1.5 text-xs border border-black/10 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent placeholder:text-black/40"
+									className="w-full sm:w-28 lg:w-32 pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent placeholder:text-gray-400"
 								/>
 							</div>
 						</div>
@@ -243,8 +243,8 @@ export function Events() {
 							onClick={toggleSessionGrouping}
 							className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
 								groupBySessions
-									? "bg-black text-white"
-									: "bg-white text-black/60 hover:bg-black/5 hover:text-black"
+									? "bg-gray-900 text-white"
+									: "bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900"
 							}`}
 							title={groupBySessions ? "Grouped by sessions" : "Group by sessions"}
 						>
@@ -256,7 +256,7 @@ export function Events() {
 							<button
 								type="button"
 								onClick={clearFilters}
-								className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-black/50 bg-white hover:bg-black/5 hover:text-black/70 rounded-md transition-colors"
+								className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-500 bg-white hover:bg-gray-100 hover:text-gray-700 rounded-md transition-colors"
 							>
 								<X className="h-3.5 w-3.5" />
 								Clear
@@ -279,7 +279,7 @@ export function Events() {
 				{/* Pagination */}
 				{eventsData && (
 					<div className="flex justify-between items-center text-sm">
-						<div className="text-sm text-black/50">
+						<div className="text-sm text-gray-500">
 							Page {eventsData.pagination.current_page} of{" "}
 							{eventsData.pagination.total_pages} (
 							{formatNumber(eventsData.pagination.total_items)} events)
@@ -287,7 +287,7 @@ export function Events() {
 						<div className="flex gap-2">
 							<a
 								href={buildUrl({ page: (currentPage - 1).toString() })}
-								className={`px-4 py-2 text-sm border border-black/10 rounded-lg text-black/70 bg-white font-medium hover:bg-black/5 hover:border-black/20 transition-colors ${currentPage === 1 || isLoading
+								className={`px-4 py-2 text-sm border border-gray-200 rounded-lg text-gray-700 bg-white font-medium hover:bg-gray-50 hover:border-gray-300 transition-colors ${currentPage === 1 || isLoading
 										? "opacity-50 pointer-events-none cursor-not-allowed"
 										: ""
 									}`}
@@ -296,7 +296,7 @@ export function Events() {
 							</a>
 							<a
 								href={buildUrl({ page: (currentPage + 1).toString() })}
-								className={`px-4 py-2 text-sm border border-black/10 rounded-lg text-black/70 bg-white font-medium hover:bg-black/5 hover:border-black/20 transition-colors ${currentPage === eventsData?.pagination.total_pages ||
+								className={`px-4 py-2 text-sm border border-gray-200 rounded-lg text-gray-700 bg-white font-medium hover:bg-gray-50 hover:border-gray-300 transition-colors ${currentPage === eventsData?.pagination.total_pages ||
 										isLoading
 										? "opacity-50 pointer-events-none cursor-not-allowed"
 										: ""

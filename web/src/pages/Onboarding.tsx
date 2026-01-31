@@ -61,7 +61,7 @@ export default function Onboarding() {
           />
         </div>
 
-        <p className="text-sm text-black/60">
+        <p className="text-sm text-gray-600">
           This email will be used for your admin account login.
         </p>
       </div>
@@ -96,7 +96,7 @@ export default function Onboarding() {
         />
       </div>
 
-      <p className="text-sm text-black/60">
+      <p className="text-sm text-gray-600">
         Password must be at least 8 characters long.
       </p>
 
@@ -114,14 +114,14 @@ export default function Onboarding() {
         </AlertDescription>
       </Alert>
 
-      <div className="space-y-3 text-sm text-black/60">
+      <div className="space-y-3 text-sm text-gray-600">
         <p>
           Fusionaly uses MaxMind's GeoLite2 database to detect visitor locations (country, city).
           Enter your MaxMind credentials to enable automatic database downloads.
         </p>
 
-        <div className="bg-black/5 p-3 rounded-md border">
-          <p className="font-medium text-black mb-2">Get your free credentials:</p>
+        <div className="bg-gray-50 p-3 rounded-md border">
+          <p className="font-medium text-gray-900 mb-2">Get your free credentials:</p>
           <ol className="list-decimal list-inside space-y-1">
             <li>Register at <a href="https://www.maxmind.com/en/geolite2/signup" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">MaxMind</a> (free)</li>
             <li>Go to Account &rarr; Manage License Keys</li>
@@ -152,7 +152,7 @@ export default function Onboarding() {
         </div>
       </div>
 
-      <p className="text-xs text-black/50">
+      <p className="text-xs text-gray-500">
         This step is optional. You can configure GeoLite later in Administration &rarr; System.
       </p>
 
@@ -179,7 +179,7 @@ export default function Onboarding() {
       <p className="text-green-700">
         Your Fusionaly installation is ready. You have been logged in automatically.
       </p>
-      <p className="text-sm text-black/60">
+      <p className="text-sm text-gray-600">
         Redirecting you to create your first website...
       </p>
     </div>
@@ -206,11 +206,11 @@ export default function Onboarding() {
   };
 
   return (
-    <div className="min-h-screen bg-black/5 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md mx-auto">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-black">Initial Setup</h1>
-          <p className="mt-2 text-black/60">Configure your Fusionaly installation</p>
+          <h1 className="text-3xl font-bold text-gray-900">Initial Setup</h1>
+          <p className="mt-2 text-gray-600">Configure your Fusionaly installation</p>
         </div>
 
         <Card className="mb-6">
@@ -222,7 +222,7 @@ export default function Onboarding() {
                   Step {getStepNumber()} of 4
                 </CardDescription>
               </div>
-              <div className="text-right text-sm text-black/50">
+              <div className="text-right text-sm text-gray-500">
                 {stepProgress[currentStep]}%
               </div>
             </div>

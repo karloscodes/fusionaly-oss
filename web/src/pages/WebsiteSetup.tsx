@@ -40,29 +40,29 @@ export function WebsiteSetup() {
 						<div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
 							<Check className="h-8 w-8 text-green-600" />
 						</div>
-						<h1 className="text-3xl font-bold text-black mb-3">
+						<h1 className="text-3xl font-bold text-gray-900 mb-3">
 							Website Created!
 						</h1>
-						<p className="text-lg text-black/60">
-							<span className="font-semibold text-black">{website.domain}</span> is ready to start collecting analytics data.
+						<p className="text-lg text-gray-600">
+							<span className="font-semibold text-gray-900">{website.domain}</span> is ready to start collecting analytics data.
 						</p>
 					</div>
 
 					{/* Installation Card */}
 					<div className="bg-white border border-black rounded-lg overflow-hidden mb-8">
-						<div className="px-6 py-4 border-b border-black/10">
+						<div className="px-6 py-4 border-b border-gray-100">
 							<div className="flex items-center gap-2">
-								<Code className="h-5 w-5 text-black" />
-								<h2 className="font-semibold text-black">Install the Tracking Script</h2>
+								<Code className="h-5 w-5 text-gray-900" />
+								<h2 className="font-semibold text-gray-900">Install the Tracking Script</h2>
 							</div>
 						</div>
 						<div className="p-6 space-y-4">
-							<p className="text-black/70">
-								Copy and paste this script into your website's HTML, preferably in the <code className="bg-black/5 px-1.5 py-0.5 rounded text-sm">&lt;head&gt;</code> section:
+							<p className="text-gray-700">
+								Copy and paste this script into your website's HTML, preferably in the <code className="bg-gray-100 px-1.5 py-0.5 rounded text-sm">&lt;head&gt;</code> section:
 							</p>
 
 							<div className="relative">
-								<div className="bg-black p-4 rounded-lg font-mono text-sm overflow-x-auto">
+								<div className="bg-gray-900 p-4 rounded-lg font-mono text-sm overflow-x-auto">
 									<code className="text-green-400 break-all">
 										{scriptTag}
 									</code>
@@ -71,7 +71,7 @@ export function WebsiteSetup() {
 									variant="outline"
 									size="sm"
 									onClick={handleCopy}
-									className="absolute top-2 right-2 bg-black/80 border-black/70 text-white hover:bg-black/70 hover:text-white"
+									className="absolute top-2 right-2 bg-gray-800 border-gray-700 text-white hover:bg-gray-700 hover:text-white"
 								>
 									{copied ? (
 										<>
@@ -98,21 +98,21 @@ export function WebsiteSetup() {
 					{/* Additional Options */}
 					<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
 						{/* Documentation Card */}
-						<div className="bg-white border border-black/10 rounded-lg p-5 hover:border-black/40 transition-colors">
+						<div className="bg-white border border-gray-200 rounded-lg p-5 hover:border-gray-400 transition-colors">
 							<div className="flex items-start gap-3">
-								<div className="p-2 bg-black/5 rounded-lg">
-									<BookOpen className="h-5 w-5 text-black/70" />
+								<div className="p-2 bg-gray-100 rounded-lg">
+									<BookOpen className="h-5 w-5 text-gray-700" />
 								</div>
 								<div>
-									<h3 className="font-semibold text-black mb-1">Documentation</h3>
-									<p className="text-sm text-black/60 mb-3">
+									<h3 className="font-semibold text-gray-900 mb-1">Documentation</h3>
+									<p className="text-sm text-gray-600 mb-3">
 										Learn about advanced tracking options, custom events, and more.
 									</p>
 									<a
 										href="https://fusionaly.com/docs"
 										target="_blank"
 										rel="noopener noreferrer"
-										className="text-sm font-medium text-black hover:underline inline-flex items-center gap-1"
+										className="text-sm font-medium text-gray-900 hover:underline inline-flex items-center gap-1"
 									>
 										Read the docs
 										<ArrowRight className="h-3 w-3" />
@@ -122,19 +122,19 @@ export function WebsiteSetup() {
 						</div>
 
 						{/* Subdomain Tracking Card */}
-						<div className="bg-white border border-black/10 rounded-lg p-5 hover:border-black/40 transition-colors">
+						<div className="bg-white border border-gray-200 rounded-lg p-5 hover:border-gray-400 transition-colors">
 							<div className="flex items-start gap-3">
-								<div className="p-2 bg-black/5 rounded-lg">
-									<Zap className="h-5 w-5 text-black/70" />
+								<div className="p-2 bg-gray-100 rounded-lg">
+									<Zap className="h-5 w-5 text-gray-700" />
 								</div>
 								<div>
-									<h3 className="font-semibold text-black mb-1">Subdomain Tracking</h3>
-									<p className="text-sm text-black/60 mb-3">
+									<h3 className="font-semibold text-gray-900 mb-1">Subdomain Tracking</h3>
+									<p className="text-sm text-gray-600 mb-3">
 										Track users across subdomains for a unified view.
 									</p>
 									<Link
 										href={`/admin/websites/${website.id}/edit`}
-										className="text-sm font-medium text-black hover:underline inline-flex items-center gap-1"
+										className="text-sm font-medium text-gray-900 hover:underline inline-flex items-center gap-1"
 									>
 										Configure settings
 										<ArrowRight className="h-3 w-3" />
@@ -148,7 +148,7 @@ export function WebsiteSetup() {
 					<div className="flex flex-col sm:flex-row gap-3 justify-center">
 						<Button
 							asChild
-							className="bg-black hover:bg-black/80 text-white"
+							className="bg-black hover:bg-gray-800 text-white"
 						>
 							<Link href={`/admin/websites/${website.id}/dashboard`}>
 								Go to Dashboard
@@ -158,7 +158,7 @@ export function WebsiteSetup() {
 						<Button
 							asChild
 							variant="outline"
-							className="border-black/20"
+							className="border-gray-300"
 						>
 							<Link href="/admin">
 								View All Websites

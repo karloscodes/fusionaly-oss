@@ -71,7 +71,7 @@ export function EventsTable({ events, isLoading = false, groupBySessions = false
 		const truncated = url.length > 40 ? `${url.slice(0, 37)}...` : url;
 		return (
 			<span
-				className="text-black/80 hover:text-black transition-colors"
+				className="text-gray-800 hover:text-black transition-colors"
 				title={url}
 			>
 				{truncated}
@@ -122,7 +122,7 @@ export function EventsTable({ events, isLoading = false, groupBySessions = false
 		(id) => (
 			<TableRow key={id} className="animate-pulse">
 				<TableCell colSpan={6} className="py-2">
-					<div className="h-4 bg-black/10 rounded w-full" />
+					<div className="h-4 bg-gray-200 rounded w-full" />
 				</TableCell>
 			</TableRow>
 		),
@@ -132,23 +132,23 @@ export function EventsTable({ events, isLoading = false, groupBySessions = false
 		<div className="w-full overflow-auto">
 			<Table>
 				<TableHeader>
-					<TableRow className="bg-black/5 border-b border-black/10">
-						<TableHead className="w-[110px] py-2 px-4 text-black/80 font-semibold whitespace-nowrap">
+					<TableRow className="bg-gray-50 border-b border-gray-200">
+						<TableHead className="w-[110px] py-2 px-4 text-gray-800 font-semibold whitespace-nowrap">
 							Time
 						</TableHead>
-						<TableHead className="w-[160px] py-2 px-4 text-black/80 font-semibold whitespace-nowrap">
+						<TableHead className="w-[160px] py-2 px-4 text-gray-800 font-semibold whitespace-nowrap">
 							User
 						</TableHead>
-						<TableHead className="py-2 px-4 text-black/80 font-semibold whitespace-nowrap">
+						<TableHead className="py-2 px-4 text-gray-800 font-semibold whitespace-nowrap">
 							URL
 						</TableHead>
-						<TableHead className="w-[180px] py-2 px-4 text-black/80 font-semibold whitespace-nowrap">
+						<TableHead className="w-[180px] py-2 px-4 text-gray-800 font-semibold whitespace-nowrap">
 							Referrer
 						</TableHead>
-						<TableHead className="w-[180px] py-2 px-4 text-black/80 font-semibold whitespace-nowrap">
+						<TableHead className="w-[180px] py-2 px-4 text-gray-800 font-semibold whitespace-nowrap">
 							Event Key
 						</TableHead>
-						<TableHead className="w-[110px] py-2 px-4 text-black/80 font-semibold text-center whitespace-nowrap">
+						<TableHead className="w-[110px] py-2 px-4 text-gray-800 font-semibold text-center whitespace-nowrap">
 							Type
 						</TableHead>
 					</TableRow>
@@ -158,7 +158,7 @@ export function EventsTable({ events, isLoading = false, groupBySessions = false
 						loadingRows
 					) : events.length === 0 ? (
 						<TableRow>
-							<TableCell colSpan={6} className="py-4 text-center text-black/50">
+							<TableCell colSpan={6} className="py-4 text-center text-gray-500">
 								No events found
 							</TableCell>
 						</TableRow>
@@ -166,16 +166,16 @@ export function EventsTable({ events, isLoading = false, groupBySessions = false
 						sessionGroups.map((session, sessionIdx) => (
 							<>
 								{/* Session header row */}
-								<TableRow key={`session-${sessionIdx}`} className="bg-black/5 border-t border-black/20">
+								<TableRow key={`session-${sessionIdx}`} className="bg-gray-100 border-t border-gray-300">
 									<TableCell colSpan={6} className="py-2 px-4">
-										<div className="flex items-center gap-3 text-sm font-medium text-black/80">
+										<div className="flex items-center gap-3 text-sm font-medium text-gray-800">
 											<span className="font-semibold">{session.user}</span>
-											<span className="text-black/50">•</span>
-											<span className="text-black/60">
+											<span className="text-gray-500">•</span>
+											<span className="text-gray-600">
 												Session started {formatRelativeTime(session.sessionStart.toISOString())}
 											</span>
-											<span className="text-black/50">•</span>
-											<span className="text-black/60">
+											<span className="text-gray-500">•</span>
+											<span className="text-gray-600">
 												{session.events.length} event{session.events.length !== 1 ? 's' : ''}
 											</span>
 										</div>
@@ -185,43 +185,43 @@ export function EventsTable({ events, isLoading = false, groupBySessions = false
 								{session.events.map((event, eventIdx) => (
 									<TableRow
 										key={`session-${sessionIdx}-event-${eventIdx}`}
-										className="text-sm hover:bg-black/5 transition-colors"
+										className="text-sm hover:bg-gray-50 transition-colors"
 									>
-										<TableCell className="py-2 px-4 text-black/70 whitespace-nowrap pl-8">
+										<TableCell className="py-2 px-4 text-gray-700 whitespace-nowrap pl-8">
 											<span title={formatFullTimestamp(event.timestamp)} className="cursor-help">
 												{formatRelativeTime(event.timestamp)}
 											</span>
 										</TableCell>
-										<TableCell className="py-2 px-4 text-black/70">
+										<TableCell className="py-2 px-4 text-gray-700">
 											{/* Empty for grouped view since user is in header */}
 										</TableCell>
 										<TableCell className="py-2 px-4">
 											{formatUrl(event.raw_url)}
 										</TableCell>
-										<TableCell className="py-2 px-4 text-black/70">
+										<TableCell className="py-2 px-4 text-gray-700">
 											{event.referrer === "__direct_or_unknown__" ? (
-												<span className="text-black/50 italic" title="Direct or Unknown">
+												<span className="text-gray-500 italic" title="Direct or Unknown">
 													Direct
 												</span>
 											) : (
-												<span className="text-black/80 hover:text-black transition-colors" title={event.referrer}>
+												<span className="text-gray-800 hover:text-black transition-colors" title={event.referrer}>
 													{event.referrer.replace(/^https?:\/\/(www\.)?/, "").split("/")[0]}
 												</span>
 											)}
 										</TableCell>
-										<TableCell className={cn("py-2 px-4 text-black/70", "max-w-xs truncate")}>
+										<TableCell className={cn("py-2 px-4 text-gray-700", "max-w-xs truncate")}>
 											{event.custom_event_key ? (
-												<span className="font-medium text-black/80 block truncate" title={event.custom_event_key}>
+												<span className="font-medium text-gray-800 block truncate" title={event.custom_event_key}>
 													{event.custom_event_key}
 												</span>
 											) : (
-												<span className="text-black/40 italic">—</span>
+												<span className="text-gray-400 italic">—</span>
 											)}
 										</TableCell>
 										<TableCell className="py-2 px-4 text-center whitespace-nowrap">
 											<span
 												className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-													event.event_type === 1 ? "bg-black/5 text-black/70" : "bg-black text-white"
+													event.event_type === 1 ? "bg-gray-100 text-gray-700" : "bg-black text-white"
 												}`}
 											>
 												{event.event_type === 1 ? "Page View" : "Event"}
@@ -235,30 +235,30 @@ export function EventsTable({ events, isLoading = false, groupBySessions = false
 						events.map((event) => (
 							<TableRow
 								key={`event-${event.timestamp}-${event.raw_url}`}
-								className="text-sm hover:bg-black/5 transition-colors"
+								className="text-sm hover:bg-gray-50 transition-colors"
 							>
-								<TableCell className="py-2 px-4 text-black/70 whitespace-nowrap">
+								<TableCell className="py-2 px-4 text-gray-700 whitespace-nowrap">
 									<span title={formatFullTimestamp(event.timestamp)} className="cursor-help">
 										{formatRelativeTime(event.timestamp)}
 									</span>
 								</TableCell>
-								<TableCell className="py-2 px-4 text-black/70">
+								<TableCell className="py-2 px-4 text-gray-700">
 									{event.user}
 								</TableCell>
 								<TableCell className="py-2 px-4">
 									{formatUrl(event.raw_url)}
 								</TableCell>
-								<TableCell className="py-2 px-4 text-black/70">
+								<TableCell className="py-2 px-4 text-gray-700">
 									{event.referrer === "__direct_or_unknown__" ? (
 										<span
-											className="text-black/50 italic"
+											className="text-gray-500 italic"
 											title="Direct or Unknown"
 										>
 											Direct
 										</span>
 									) : (
 										<span
-											className="text-black/80 hover:text-black transition-colors"
+											className="text-gray-800 hover:text-black transition-colors"
 											title={event.referrer}
 										>
 											{
@@ -270,24 +270,24 @@ export function EventsTable({ events, isLoading = false, groupBySessions = false
 									)}
 								</TableCell>
 								<TableCell
-									className={cn("py-2 px-4 text-black/70", "max-w-xs truncate")}
+									className={cn("py-2 px-4 text-gray-700", "max-w-xs truncate")}
 								>
 									{event.custom_event_key ? (
 										<span
-											className="font-medium text-black/80 block truncate"
+											className="font-medium text-gray-800 block truncate"
 											title={event.custom_event_key}
 										>
 											{event.custom_event_key}
 										</span>
 									) : (
-										<span className="text-black/40 italic">—</span>
+										<span className="text-gray-400 italic">—</span>
 									)}
 								</TableCell>
 								<TableCell className="py-2 px-4 text-center whitespace-nowrap">
 									<span
 										className={`px-2 py-0.5 rounded-full text-xs font-medium ${
 											event.event_type === 1
-												? "bg-black/5 text-black/70"
+												? "bg-gray-100 text-gray-700"
 												: "bg-black text-white"
 										}`}
 									>

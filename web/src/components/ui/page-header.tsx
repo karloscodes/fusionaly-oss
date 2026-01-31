@@ -19,8 +19,8 @@ export function PageHeader({
 				{leftContent && (
 					<div className="flex items-center">{leftContent}</div>
 				)}
-				<Icon className="h-6 w-6 text-black" />
-				<h1 className="text-2xl font-bold text-black">{title}</h1>
+				<Icon className="h-6 w-6 text-gray-900" />
+				<h1 className="text-2xl font-bold text-gray-900">{title}</h1>
 			</div>
 			{rightContent && (
 				<div className="flex items-center gap-4">{rightContent}</div>

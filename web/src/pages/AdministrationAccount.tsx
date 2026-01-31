@@ -65,8 +65,8 @@ export const AdministrationAccountContent: FC = () => {
 	return (
 		<div className="space-y-6">
 			<div>
-				<h1 className="text-2xl font-bold text-black">Account Settings</h1>
-				<p className="text-black/60 mt-1">
+				<h1 className="text-2xl font-bold text-gray-900">Account Settings</h1>
+				<p className="text-gray-600 mt-1">
 					Manage your password
 				</p>
 			</div>
@@ -88,7 +88,7 @@ export const AdministrationAccountContent: FC = () => {
 				<CardContent className="space-y-4">
 					<form onSubmit={handlePasswordSubmit} className="space-y-4">
 						<div className="space-y-2">
-							<label className="text-sm font-medium text-black/70">
+							<label className="text-sm font-medium text-gray-700">
 								Current Password
 							</label>
 							<Input
@@ -105,7 +105,7 @@ export const AdministrationAccountContent: FC = () => {
 						</div>
 
 						<div className="space-y-2">
-							<label className="text-sm font-medium text-black/70">
+							<label className="text-sm font-medium text-gray-700">
 								New Password
 							</label>
 							<Input
@@ -117,7 +117,7 @@ export const AdministrationAccountContent: FC = () => {
 								className="w-full"
 								disabled={passwordForm.processing}
 							/>
-							<p className="text-xs text-black/50">
+							<p className="text-xs text-gray-500">
 								Minimum 8 characters required.
 							</p>
 							{passwordForm.errors.new_password && (
@@ -126,7 +126,7 @@ export const AdministrationAccountContent: FC = () => {
 						</div>
 
 						<div className="space-y-2">
-							<label className="text-sm font-medium text-black/70">
+							<label className="text-sm font-medium text-gray-700">
 								Confirm New Password
 							</label>
 							<Input
@@ -146,7 +146,7 @@ export const AdministrationAccountContent: FC = () => {
 						<Button
 							type="submit"
 							disabled={passwordForm.processing}
-							className="bg-black hover:bg-black/80 text-white rounded-md"
+							className="bg-black hover:bg-gray-800 text-white rounded-md"
 						>
 							{passwordForm.processing ? "Updating..." : "Update Password"}
 						</Button>

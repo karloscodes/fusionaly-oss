@@ -163,8 +163,8 @@ export const AdministrationSystemContent: FC = () => {
 	return (
 		<div className="space-y-6">
 			<div>
-				<h1 className="text-2xl font-bold text-black">System Management</h1>
-				<p className="text-black/60 mt-1">
+				<h1 className="text-2xl font-bold text-gray-900">System Management</h1>
+				<p className="text-gray-600 mt-1">
 					Manage system operations, backups, and maintenance
 				</p>
 			</div>
@@ -224,16 +224,16 @@ export const AdministrationSystemContent: FC = () => {
 					<Button
 						onClick={handleSaveGeoLite}
 						disabled={geoSaving}
-						className="bg-black hover:bg-black/80 text-white rounded-md"
+						className="bg-black hover:bg-gray-800 text-white rounded-md"
 					>
 						{geoSaving ? "Saving..." : "Save GeoLite Settings"}
 					</Button>
 
 					{/* Status information */}
-					<div className="pt-4 mt-4 border-t border-black/10 space-y-3">
+					<div className="pt-4 mt-4 border-t border-gray-200 space-y-3">
 						<div className="flex items-center justify-between">
 							<div className="flex items-center gap-2 text-sm">
-								<span className="text-black/60">Database Status:</span>
+								<span className="text-gray-600">Database Status:</span>
 								{geolite_db_exists ? (
 									<span className="text-green-600 font-medium">Downloaded</span>
 								) : (
@@ -246,7 +246,7 @@ export const AdministrationSystemContent: FC = () => {
 									disabled={geoDownloading}
 									variant="outline"
 									size="sm"
-									className="border-black text-black hover:bg-black/5"
+									className="border-black text-black hover:bg-gray-100"
 								>
 									{geoDownloading ? (
 										<>
@@ -264,8 +264,8 @@ export const AdministrationSystemContent: FC = () => {
 						</div>
 						{geolite_last_update && (
 							<div className="flex items-center gap-2 text-sm">
-								<span className="text-black/60">Last Updated:</span>
-								<span className="text-black">{geolite_last_update}</span>
+								<span className="text-gray-600">Last Updated:</span>
+								<span className="text-gray-900">{geolite_last_update}</span>
 							</div>
 						)}
 						{geolite_download_error && (
@@ -278,7 +278,7 @@ export const AdministrationSystemContent: FC = () => {
 							</div>
 						)}
 						{!geolite_db_exists && !geolite_last_update && !geolite_download_error && (geoAccountId && geoLicenseKey) && (
-							<p className="text-xs text-black/50">
+							<p className="text-xs text-gray-500">
 								Database download will start shortly. Refresh this page in a minute to check status.
 							</p>
 						)}
@@ -306,7 +306,7 @@ export const AdministrationSystemContent: FC = () => {
 						<Trash2 className="h-4 w-4 mr-2" />
 						Purge All Caches
 					</Button>
-					<p className="text-xs text-black/50 mt-2">
+					<p className="text-xs text-gray-500 mt-2">
 						This will clear all generic caches and temporary data.
 					</p>
 				</CardContent>
@@ -335,7 +335,7 @@ export const AdministrationSystemContent: FC = () => {
 					<Button
 						onClick={handleExportDatabase}
 						disabled={exportLoading}
-						className="bg-black hover:bg-black/80 text-white rounded-md"
+						className="bg-black hover:bg-gray-800 text-white rounded-md"
 					>
 						{exportLoading ? (
 							<>
@@ -364,7 +364,7 @@ export const AdministrationSystemContent: FC = () => {
 								onClick={handleFetchLogs}
 								variant="outline"
 								size="sm"
-								className="border-black text-black hover:bg-black/5"
+								className="border-black text-black hover:bg-gray-100"
 							>
 								<RefreshCw className="h-4 w-4" />
 							</Button>
@@ -373,7 +373,7 @@ export const AdministrationSystemContent: FC = () => {
 								disabled={!logs}
 								variant="outline"
 								size="sm"
-								className="border-black text-black hover:bg-black/5"
+								className="border-black text-black hover:bg-gray-100"
 							>
 								<Download className="h-4 w-4" />
 							</Button>
@@ -385,8 +385,8 @@ export const AdministrationSystemContent: FC = () => {
 				</CardHeader>
 				<CardContent>
 					{!show_logs || !logs ? (
-						<div className="text-center py-8 text-black/50">
-							<FileText className="h-12 w-12 mx-auto mb-3 text-black/40" />
+						<div className="text-center py-8 text-gray-500">
+							<FileText className="h-12 w-12 mx-auto mb-3 text-gray-400" />
 							<p className="text-sm">
 								Click the refresh button to load logs
 							</p>
@@ -395,7 +395,7 @@ export const AdministrationSystemContent: FC = () => {
 						<Textarea
 							value={logs}
 							readOnly
-							className="font-mono text-xs h-96 resize-y border-black/20 focus:border-black focus:ring-black"
+							className="font-mono text-xs h-96 resize-y border-gray-300 focus:border-black focus:ring-black"
 							placeholder="No logs available"
 						/>
 					)}

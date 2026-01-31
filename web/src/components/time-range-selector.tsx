@@ -241,7 +241,7 @@ export const TimeRangeSelector = ({
 							key={`group-${group.label}-${groupIndex}`}
 							className="px-2 time-range-dropdown"
 						>
-							<div className="text-xs font-medium text-black/50 px-2 py-1">
+							<div className="text-xs font-medium text-gray-500 px-2 py-1">
 								{group.label}
 							</div>
 							{group.ranges.map((range, rangeIndex) => (
@@ -254,7 +254,7 @@ export const TimeRangeSelector = ({
 									>
 										<span>{range.label}</span>
 										{range.shortcut && (
-							<span className="text-xs px-1.5 py-0.5 bg-black/5 text-black/60 rounded">
+							<span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">
 								{range.shortcut.toUpperCase()}
 							</span>
 										)}
@@ -268,7 +268,7 @@ export const TimeRangeSelector = ({
 							>
 										<span>{range.label}</span>
 										{range.shortcut && (
-							<span className="text-xs px-1.5 py-0.5 bg-black/5 text-black/60 rounded">
+							<span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">
 								{range.shortcut.toUpperCase()}
 							</span>
 										)}
@@ -276,7 +276,7 @@ export const TimeRangeSelector = ({
 								)
 							))}
 							{groupIndex < timeRanges.length - 1 && (
-								<div className="my-2 border-t border-black/10" />
+								<div className="my-2 border-t border-gray-200" />
 							)}
 						</div>
 					))}

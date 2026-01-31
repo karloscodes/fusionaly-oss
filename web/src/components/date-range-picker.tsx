@@ -80,7 +80,7 @@ export function DateRangePicker({
         className={cn(
           "w-full justify-start text-left font-normal",
           error && "border-red-500",
-          !date && "text-black/50",
+          !date && "text-gray-500",
           disabled && "opacity-50 cursor-not-allowed"
         )}
         disabled={true}

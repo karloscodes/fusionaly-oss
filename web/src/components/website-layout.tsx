@@ -96,7 +96,7 @@ export function WebsiteLayout({
 	return (
 		<div className="min-h-screen bg-white">
 			{/* Navigation Banner */}
-			<nav className="border-b border-black/10">
+			<nav className="border-b border-gray-200">
 				<div className="max-w-7xl mx-auto px-4">
 					<div className="flex h-14 items-center justify-between">
 						{/* Left side: Back + Website name + Sub-nav */}
@@ -104,7 +104,7 @@ export function WebsiteLayout({
 							{/* Back to websites list */}
 							<Link
 								href="/admin"
-								className="flex items-center text-black/50 hover:text-black transition-colors"
+								className="flex items-center text-gray-500 hover:text-gray-900 transition-colors"
 								title="Back to websites"
 							>
 								<ArrowLeft className="w-4 h-4" />
@@ -116,7 +116,7 @@ export function WebsiteLayout({
 								<div className="relative" ref={dropdownRef}>
 									<button
 										onClick={() => websites.length > 1 && setIsDropdownOpen(!isDropdownOpen)}
-										className={`flex items-center gap-1.5 text-sm font-semibold text-black ${
+										className={`flex items-center gap-1.5 text-sm font-semibold text-gray-900 ${
 											websites.length > 1 ? "hover:text-black cursor-pointer" : ""
 										}`}
 									>
@@ -128,16 +128,16 @@ export function WebsiteLayout({
 
 									{/* Dropdown Menu */}
 									{isDropdownOpen && websites.length > 1 && (
-										<div className="absolute top-full left-0 mt-2 w-56 bg-white border border-black/10 rounded-lg shadow-lg z-50 py-1">
-											<div className="px-3 py-2 text-xs font-medium text-black/50 border-b border-black/10">
+										<div className="absolute top-full left-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1">
+											<div className="px-3 py-2 text-xs font-medium text-gray-500 border-b border-gray-100">
 												Switch website
 											</div>
 											{websites.map((site) => (
 												<button
 													key={site.id}
 													onClick={() => handleWebsiteSwitch(site.id)}
-													className={`w-full px-3 py-2 text-left text-sm hover:bg-black/5 flex items-center justify-between ${
-														site.id === websiteId ? "bg-black/5" : ""
+													className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center justify-between ${
+														site.id === websiteId ? "bg-gray-50" : ""
 													}`}
 												>
 													<span className={site.id === websiteId ? "font-medium" : ""}>
@@ -148,10 +148,10 @@ export function WebsiteLayout({
 													)}
 												</button>
 											))}
-											<div className="border-t border-black/10 mt-1 pt-1">
+											<div className="border-t border-gray-100 mt-1 pt-1">
 												<Link
 													href="/admin"
-													className="block w-full px-3 py-2 text-left text-sm text-black/60 hover:bg-black/5 hover:text-black"
+													className="block w-full px-3 py-2 text-left text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900"
 													onClick={() => setIsDropdownOpen(false)}
 												>
 													View all websites
@@ -163,7 +163,7 @@ export function WebsiteLayout({
 
 								<Link
 									href={`/admin/websites/${websiteId}/edit`}
-									className="text-black/50 hover:text-black transition-colors"
+									className="text-gray-500 hover:text-gray-900 transition-colors"
 									title="Website settings"
 								>
 									<Settings className="w-4 h-4" />
@@ -171,14 +171,14 @@ export function WebsiteLayout({
 							</div>
 
 							{/* Separator */}
-							<span className="text-black/50/30 hidden sm:inline">|</span>
+							<span className="text-gray-500/30 hidden sm:inline">|</span>
 
 							{/* Sub-navigation with active underline */}
 							{navRoutes.map((route) => (
 								<Link
 									key={route.path}
 									href={route.path}
-									className="relative text-sm font-medium transition-colors hover:text-black/60 py-4 text-black hidden sm:block"
+									className="relative text-sm font-medium transition-colors hover:text-gray-600 py-4 text-gray-900 hidden sm:block"
 								>
 									<span className="relative inline-flex items-center">
 										{route.name}
@@ -214,7 +214,7 @@ export function WebsiteLayout({
 							)}
 							<Link
 								href="/admin/administration/ingestion"
-								className="relative text-sm font-medium transition-colors hover:text-black/60 py-4 text-black"
+								className="relative text-sm font-medium transition-colors hover:text-gray-600 py-4 text-gray-900"
 							>
 								Settings
 								{/* Active indicator - black underline */}
@@ -226,7 +226,7 @@ export function WebsiteLayout({
 								href="#"
 								id="logout"
 								onClick={handleLogout}
-								className="text-sm font-medium transition-colors hover:text-black/60 text-black"
+								className="text-sm font-medium transition-colors hover:text-gray-600 text-gray-900"
 							>
 								Logout
 							</a>
@@ -234,12 +234,12 @@ export function WebsiteLayout({
 					</div>
 
 					{/* Mobile sub-navigation */}
-					<div className="flex items-center space-x-4 overflow-x-auto sm:hidden border-t border-black/10 -mx-4 px-4">
+					<div className="flex items-center space-x-4 overflow-x-auto sm:hidden border-t border-gray-100 -mx-4 px-4">
 						{navRoutes.map((route) => (
 							<Link
 								key={route.path}
 								href={route.path}
-								className="relative text-sm font-medium transition-colors hover:text-black/60 py-3 text-black whitespace-nowrap"
+								className="relative text-sm font-medium transition-colors hover:text-gray-600 py-3 text-gray-900 whitespace-nowrap"
 							>
 								<span className="relative inline-flex items-center">
 									{route.name}

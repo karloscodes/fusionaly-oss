@@ -136,7 +136,7 @@ export const VegaChart: React.FC<VegaChartProps> = ({ spec, data, className }) =
 	// Show error state
 	if (error) {
 		return (
-			<div className={`${className} p-4 text-center text-black/50`}>
+			<div className={`${className} p-4 text-center text-gray-500`}>
 				<p>{error}</p>
 				<p className="text-sm mt-2">The visualization could not be rendered.</p>
 			</div>
@@ -146,7 +146,7 @@ export const VegaChart: React.FC<VegaChartProps> = ({ spec, data, className }) =
 	// Show loading state
 	if (!specWithConfig) {
 		return (
-			<div className={`${className} p-4 text-center text-black/50`}>
+			<div className={`${className} p-4 text-center text-gray-500`}>
 				<p>Loading visualization...</p>
 			</div>
 		);

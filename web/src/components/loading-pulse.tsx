@@ -17,7 +17,7 @@ export const LoadingPulse: React.FC<LoadingPulseProps> = ({
   const colorClasses = {
     green: "bg-green-500",
     blue: "bg-blue-500",
-    gray: "bg-black/50",
+    gray: "bg-gray-500",
   };
 
   const sizeClasses = {
@@ -53,7 +53,7 @@ export const LoadingPulse: React.FC<LoadingPulseProps> = ({
         />
       </div>
       {message && (
-        <span className={cn("font-medium text-black/70", textSizeClasses[size])}>
+        <span className={cn("font-medium text-gray-700", textSizeClasses[size])}>
           {message}
         </span>
       )}

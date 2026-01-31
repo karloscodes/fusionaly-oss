@@ -11,10 +11,10 @@ export function NotFound() {
         />
 
         <div className="text-center py-12">
-          <p className="mt-2 text-black/50">The requested page could not be found.</p>
+          <p className="mt-2 text-gray-500">The requested page could not be found.</p>
           <a
             href="/login"
-            className="mt-4 inline-block px-4 py-2 bg-black text-white rounded hover:bg-black/80"
+            className="mt-4 inline-block px-4 py-2 bg-black text-white rounded hover:bg-gray-800"
           >
             Go to Home
           </a>
