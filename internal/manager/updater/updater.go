@@ -1,6 +1,8 @@
 package updater
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -66,7 +68,7 @@ func (u *Updater) Run(currentVersion string) error {
 	u.logger.Info("  - Caddy image: %s", dockerImages.CaddyImage)
 
 	// Fetch the latest version from GitHub
-	latestVersion, binaryURL, err := u.getLatestVersionAndBinaryURL()
+	latestVersion, binaryURL, checksumsURL, err := u.getLatestVersionAndBinaryURL()
 	if err != nil {
 		u.logger.Warn("Failed to fetch latest version from GitHub: %v", err)
 		latestVersion = extractVersionFromURL(u.config.GetData().InstallerURL)
@@ -90,8 +92,11 @@ func (u *Updater) Run(currentVersion string) error {
 				downloadURL = fmt.Sprintf("https://github.com/%s/releases/download/v%s/fusionaly-linux-%s", GitHubRepo, latestVersion, arch)
 				u.logger.Info("Using binary URL: %s", downloadURL)
 			}
+			if checksumsURL == "" {
+				checksumsURL = fmt.Sprintf("https://github.com/%s/releases/download/v%s/checksums.txt", GitHubRepo, latestVersion)
+			}
 
-			if err := u.updateBinary(downloadURL, BinaryInstallPath); err != nil {
+			if err := u.updateBinary(downloadURL, checksumsURL, BinaryInstallPath); err != nil {
 				u.logger.Warn("Failed to update binary: %v", err)
 			} else {
 				u.logger.Success("Binary updated to version %s", latestVersion)
@@ -119,7 +124,7 @@ func (u *Updater) Run(currentVersion string) error {
 	return nil
 }
 
-func (u *Updater) getLatestVersionAndBinaryURL() (string, string, error) {
+func (u *Updater) getLatestVersionAndBinaryURL() (string, string, string, error) {
 	u.logger.Info("Fetching latest release from GitHub: %s", GitHubAPIURL)
 
 	client := &http.Client{
@@ -128,12 +133,12 @@ func (u *Updater) getLatestVersionAndBinaryURL() (string, string, error) {
 
 	resp, err := client.Get(GitHubAPIURL)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to fetch latest release: %w", err)
+		return "", "", "", fmt.Errorf("failed to fetch latest release: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", "", fmt.Errorf("failed to fetch latest release, status: %s", resp.Status)
+		return "", "", "", fmt.Errorf("failed to fetch latest release, status: %s", resp.Status)
 	}
 
 	var release struct {
@@ -144,33 +149,35 @@ func (u *Updater) getLatestVersionAndBinaryURL() (string, string, error) {
 		} `json:"assets"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
-		return "", "", fmt.Errorf("failed to parse release JSON: %w", err)
+		return "", "", "", fmt.Errorf("failed to parse release JSON: %w", err)
 	}
 
 	latestVersion := strings.TrimPrefix(release.TagName, "v")
 	if latestVersion == "" {
-		return "", "", fmt.Errorf("invalid version in release tag: %s", release.TagName)
+		return "", "", "", fmt.Errorf("invalid version in release tag: %s", release.TagName)
 	}
 
 	arch := runtime.GOARCH
 	// Binary naming pattern (matches GoReleaser output)
 	expectedAsset := fmt.Sprintf("fusionaly-linux-%s", arch)
 
-	var binaryURL string
+	var binaryURL, checksumsURL string
 
 	for _, asset := range release.Assets {
 		if asset.Name == expectedAsset {
 			binaryURL = asset.BrowserURL
-			break
+		}
+		if asset.Name == "checksums.txt" {
+			checksumsURL = asset.BrowserURL
 		}
 	}
 
 	if binaryURL == "" {
-		return latestVersion, "", fmt.Errorf("no binary found for architecture %s in release v%s (expected %s)", arch, latestVersion, expectedAsset)
+		return latestVersion, "", "", fmt.Errorf("no binary found for architecture %s in release v%s (expected %s)", arch, latestVersion, expectedAsset)
 	}
 
 	u.logger.Info("Found binary: %s", binaryURL)
-	return latestVersion, binaryURL, nil
+	return latestVersion, binaryURL, checksumsURL, nil
 }
 
 func (u *Updater) update() error {
@@ -225,128 +232,119 @@ func (u *Updater) update() error {
 	return nil
 }
 
-func (u *Updater) updateBinary(url, binaryPath string) error {
+func (u *Updater) updateBinary(url, checksumsURL, binaryPath string) error {
 	u.logger.InfoWithTime("Downloading new installer binary from %s", url)
-
-	// Add diagnostic logging
-	u.logger.Info("Checking current user and permissions")
 	u.logger.Info("Current user: uid=%d, gid=%d", os.Getuid(), os.Getgid())
 	u.logger.Info("Destination binary path: %s", binaryPath)
-
-	// Check if /tmp exists and its permissions
-	if tmpInfo, err := os.Stat("/tmp"); err != nil {
-		u.logger.Info("/tmp directory error: %v", err)
-	} else {
-		u.logger.Info("/tmp directory permissions: %v", tmpInfo.Mode())
-	}
-
-	// Try to write a test file to /tmp
-	testFile := "/tmp/fusionaly-test"
-	if err := os.WriteFile(testFile, []byte("test"), 0o644); err != nil {
-		u.logger.Info("Test write to /tmp failed: %v", err)
-	} else {
-		u.logger.Info("Test write to /tmp succeeded, removing test file")
-		os.Remove(testFile)
-	}
 
 	client := &http.Client{
 		Timeout: 60 * time.Second,
 	}
 
-	u.logger.Info("Starting HTTP request to download binary")
 	resp, err := client.Get(url)
 	if err != nil {
 		return fmt.Errorf("download failed: %w", err)
 	}
 	defer resp.Body.Close()
 
-	u.logger.Info("HTTP response status: %s", resp.Status)
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("download failed, status: %s", resp.Status)
 	}
 
 	newBinary := filepath.Join("/tmp", "fusionaly.new")
-	u.logger.Info("Attempting to create file at: %s", newBinary)
 
-	// Check if the file already exists
 	if _, err := os.Stat(newBinary); err == nil {
-		u.logger.Info("File already exists, attempting to remove it")
-		if err := os.Remove(newBinary); err != nil {
-			u.logger.Info("Failed to remove existing file: %v", err)
-		} else {
-			u.logger.Info("Successfully removed existing file")
-		}
-	} else {
-		u.logger.Info("File does not exist yet: %v", err)
+		os.Remove(newBinary)
 	}
 
 	out, err := os.Create(newBinary)
 	if err != nil {
-		// Log detailed error information
-		u.logger.Info("Failed to create file: %v", err)
-		u.logger.Info("Error type: %T", err)
-
-		// Check parent directory permissions
-		tmpDir := filepath.Dir(newBinary)
-		u.logger.Info("Parent directory: %s", tmpDir)
-		if dirInfo, err := os.Stat(tmpDir); err != nil {
-			u.logger.Info("Failed to stat parent directory: %v", err)
-		} else {
-			u.logger.Info("Parent directory mode: %v", dirInfo.Mode())
-		}
-
 		return fmt.Errorf("create new binary: %w", err)
 	}
-
-	u.logger.Info("Successfully created file at %s", newBinary)
 	defer out.Close()
 
-	u.logger.Info("Copying response body to file")
 	written, err := io.Copy(out, resp.Body)
 	if err != nil {
-		u.logger.Info("Failed to write data: %v", err)
 		return fmt.Errorf("write new binary: %w", err)
 	}
-	u.logger.Info("Successfully wrote %d bytes to file", written)
-
-	// Close the file before chmod
+	u.logger.Info("Downloaded %d bytes", written)
 	out.Close()
-	u.logger.Info("Closed file after writing")
 
-	u.logger.Info("Setting file permissions to 0755")
+	// Verify checksum if checksums URL is available
+	if checksumsURL != "" {
+		binaryName := filepath.Base(url)
+		if err := u.verifyChecksum(client, checksumsURL, newBinary, binaryName); err != nil {
+			os.Remove(newBinary)
+			return fmt.Errorf("checksum verification failed: %w", err)
+		}
+		u.logger.Success("SHA256 checksum verified")
+	} else {
+		u.logger.Warn("No checksums URL available, skipping checksum verification")
+	}
+
 	if err := os.Chmod(newBinary, 0o755); err != nil {
-		u.logger.Info("Failed to set file permissions: %v", err)
 		return fmt.Errorf("chmod new binary: %w", err)
 	}
-	u.logger.Info("Successfully set file permissions")
 
-	u.logger.Info("Attempting to replace existing binary at %s", binaryPath)
 	if err := os.Rename(newBinary, binaryPath); err != nil {
-		u.logger.Info("Failed to rename file: %v", err)
-		u.logger.Info("Checking if destination exists")
-
-		if _, err := os.Stat(binaryPath); err == nil {
-			u.logger.Info("Destination file exists, checking permissions")
-			if destInfo, err := os.Stat(binaryPath); err == nil {
-				u.logger.Info("Destination file permissions: %v", destInfo.Mode())
-			}
-		} else {
-			u.logger.Info("Destination file does not exist: %v", err)
-		}
-
-		// Check if source and destination are on different filesystems
-		if linkErr, ok := err.(*os.LinkError); ok {
-			u.logger.Info("Link error: %v", linkErr)
-			if linkErr.Err.Error() == "invalid cross-device link" {
-				u.logger.Info("Cross-device link error detected. Source and destination are on different filesystems.")
-			}
-		}
-
 		return fmt.Errorf("replace binary: %w", err)
 	}
-	u.logger.Info("Successfully replaced binary")
 
 	u.logger.Success("Binary updated successfully")
+	return nil
+}
+
+// verifyChecksum downloads checksums.txt and verifies the binary's SHA256 hash.
+func (u *Updater) verifyChecksum(client *http.Client, checksumsURL, filePath, binaryName string) error {
+	u.logger.Info("Downloading checksums from %s", checksumsURL)
+
+	resp, err := client.Get(checksumsURL)
+	if err != nil {
+		return fmt.Errorf("failed to download checksums: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to download checksums, status: %s", resp.Status)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read checksums: %w", err)
+	}
+
+	// Parse checksums.txt — format: "<sha256>  <filename>"
+	var expectedHash string
+	for _, line := range strings.Split(string(body), "\n") {
+		parts := strings.Fields(line)
+		if len(parts) == 2 && parts[1] == binaryName {
+			expectedHash = parts[0]
+			break
+		}
+	}
+
+	if expectedHash == "" {
+		return fmt.Errorf("no checksum found for %s in checksums.txt", binaryName)
+	}
+
+	// Hash the downloaded file
+	f, err := os.Open(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to open file for hashing: %w", err)
+	}
+	defer f.Close()
+
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return fmt.Errorf("failed to hash file: %w", err)
+	}
+
+	actualHash := hex.EncodeToString(h.Sum(nil))
+
+	if actualHash != expectedHash {
+		return fmt.Errorf("checksum mismatch: expected %s, got %s", expectedHash, actualHash)
+	}
+
 	return nil
 }
 

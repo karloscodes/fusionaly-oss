@@ -94,8 +94,9 @@ run_installer() {
         exit 1
     fi
 
-    # Construct the download URL
+    # Construct download URLs
     BINARY_URL="https://github.com/$GITHUB_REPO/releases/download/v$LATEST_VERSION/$ASSET_NAME"
+    CHECKSUMS_URL="https://github.com/$GITHUB_REPO/releases/download/v$LATEST_VERSION/checksums.txt"
     echo "Download URL: $BINARY_URL"
 
     # Download the binary
@@ -111,6 +112,29 @@ run_installer() {
         echo -e "${RED}Error: Downloaded file is empty.${NC}"
         rm -f "$TEMP_FILE"
         exit 1
+    fi
+
+    # Verify SHA256 checksum
+    echo "Verifying SHA256 checksum..."
+    CHECKSUMS_FILE="/tmp/fusionaly-checksums.txt"
+    if curl -fsSL -o "$CHECKSUMS_FILE" "$CHECKSUMS_URL" 2>/dev/null; then
+        EXPECTED_HASH=$(grep "$ASSET_NAME" "$CHECKSUMS_FILE" | awk '{print $1}')
+        if [ -n "$EXPECTED_HASH" ]; then
+            ACTUAL_HASH=$(sha256sum "$TEMP_FILE" | awk '{print $1}')
+            if [ "$ACTUAL_HASH" != "$EXPECTED_HASH" ]; then
+                echo -e "${RED}Error: SHA256 checksum mismatch!${NC}"
+                echo "  Expected: $EXPECTED_HASH"
+                echo "  Got:      $ACTUAL_HASH"
+                rm -f "$TEMP_FILE" "$CHECKSUMS_FILE"
+                exit 1
+            fi
+            echo -e "${GREEN}Checksum verified.${NC}"
+        else
+            echo "Warning: No checksum found for $ASSET_NAME, skipping verification."
+        fi
+        rm -f "$CHECKSUMS_FILE"
+    else
+        echo "Warning: Could not download checksums file, skipping verification."
     fi
 
     # Check file type
