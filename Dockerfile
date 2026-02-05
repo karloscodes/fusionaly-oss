@@ -33,8 +33,10 @@ RUN mkdir -p dist && \
 FROM alpine:3.19
 WORKDIR /app
 
-# Install runtime dependencies and create directories in one layer
-RUN apk add --no-cache ca-certificates tzdata sqlite curl && \
+# Install runtime dependencies, create app user, and create directories in one layer
+RUN apk add --no-cache ca-certificates tzdata sqlite curl su-exec && \
+  addgroup -S fusionaly && \
+  adduser -S -G fusionaly -u 10001 -h /app fusionaly && \
   mkdir -p /app/logs /app/storage /app/web/dist
 
 # Copy compiled binaries and built assets from builder

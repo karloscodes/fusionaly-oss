@@ -6,9 +6,9 @@ BACKUP_ENABLED="${ENABLE_BACKUPS:-false}"
 LOG_DIR="/app/logs"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
-# Ensure log directory and file are writable
+# Ensure directories are writable by the app user
 mkdir -p "$LOG_DIR"
-chmod -R u+w "$LOG_DIR"
+chown -R fusionaly:fusionaly /app/storage /app/logs
 
 # Log function
 log() {
@@ -36,7 +36,7 @@ case "$COMMAND" in
   server)
     log "Starting web server with ID ${SERVER_INSTANCE_ID}..."
     run_migrations
-    exec /app/fusionaly-server
+    exec su-exec fusionaly /app/fusionaly-server
     ;;
 
   shell)
