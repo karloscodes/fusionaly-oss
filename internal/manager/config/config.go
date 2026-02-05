@@ -348,7 +348,7 @@ func (c *Config) SaveToFile(filename string) error {
 		c.logger.Info("Generated new FUSIONALY_PRIVATE_KEY")
 	}
 
-	file, err := os.Create(filename)
+	file, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
 	}

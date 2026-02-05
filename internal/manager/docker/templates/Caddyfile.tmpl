@@ -1,5 +1,5 @@
 {
-    admin 0.0.0.0:2019
+    admin localhost:2019
     {{if ne .TLSConfig "internal"}}
     email {{.TLSConfig}}
     {{end}}
@@ -27,7 +27,11 @@
     tls {{.TLSConfig}}
     {{end}}
     encode zstd gzip
-    
+
+    header {
+        Strict-Transport-Security "max-age=31536000"
+    }
+
     file_server /assets/* {
         precompressed
     }
