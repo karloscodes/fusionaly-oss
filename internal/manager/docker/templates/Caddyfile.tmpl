@@ -28,10 +28,6 @@
     {{end}}
     encode zstd gzip
 
-    header {
-        Strict-Transport-Security "max-age=31536000"
-    }
-
     file_server /assets/* {
         precompressed
     }
