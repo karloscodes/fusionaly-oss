@@ -317,16 +317,16 @@ func TestCheckDNSAndStoreWarnings(t *testing.T) {
 		t.Error("CheckDNSAndStoreWarnings() should add warnings for invalid domain")
 	}
 
-	// Verify that at least one warning mentions DNS lookup failure
+	// Verify that at least one warning mentions DNS not found
 	found := false
 	for _, warning := range warnings {
-		if strings.Contains(warning, "DNS lookup failed") {
+		if strings.Contains(warning, "No DNS record found") {
 			found = true
 			break
 		}
 	}
 	if !found {
-		t.Error("Expected DNS lookup failure warning not found")
+		t.Error("Expected DNS not found warning not found")
 	}
 }
 

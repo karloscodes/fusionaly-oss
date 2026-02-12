@@ -31,6 +31,8 @@ type ConfigData struct {
 	Version      string   // Version of the fusionaly binary
 	InstallerURL string   // URL to download new fusionaly binary
 	DNSWarnings  []string // DNS configuration warnings
+	DNSType      string   // Type of DNS issue: "not_found", "wrong_ip", or ""
+	ServerIP     string   // This server's public IP address
 	User         string   // Admin user email from users table
 	LicenseKey   string   // License key for the application
 }
@@ -178,21 +180,24 @@ func (c *Config) CollectFromUser(reader *bufio.Reader) error {
 	c.data.InstallDir = "/opt/fusionaly"
 
 	// Collect domain
+	fmt.Println()
+	fmt.Println("Configuration")
+	fmt.Println()
 	for {
-		fmt.Print("Enter your domain name (e.g., analytics.example.com): ")
+		fmt.Print("  Domain (e.g., analytics.example.com): ")
 		domain, err := reader.ReadString('\n')
 		if err != nil {
 			return fmt.Errorf("failed to read domain: %w", err)
 		}
 		c.data.Domain = strings.TrimSpace(domain)
 		if c.data.Domain == "" {
-			fmt.Println("Error: Domain cannot be empty.")
+			fmt.Println("  Error: Domain cannot be empty.")
 			continue
 		}
 
 		// Validate domain format immediately using the same validation that will be used during installation
 		if err := validation.ValidateDomain(c.data.Domain); err != nil {
-			fmt.Printf("Error: %s\n", err.Error())
+			fmt.Printf("  Error: %s\n", err.Error())
 			continue
 		}
 		break
@@ -205,17 +210,18 @@ func (c *Config) CollectFromUser(reader *bufio.Reader) error {
 
 	// Show configuration summary and get confirmation
 	for {
-		fmt.Println("\nConfiguration Summary:")
-		fmt.Printf("Domain: %s\n", c.data.Domain)
+		fmt.Println()
+		fmt.Println("Summary")
+		fmt.Println()
+		fmt.Printf("  Domain:  %s\n", c.data.Domain)
 		if c.HasDNSWarnings() {
-			fmt.Printf("DNS Status: ⚠️  Warnings detected (installation will continue)\n")
+			fmt.Printf("  DNS:     ⚠️  Not ready (installation will continue)\n")
 		} else {
-			fmt.Printf("DNS Status: ✅ Verified\n")
+			fmt.Printf("  DNS:     ✓ Ready\n")
 		}
-		fmt.Printf("Installation Directory: %s\n", c.data.InstallDir)
-		fmt.Printf("Backup Path: %s\n", c.data.BackupPath)
 
-		fmt.Print("\nProceed with this configuration? [Y/n]: ")
+		fmt.Println()
+		fmt.Print("  Proceed? [Y/n] ")
 		confirmStr, err := reader.ReadString('\n')
 		if err != nil {
 			return fmt.Errorf("failed to read confirmation: %w", err)
@@ -226,7 +232,7 @@ func (c *Config) CollectFromUser(reader *bufio.Reader) error {
 			break
 		}
 
-		fmt.Println("Configuration declined. Let's start over.")
+		fmt.Println("  Configuration declined. Let's start over.")
 		// Reset all values and start over
 		c.data.Domain = ""
 		return c.CollectFromUser(reader)
@@ -472,72 +478,92 @@ func (c *Config) Validate() error {
 
 // CheckDNSAndStoreWarnings checks DNS configuration and stores warnings instead of blocking
 func (c *Config) CheckDNSAndStoreWarnings(domain string) {
-	// Skip DNS checks for localhost - no DNS resolution needed
-	if isLocalhostDomain(domain) {
-		fmt.Printf("🏠 Skipping DNS checks for localhost domain: %s\n", domain)
-		c.data.DNSWarnings = []string{}
-		return
-	}
-
-	fmt.Printf("🔍 Checking DNS configuration for %s...\n", domain)
-
 	// Clear any existing warnings
 	c.data.DNSWarnings = []string{}
+	c.data.DNSType = ""
+	c.data.ServerIP = ""
 
-	ips, err := net.LookupIP(domain)
-	if err != nil {
-		warning := fmt.Sprintf("DNS lookup failed for %s: %v", domain, err)
-		c.data.DNSWarnings = append(c.data.DNSWarnings, warning)
-		c.data.DNSWarnings = append(c.data.DNSWarnings, "Suggestion: Check that your domain is registered and DNS is configured correctly")
-		c.data.DNSWarnings = append(c.data.DNSWarnings, "Suggestion: Verify your DNS records using https://dnschecker.org/")
+	// Skip DNS checks for localhost - no DNS resolution needed
+	if isLocalhostDomain(domain) {
+		fmt.Println()
+		fmt.Println("Checking DNS...")
+		fmt.Println()
+		fmt.Printf("  ✓ %s (localhost, skipping DNS check)\n", domain)
+		fmt.Println()
 		return
 	}
 
-	if len(ips) == 0 {
-		warning := "No A/AAAA records found for domain " + domain
-		c.data.DNSWarnings = append(c.data.DNSWarnings, warning)
-		c.data.DNSWarnings = append(c.data.DNSWarnings, "DNS propagation may take from a few minutes to hours to complete")
-		c.data.DNSWarnings = append(c.data.DNSWarnings, "You can check DNS records at https://mxtoolbox.com/SuperTool.aspx")
+	fmt.Println()
+	fmt.Println("Checking DNS...")
+	fmt.Println()
+
+	// Get server IP first
+	serverIP, err := getCurrentServerIP()
+	if err != nil {
+		c.data.ServerIP = "unknown"
+	} else {
+		c.data.ServerIP = serverIP
+	}
+
+	ips, err := net.LookupIP(domain)
+	if err != nil || len(ips) == 0 {
+		// DNS not found - show full instructions
+		c.data.DNSType = "not_found"
+		c.data.DNSWarnings = append(c.data.DNSWarnings, "No DNS record found")
+
+		fmt.Printf("  ⚠️  No DNS record found for %s\n", domain)
+		fmt.Println()
+		fmt.Println("  ┌─ What to do ───────────────────────────────────────────────┐")
+		fmt.Println("  │                                                            │")
+		fmt.Println("  │  Add an A record at your DNS provider:                     │")
+		fmt.Println("  │                                                            │")
+		fmt.Println("  │    Name:   " + extractSubdomain(domain) + padRight("", 43-len(extractSubdomain(domain))) + "│")
+		fmt.Println("  │    Type:   A                                               │")
+		fmt.Printf("  │    Value:  %-14s  ← this server                    │\n", c.data.ServerIP)
+		fmt.Println("  │                                                            │")
+		fmt.Println("  │  SSL will activate automatically once DNS propagates.      │")
+		fmt.Println("  │                                                            │")
+		fmt.Println("  └────────────────────────────────────────────────────────────┘")
+		fmt.Println()
 		return
 	}
 
 	// Check if domain resolves to server IP
-	serverIPs, err := getCurrentServerIP()
-	if err != nil {
-		warning := fmt.Sprintf("Could not determine server IP addresses: %v", err)
-		c.data.DNSWarnings = append(c.data.DNSWarnings, warning)
-		c.data.DNSWarnings = append(c.data.DNSWarnings, fmt.Sprintf("Domain %s resolves to: %s", domain, formatIPs(ips)))
-		c.data.DNSWarnings = append(c.data.DNSWarnings, "Please verify manually that one of these IPs matches this server")
-	} else {
-		match, matchedIP := checkDomainIPMatch(domain, serverIPs)
-		if !match {
-			warning := fmt.Sprintf("Domain %s does not resolve to this server", domain)
-			c.data.DNSWarnings = append(c.data.DNSWarnings, warning)
-			c.data.DNSWarnings = append(c.data.DNSWarnings, fmt.Sprintf("Server IP(s): %s", serverIPs))
-			c.data.DNSWarnings = append(c.data.DNSWarnings, fmt.Sprintf("Domain resolves to: %s", formatIPs(ips)))
-			c.data.DNSWarnings = append(c.data.DNSWarnings, "Update your domain's DNS records to point to this server's IP")
-		} else {
-			fmt.Printf("✅ DNS configuration verified: %s resolves to server IP %s\n", domain, matchedIP)
-		}
+	match, matchedIP := checkDomainIPMatch(domain, c.data.ServerIP)
+	if match {
+		fmt.Printf("  ✓ %s → %s (this server)\n", domain, matchedIP)
+		fmt.Println()
+		return
 	}
 
-	// Display warnings if any exist
-	if len(c.data.DNSWarnings) > 0 {
-		c.displayDNSWarnings()
-	}
+	// DNS points elsewhere - simple one-line message
+	c.data.DNSType = "wrong_ip"
+	domainIP := formatIPs(ips)
+	c.data.DNSWarnings = append(c.data.DNSWarnings, fmt.Sprintf("Points to %s instead of this server", domainIP))
+
+	fmt.Printf("  ⚠️  %s → %s (different server)\n", domain, domainIP)
+	fmt.Println()
+	fmt.Printf("  Update your A record: %s → %s\n", domain, c.data.ServerIP)
+	fmt.Println("  SSL will activate automatically once DNS propagates.")
+	fmt.Println()
 }
 
-// displayDNSWarnings shows DNS configuration warnings to the user
-func (c *Config) displayDNSWarnings() {
-	fmt.Println("\n⚠️  DNS Configuration Warnings:")
-	for _, warning := range c.data.DNSWarnings {
-		if strings.HasPrefix(warning, "Suggestion:") {
-			fmt.Printf("   💡 %s\n", warning[11:]) // Remove "Suggestion:" prefix
-		} else {
-			fmt.Printf("   • %s\n", warning)
-		}
+// extractSubdomain extracts the subdomain part from a domain
+// e.g., "analytics.example.com" -> "analytics", "example.com" -> "@"
+func extractSubdomain(domain string) string {
+	parts := strings.Split(domain, ".")
+	if len(parts) <= 2 {
+		return "@"
 	}
-	fmt.Printf("\n📋 Installation will continue, but you may need to fix DNS issues for external access.\n\n")
+	return parts[0]
+}
+
+// padRight pads a string with spaces to reach the desired length
+func padRight(s string, length int) string {
+	if len(s) >= length {
+		return s
+	}
+	return s + strings.Repeat(" ", length-len(s))
 }
 
 // GetDNSWarnings returns the current DNS warnings
@@ -548,6 +574,16 @@ func (c *Config) GetDNSWarnings() []string {
 // HasDNSWarnings returns true if there are DNS configuration warnings
 func (c *Config) HasDNSWarnings() bool {
 	return len(c.data.DNSWarnings) > 0
+}
+
+// GetServerIP returns the server's public IP address
+func (c *Config) GetServerIP() string {
+	return c.data.ServerIP
+}
+
+// GetDNSType returns the type of DNS issue: "not_found", "wrong_ip", or ""
+func (c *Config) GetDNSType() string {
+	return c.data.DNSType
 }
 
 // generatePrivateKey generates a secure random private key

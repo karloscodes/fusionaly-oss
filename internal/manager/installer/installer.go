@@ -66,87 +66,108 @@ func (i *Installer) RunWithConfig(cfg *config.Config) error {
 
 // RunCompleteInstallation runs the complete installation process with proper coordination
 func (i *Installer) RunCompleteInstallation() error {
-	totalSteps := 7
-
-	// Step 1: Display welcome message and collect ALL user input upfront
+	// Display welcome message and collect ALL user input upfront
 	i.displayWelcomeMessage()
-	fmt.Println("Please provide the required configuration details:")
 	reader := bufio.NewReader(os.Stdin)
 	i.config = config.NewConfig(i.logger)
 	if err := i.config.CollectFromUser(reader); err != nil {
 		return fmt.Errorf("failed to collect configuration: %w", err)
 	}
 
-	// Step 2: Validate system requirements (no system changes yet)
-	i.logger.Info("Step 1/%d: Checking system requirements", totalSteps)
+	// Start installation with progress display
+	fmt.Println()
+	fmt.Println("Installing")
+	fmt.Println()
+
+	// Step 1: Validate system requirements
+	i.printStep("Checking system", "running")
 	checker := requirements.NewChecker(i.logger)
 	if err := checker.CheckSystemRequirements(); err != nil {
+		i.printStep("Checking system", "failed")
 		return fmt.Errorf("system requirements check failed: %w", err)
 	}
-	i.logger.Success("System requirements verified")
+	i.printStep("Checking system", "done")
 
-	// Step 3: Install SQLite
-	i.logger.Info("Step 2/%d: Installing SQLite", totalSteps)
+	// Step 2: Install SQLite
+	i.printStep("SQLite", "running")
 	if err := i.database.EnsureSQLiteInstalled(); err != nil {
+		i.printStep("SQLite", "failed")
 		return fmt.Errorf("failed to install SQLite: %w", err)
 	}
-	i.logger.Success("SQLite installed")
+	i.printStep("SQLite", "done")
 
-	// Step 4: Install Docker
-	i.logger.Info("Step 3/%d: Installing Docker", totalSteps)
-	progressChan := make(chan int, 1)
-	go i.showProgress(progressChan, "Docker installation")
+	// Step 3: Install Docker
+	i.printStep("Docker", "running")
 	if err := i.docker.EnsureInstalled(); err != nil {
-		close(progressChan)
+		i.printStep("Docker", "failed")
 		return fmt.Errorf("failed to install Docker: %w", err)
 	}
-	progressChan <- 100
-	close(progressChan)
-	i.logger.Success("Docker installed")
+	i.printStep("Docker", "done")
 
-	// Step 5: Configure system
-	i.logger.Info("Step 4/%d: Configuring system", totalSteps)
+	// Step 4: Configure system
+	i.printStep("Configuring", "running")
 	if err := i.configureSystem(); err != nil {
+		i.printStep("Configuring", "failed")
 		return fmt.Errorf("failed to configure system: %w", err)
 	}
-	i.logger.Success("System configured")
+	i.printStep("Configuring", "done")
 
-	// Step 6: Deploy application
-	i.logger.Info("Step 5/%d: Deploying application", totalSteps)
-	deployProgressChan := make(chan int, 1)
-	go i.showProgress(deployProgressChan, "Application deployment")
+	// Step 5: Deploy application
+	i.printStep("Deploying", "running")
 	if err := i.docker.Deploy(i.config); err != nil {
-		close(deployProgressChan)
+		i.printStep("Deploying", "failed")
 		return fmt.Errorf("failed to deploy application: %w", err)
 	}
-	deployProgressChan <- 100
-	close(deployProgressChan)
-	i.logger.Success("Application deployed")
+	i.printStep("Deploying", "done")
 
-	// Step 7: Setup maintenance
-	i.logger.Info("Step 6/%d: Setting up maintenance", totalSteps)
+	// Step 6: Setup maintenance
+	i.printStep("Maintenance", "running")
 	if err := i.setupMaintenance(); err != nil {
+		i.printStep("Maintenance", "failed")
 		return fmt.Errorf("failed to setup maintenance: %w", err)
 	}
-	i.logger.Success("Maintenance configured")
+	i.printStep("Maintenance", "done")
 
-	// Step 8: Verify installation
-	i.logger.Info("Step 7/%d: Verifying installation", totalSteps)
+	// Step 7: Verify installation
 	if _, err := i.VerifyInstallation(); err != nil {
 		return fmt.Errorf("installation verification failed: %w", err)
 	}
-	i.logger.Success("Installation verified")
 
 	return nil
 }
 
+// printStep prints a step with its status
+func (i *Installer) printStep(name string, status string) {
+	// Clear the current line and move to beginning
+	fmt.Print("\r\033[K")
+
+	// Pad the name to 20 characters for alignment
+	paddedName := name
+	for len(paddedName) < 20 {
+		paddedName += " "
+	}
+
+	switch status {
+	case "done":
+		fmt.Printf("  %s✓\n", paddedName)
+	case "failed":
+		fmt.Printf("  %s✗ Failed\n", paddedName)
+	case "running":
+		fmt.Printf("  %s⠹", paddedName)
+	case "pending":
+		fmt.Printf("  %s·\n", paddedName)
+	}
+}
+
 // displayWelcomeMessage shows the initial welcome and requirements message
 func (i *Installer) displayWelcomeMessage() {
-	fmt.Println("🚀 Welcome to Fusionaly Installer!")
+	fmt.Println("┌────────────────────────────────────────────────────────────────┐")
+	fmt.Println("│                       Fusionaly Installer                      │")
+	fmt.Println("└────────────────────────────────────────────────────────────────┘")
 	fmt.Println()
-	fmt.Println("📋 Requirements: Ports 80/443 available, root privileges, internet connection")
-	fmt.Println("📋 DNS Configuration (Optional): A/AAAA records are optional but useful if set before install")
-	fmt.Println("🔒 SSL certificates provided by Let's Encrypt with automatic renewal")
+	fmt.Println("  • Ports 80 and 443 must be available")
+	fmt.Println("  • DNS pointing to this server recommended (for SSL)")
+	fmt.Println("  • Server hardening (firewall, SSH) not included")
 	fmt.Println()
 }
 
@@ -229,40 +250,23 @@ func (i *Installer) setupMaintenance() error {
 
 // DisplayCompletionMessage shows the final completion message with DNS warnings if needed
 func (i *Installer) DisplayCompletionMessage() {
-	// DNS warnings (if any)
+	data := i.config.GetData()
+
+	fmt.Println()
+	fmt.Println("Installation complete.")
+	fmt.Println()
+	fmt.Printf("  https://%s\n", data.Domain)
+	fmt.Println()
+
+	// DNS warning (if any)
 	if i.config.HasDNSWarnings() {
-		fmt.Println("\n\033[1m⚠️  DNS CONFIGURATION REQUIRED\033[0m")
-		fmt.Println(strings.Repeat("-", 40))
-		fmt.Println("The following DNS issues were detected during installation:")
-		for _, warning := range i.config.GetDNSWarnings() {
-			if strings.HasPrefix(warning, "Suggestion:") {
-				fmt.Printf("   💡 %s\n", warning[11:])
-			} else {
-				fmt.Printf("   • %s\n", warning)
-			}
-		}
-		fmt.Println("\n🛠️  NEXT STEPS:")
-		data := i.config.GetData()
-		fmt.Printf("   1. Configure DNS: Add A/AAAA record for %s pointing to this server\n", data.Domain)
-		fmt.Println("   2. Wait for DNS propagation (up to 24 hours)")
-		fmt.Printf("   3. Test access: https://%s\n", data.Domain)
-		fmt.Println("   4. Monitor logs: sudo tail -f /opt/fusionaly/logs/caddy.log")
-		fmt.Println("\n📋 Note: All components are installed. The system will work once DNS is configured.")
-		fmt.Println("📋 SSL setup might not be immediate due to Let's Encrypt retries.")
+		serverIP := i.config.GetServerIP()
+		fmt.Printf("  ⚠️  DNS not ready — point %s → %s\n", data.Domain, serverIP)
+		fmt.Println("      SSL activates automatically once DNS propagates.")
+		fmt.Println()
 	}
 
-	// Final success message with dashboard access information
-	fmt.Println()
-	fmt.Println("🎉 Installation Complete!")
-	fmt.Println("═══════════════════════════")
-	data := i.config.GetData()
-	fmt.Printf("🌐 Dashboard URL: https://%s\n", data.Domain)
-	// Generate the admin email that will be used for Let's Encrypt
-	baseDomain := extractBaseDomain(data.Domain)
-	_ = fmt.Sprintf("admin-fusionaly@%s", baseDomain) // Keep for potential future use
-	fmt.Println()
-	fmt.Println("🚀 Your Fusionaly installation is ready!")
-	fmt.Println("Thank you for choosing Fusionaly for your analytics needs.")
+	fmt.Println("  Visit to create your admin account.")
 }
 
 func (i *Installer) Run() error {
