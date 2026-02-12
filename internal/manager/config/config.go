@@ -34,7 +34,6 @@ type ConfigData struct {
 	DNSType      string   // Type of DNS issue: "not_found", "wrong_ip", or ""
 	ServerIP     string   // This server's public IP address
 	User         string   // Admin user email from users table
-	LicenseKey   string   // License key for the application
 }
 
 // Config manages configuration
@@ -313,8 +312,6 @@ func (c *Config) LoadFromFile(filename string) error {
 			c.data.PrivateKey = value
 		case "FUSIONALY_USER":
 			c.data.User = value
-		case "FUSIONALY_LICENSE_KEY":
-			c.data.LicenseKey = value
 		}
 	}
 	if err := scanner.Err(); err != nil {
@@ -370,9 +367,6 @@ func (c *Config) SaveToFile(filename string) error {
 	fmt.Fprintf(file, "FUSIONALY_PRIVATE_KEY=%s\n", c.data.PrivateKey)
 	if c.data.User != "" {
 		fmt.Fprintf(file, "FUSIONALY_USER=%s\n", c.data.User)
-	}
-	if c.data.LicenseKey != "" {
-		fmt.Fprintf(file, "FUSIONALY_LICENSE_KEY=%s\n", c.data.LicenseKey)
 	}
 
 	c.logger.Info("Configuration saved to %s", filename)

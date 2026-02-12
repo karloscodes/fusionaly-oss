@@ -590,7 +590,6 @@ func (d *Docker) DeployApp(data config.ConfigData, name string) error {
 		"-e", "FUSIONALY_DOMAIN=" + data.Domain,
 		"-e", "FUSIONALY_PRIVATE_KEY=" + data.PrivateKey,
 		"-e", "SERVER_INSTANCE_ID=" + name,
-		"-e", "FUSIONALY_LICENSE_KEY=" + data.LicenseKey,
 		"--memory=512m",
 		"--restart", "unless-stopped",
 		data.AppImage,

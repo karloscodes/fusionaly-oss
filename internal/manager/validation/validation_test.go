@@ -162,34 +162,6 @@ func TestValidateIPAddress(t *testing.T) {
 	}
 }
 
-func TestValidateLicenseKey(t *testing.T) {
-	tests := []struct {
-		name    string
-		license string
-		wantErr bool
-	}{
-		{"valid license", "ABC123DEF456", false},
-		{"valid with hyphens", "ABC-123-DEF-456", false},
-		{"valid with underscores", "ABC_123_DEF_456", false},
-		{"valid with dots", "ABC.123.DEF.456", false},
-		{"valid long license", "ABCDEFGHIJ1234567890ABCDEFGHIJ", false},
-		{"empty license", "", true},
-		{"too short", "ABC123", true},
-		{"too long", string(make([]byte, 101)), true},
-		{"invalid characters", "ABC@123#DEF", true},
-		{"spaces", "ABC 123 DEF", true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := ValidateLicenseKey(tt.license)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("ValidateLicenseKey() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
 func TestValidatePassword(t *testing.T) {
 	tests := []struct {
 		name     string

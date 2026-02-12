@@ -139,29 +139,6 @@ func ValidateIPAddress(ip string) error {
 	return nil
 }
 
-// ValidateLicenseKey validates license key format (basic validation)
-func ValidateLicenseKey(license string) error {
-	if license == "" {
-		return errors.NewValidationError("license", license, "license key cannot be empty")
-	}
-
-	if len(license) < 10 {
-		return errors.NewValidationError("license", license, "license key too short (minimum 10 characters)")
-	}
-
-	if len(license) > 100 {
-		return errors.NewValidationError("license", license, "license key too long (maximum 100 characters)")
-	}
-
-	// Basic format validation - alphanumeric and common separators
-	validChars := regexp.MustCompile(`^[a-zA-Z0-9\-_\.]+$`)
-	if !validChars.MatchString(license) {
-		return errors.NewValidationError("license", license, "license key contains invalid characters")
-	}
-
-	return nil
-}
-
 // ValidatePassword validates password strength
 func ValidatePassword(password string) error {
 	if password == "" {
