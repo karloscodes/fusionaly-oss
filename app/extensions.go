@@ -4,6 +4,8 @@
 package app
 
 import (
+	"io/fs"
+
 	"fusionaly/internal"
 	"fusionaly/internal/config"
 	"fusionaly/internal/database"
@@ -22,7 +24,14 @@ type (
 	Application = internal.Application
 	Config      = config.Config
 	DBManager   = database.DBManager
+	AppOption   = internal.AppOption
 )
+
+// WithStaticFS sets embedded static assets for production builds.
+// In development mode, assets are served from disk for hot-reload.
+func WithStaticFS(staticFS fs.FS) AppOption {
+	return internal.WithStaticFS(staticFS)
+}
 
 // Re-export onboarding types
 type (
@@ -47,13 +56,13 @@ func GetConfig() *Config {
 }
 
 // NewApp creates a new application with default routes
-func NewApp() (*Application, error) {
-	return internal.NewApp()
+func NewApp(opts ...AppOption) (*Application, error) {
+	return internal.NewApp(opts...)
 }
 
 // NewAppWithRoutes creates a new application with custom route mounting
-func NewAppWithRoutes(cfg *Config, routeMount func(*cartridge.Server)) (*Application, error) {
-	return internal.NewAppWithRoutes(cfg, routeMount)
+func NewAppWithRoutes(cfg *Config, routeMount func(*cartridge.Server), opts ...AppOption) (*Application, error) {
+	return internal.NewAppWithRoutes(cfg, routeMount, opts...)
 }
 
 // SetupSession configures session management on the server

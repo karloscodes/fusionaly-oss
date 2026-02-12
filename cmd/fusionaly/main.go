@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"fusionaly/internal"
+	"fusionaly/web"
 )
 
 const (
@@ -17,8 +18,8 @@ const (
 )
 
 func main() {
-	// Initialize application
-	app, err := internal.NewApp()
+	// Initialize application with embedded assets
+	app, err := internal.NewApp(internal.WithStaticFS(web.Assets()))
 	if err != nil {
 		log.Fatalf("Failed to create app: %v", err)
 	}
