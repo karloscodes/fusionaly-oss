@@ -22,12 +22,13 @@ COPY api ./api
 COPY web/src ./web/src
 COPY web/public ./web/public
 COPY web/index.html web/vite.config.ts web/tsconfig*.json web/postcss.config.js web/tailwind.config.ts ./web/
+COPY web/*.go ./web/
 
-# Build binaries and web assets
+# Build web assets first (required for Go embed), then binaries
 RUN mkdir -p dist && \
+  cd web && npm run build && cd .. && \
   CGO_ENABLED=1 go build -o dist/fusionaly-server cmd/fusionaly/main.go && \
-  CGO_ENABLED=1 go build -o dist/fnctl cmd/fnctl/main.go && \
-  cd web && npm run build
+  CGO_ENABLED=1 go build -o dist/fnctl cmd/fnctl/main.go
 
 # Final stage - minimal runtime image
 FROM alpine:3.19
