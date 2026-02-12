@@ -22,10 +22,21 @@ jobs:
           go-version: "1.25"
           cache: true
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
       - name: Install dependencies
         run: |
           go mod download
           go mod tidy
+
+      - name: Build web assets
+        run: |
+          cd web
+          npm install --legacy-peer-deps
+          npm run build
 
       - name: Run unit tests
         run: FUSIONALY_ENV=test go test -v ./...
