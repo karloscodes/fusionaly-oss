@@ -33,6 +33,12 @@ func WithStaticFS(staticFS fs.FS) AppOption {
 	return internal.WithStaticFS(staticFS)
 }
 
+// WithManifestData sets the embedded Vite manifest JSON for production builds.
+// Used to resolve hashed asset filenames when manifest is not available on filesystem.
+func WithManifestData(data []byte) AppOption {
+	return internal.WithManifestData(data)
+}
+
 // Re-export onboarding types
 type (
 	OnboardingStep    = onboarding.OnboardingStep
