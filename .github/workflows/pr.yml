@@ -77,6 +77,45 @@ jobs:
           echo "=== Manager integration tests ==="
           FUSIONALY_ENV=test go test -v ./internal/manager -run "TestManager"
 
+  test-install:
+    name: Install Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache: true
+
+      - name: Build manager
+        run: go build -o bin/fusionaly ./cmd/manager
+
+      - name: Run install
+        run: echo -e "localhost\ny\n" | sudo -E ./bin/fusionaly install
+        env:
+          FUSIONALY_ENV: test
+
+      - name: Verify install
+        run: |
+          sleep 5
+          docker ps
+          docker ps --format '{{.Names}}' | grep -q "fusionaly"
+          for i in {1..12}; do
+            curl -sf http://localhost/_health && exit 0
+            sleep 5
+          done
+          exit 1
+
+      - name: Logs on failure
+        if: failure()
+        run: |
+          docker ps -a
+          docker logs fusionaly-app-1 2>&1 | tail -100 || true
+          docker logs fusionaly-caddy 2>&1 | tail -50 || true
+
   build-image:
     name: Build Docker Image
     runs-on: ubuntu-latest
