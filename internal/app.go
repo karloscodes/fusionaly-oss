@@ -23,7 +23,8 @@ type Application struct {
 type AppOption func(*appOptions)
 
 type appOptions struct {
-	staticFS fs.FS
+	staticFS     fs.FS
+	manifestData []byte
 }
 
 // WithStaticFS sets embedded static assets for production builds.
@@ -31,6 +32,14 @@ type appOptions struct {
 func WithStaticFS(staticFS fs.FS) AppOption {
 	return func(o *appOptions) {
 		o.staticFS = staticFS
+	}
+}
+
+// WithManifestData sets the embedded Vite manifest JSON for production builds.
+// Used to resolve hashed asset filenames when manifest is not available on filesystem.
+func WithManifestData(data []byte) AppOption {
+	return func(o *appOptions) {
+		o.manifestData = data
 	}
 }
 
@@ -51,6 +60,11 @@ func NewAppWithRoutes(cfg *config.Config, routeMount func(*cartridge.Server), op
 	// Enable Inertia dev mode in development (re-reads manifest on every request)
 	if cfg.IsDevelopment() {
 		inertia.SetDevMode(true)
+	}
+
+	// Set embedded manifest data for production (used when filesystem manifest not available)
+	if len(options.manifestData) > 0 {
+		inertia.SetManifestData(options.manifestData)
 	}
 
 	// Create logger
@@ -108,6 +122,11 @@ func NewAppWithConfig(cfg *config.Config, opts ...AppOption) (*Application, erro
 	// Enable Inertia dev mode in development (re-reads manifest on every request)
 	if cfg.IsDevelopment() {
 		inertia.SetDevMode(true)
+	}
+
+	// Set embedded manifest data for production (used when filesystem manifest not available)
+	if len(options.manifestData) > 0 {
+		inertia.SetManifestData(options.manifestData)
 	}
 
 	// Create logger

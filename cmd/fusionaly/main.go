@@ -18,8 +18,11 @@ const (
 )
 
 func main() {
-	// Initialize application with embedded assets
-	app, err := internal.NewApp(internal.WithStaticFS(web.Assets()))
+	// Initialize application with embedded assets and manifest
+	app, err := internal.NewApp(
+		internal.WithStaticFS(web.Assets()),
+		internal.WithManifestData(web.ManifestJSON()),
+	)
 	if err != nil {
 		log.Fatalf("Failed to create app: %v", err)
 	}

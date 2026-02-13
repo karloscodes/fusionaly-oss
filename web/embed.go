@@ -6,7 +6,7 @@ import (
 	"io/fs"
 )
 
-//go:embed dist/assets
+//go:embed dist/assets dist/.vite/manifest.json
 var assetsFS embed.FS
 
 // Assets returns the embedded static assets filesystem.
@@ -18,4 +18,14 @@ func Assets() fs.FS {
 		panic(err)
 	}
 	return sub
+}
+
+// ManifestJSON returns the embedded Vite manifest.json contents.
+// Used to resolve hashed asset filenames in production.
+func ManifestJSON() []byte {
+	data, err := assetsFS.ReadFile("dist/.vite/manifest.json")
+	if err != nil {
+		return nil
+	}
+	return data
 }
