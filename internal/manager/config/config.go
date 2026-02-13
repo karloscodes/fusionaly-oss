@@ -179,7 +179,6 @@ func (c *Config) CollectFromUser(reader *bufio.Reader) error {
 	c.data.InstallDir = "/opt/fusionaly"
 
 	// Collect domain
-	fmt.Println()
 	fmt.Println("Configuration")
 	fmt.Println()
 	for {
@@ -209,14 +208,13 @@ func (c *Config) CollectFromUser(reader *bufio.Reader) error {
 
 	// Show configuration summary and get confirmation
 	for {
-		fmt.Println()
 		fmt.Println("Summary")
 		fmt.Println()
 		fmt.Printf("  Domain:  %s\n", c.data.Domain)
 		if c.HasDNSWarnings() {
-			fmt.Printf("  DNS:     ⚠️  Not ready (installation will continue)\n")
+			fmt.Printf("  DNS:     Not ready (installation will continue)\n")
 		} else {
-			fmt.Printf("  DNS:     ✓ Ready\n")
+			fmt.Printf("  DNS:     Ready\n")
 		}
 
 		fmt.Println()
@@ -231,13 +229,14 @@ func (c *Config) CollectFromUser(reader *bufio.Reader) error {
 			break
 		}
 
+		fmt.Println()
 		fmt.Println("  Configuration declined. Let's start over.")
+		fmt.Println()
 		// Reset all values and start over
 		c.data.Domain = ""
 		return c.CollectFromUser(reader)
 	}
 
-	c.logger.Success("Configuration collected from user")
 	return nil
 }
 

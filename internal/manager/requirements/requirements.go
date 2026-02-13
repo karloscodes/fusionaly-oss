@@ -20,9 +20,6 @@ func NewChecker(logger *logging.Logger) *Checker {
 
 // CheckSystemRequirements performs all system requirement checks
 func (c *Checker) CheckSystemRequirements() error {
-	fmt.Println("🔍 Performing system checks...")
-	fmt.Println()
-
 	// Root privilege check
 	if err := c.checkRootPrivileges(); err != nil {
 		return err
@@ -33,18 +30,14 @@ func (c *Checker) CheckSystemRequirements() error {
 		return err
 	}
 
-	fmt.Println()
 	return nil
 }
 
 // checkRootPrivileges verifies that the installer is running with root privileges
 func (c *Checker) checkRootPrivileges() error {
 	if os.Geteuid() != 0 && os.Getenv("ENV") != "test" {
-		fmt.Printf("❌ Error: This installer must be run as root. Please run with 'sudo'.\n")
-		fmt.Printf("Example: sudo %s install\n", os.Args[0])
 		return fmt.Errorf("root privileges required")
 	}
-	fmt.Println("✅ Root privileges confirmed")
 	return nil
 }
 
@@ -52,23 +45,17 @@ func (c *Checker) checkRootPrivileges() error {
 func (c *Checker) checkPortAvailability() error {
 	// Skip port checking in integration tests
 	if os.Getenv("SKIP_PORT_CHECKING") == "1" {
-		fmt.Println("⚠️  Skipping port availability check (test mode)")
 		return nil
 	}
 
-	fmt.Print("🔍 Checking port availability... ")
-
 	if !c.checkPort(80) {
-		fmt.Printf("\n❌ Error: Port 80 is not available - required for HTTP access and SSL certificate generation\n")
 		return fmt.Errorf("port 80 is not available")
 	}
 
 	if !c.checkPort(443) {
-		fmt.Printf("\n❌ Error: Port 443 is not available - required for HTTPS access and SSL certificate generation\n")
 		return fmt.Errorf("port 443 is not available")
 	}
 
-	fmt.Println("✅ Ports 80 and 443 are available")
 	return nil
 }
 
