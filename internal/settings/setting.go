@@ -2,6 +2,7 @@ package settings
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -324,6 +325,11 @@ const (
 	KeyGeoLiteLicenseKey = "geolite_license_key"
 )
 
+// Agent API settings keys
+const (
+	KeyAgentAPIKey = "agent_api_key"
+)
+
 // GetGeoLiteCredentials retrieves GeoLite account ID and license key
 func GetGeoLiteCredentials(db *gorm.DB) (accountID string, licenseKey string, err error) {
 	accountID, _ = GetSetting(db, KeyGeoLiteAccountID)
@@ -340,6 +346,51 @@ func SaveGeoLiteCredentials(db *gorm.DB, accountID string, licenseKey string) er
 		return fmt.Errorf("failed to save GeoLite license key: %w", err)
 	}
 	return nil
+}
+
+// GetAgentAPIKey retrieves the agent API key
+func GetAgentAPIKey(db *gorm.DB) (string, error) {
+	return GetSetting(db, KeyAgentAPIKey)
+}
+
+// GetOrCreateAgentAPIKey returns the existing API key or generates a new one
+func GetOrCreateAgentAPIKey(db *gorm.DB) (string, error) {
+	key, err := GetAgentAPIKey(db)
+	if err == nil && key != "" {
+		return key, nil
+	}
+	return GenerateAgentAPIKey(db)
+}
+
+// GenerateAgentAPIKey creates a new random API key and stores it
+func GenerateAgentAPIKey(db *gorm.DB) (string, error) {
+	key := generateRandomToken(32)
+	if err := CreateOrUpdateSetting(db, KeyAgentAPIKey, key); err != nil {
+		return "", err
+	}
+	return key, nil
+}
+
+// RegenerateAgentAPIKey creates a new API key, replacing the old one
+func RegenerateAgentAPIKey(db *gorm.DB) (string, error) {
+	return GenerateAgentAPIKey(db)
+}
+
+// generateRandomToken creates a cryptographically secure random token
+func generateRandomToken(length int) string {
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = charset[randInt(len(charset))]
+	}
+	return string(b)
+}
+
+// randInt returns a cryptographically secure random int in [0, max)
+func randInt(max int) int {
+	var buf [1]byte
+	_, _ = rand.Read(buf[:])
+	return int(buf[0]) % max
 }
 
 // GetAllSettingsForDisplay retrieves all general (non-website-specific) settings

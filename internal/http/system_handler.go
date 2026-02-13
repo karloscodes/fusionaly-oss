@@ -195,6 +195,17 @@ func AdministrationSystemPageAction(ctx *cartridge.Context) error {
 	_, geoDBErr := os.Stat(geoDBPath)
 	geoDBExists := geoDBErr == nil
 
+	// Get Agent API key (masked for display, last 4 chars visible)
+	agentAPIKey, _ := settings.GetAgentAPIKey(db)
+	var maskedAPIKey string
+	if agentAPIKey != "" {
+		if len(agentAPIKey) > 4 {
+			maskedAPIKey = "••••••••••••••••••••••••••••" + agentAPIKey[len(agentAPIKey)-4:]
+		} else {
+			maskedAPIKey = agentAPIKey
+		}
+	}
+
 	return inertia.RenderPage(ctx.Ctx, "AdministrationSystem", inertia.Props{
 		"websites":               websitesData,
 		"show_logs":              showLogs,
@@ -204,6 +215,8 @@ func AdministrationSystemPageAction(ctx *cartridge.Context) error {
 		"geolite_last_update":    geoLastUpdate,
 		"geolite_db_exists":      geoDBExists,
 		"geolite_download_error": geoDownloadError,
+		"agent_api_key":          maskedAPIKey,
+		"agent_api_key_exists":   agentAPIKey != "",
 	})
 }
 
@@ -318,5 +331,38 @@ func SystemGeoLiteDownloadAction(ctx *cartridge.Context) error {
 
 	ctx.Logger.Info("Manual GeoLite database download triggered")
 	flash.SetFlash(ctx.Ctx, "success", "Database download started in the background. Refresh this page in a moment to check status.")
+	return ctx.Redirect("/admin/administration/system", fiber.StatusFound)
+}
+
+// SystemAgentAPIKeyAction returns or creates the Agent API key (JSON response)
+func SystemAgentAPIKeyAction(ctx *cartridge.Context) error {
+	db := ctx.DB()
+
+	key, err := settings.GetOrCreateAgentAPIKey(db)
+	if err != nil {
+		ctx.Logger.Error("Failed to get/create Agent API key", slog.Any("error", err))
+		return ctx.Ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to retrieve API key",
+		})
+	}
+
+	return ctx.Ctx.JSON(fiber.Map{
+		"api_key": key,
+	})
+}
+
+// SystemAgentAPIKeyRegenerateAction regenerates the Agent API key (PRG pattern)
+func SystemAgentAPIKeyRegenerateAction(ctx *cartridge.Context) error {
+	db := ctx.DB()
+
+	_, err := settings.RegenerateAgentAPIKey(db)
+	if err != nil {
+		ctx.Logger.Error("Failed to regenerate Agent API key", slog.Any("error", err))
+		flash.SetFlash(ctx.Ctx, "error", "Failed to regenerate API key")
+		return ctx.Redirect("/admin/administration/system", fiber.StatusFound)
+	}
+
+	ctx.Logger.Info("Agent API key regenerated")
+	flash.SetFlash(ctx.Ctx, "success", "API key regenerated successfully. Copy your new key - it won't be shown again in full.")
 	return ctx.Redirect("/admin/administration/system", fiber.StatusFound)
 }
