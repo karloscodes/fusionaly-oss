@@ -38,12 +38,11 @@ WORKDIR /app
 RUN apk add --no-cache ca-certificates tzdata sqlite curl su-exec && \
   addgroup -S fusionaly && \
   adduser -S -G fusionaly -u 10001 -h /app fusionaly && \
-  mkdir -p /app/logs /app/storage /app/web/dist
+  mkdir -p /app/logs /app/storage
 
-# Copy compiled binaries and built assets from builder
+# Copy compiled binaries (assets are embedded in the binary via go:embed)
 COPY --from=builder /app/dist/fusionaly-server /app/fusionaly-server
 COPY --from=builder /app/dist/fnctl /app/fnctl
-COPY --from=builder /app/web/dist /app/web/dist
 
 # Copy entrypoint script
 COPY scripts/entrypoint.sh /app/entrypoint.sh
@@ -53,7 +52,6 @@ RUN chmod +x /app/entrypoint.sh /app/fusionaly-server /app/fnctl
 ENV FUSIONALY_ENV=production \
   FUSIONALY_STORAGE_PATH=/app/storage \
   FUSIONALY_GEO_DB_PATH=/app/storage/GeoLite2-City.mmdb \
-  FUSIONALY_PUBLIC_DIR=/app/web/dist/assets \
   FUSIONALY_LOGS_DIR=/app/logs \
   FUSIONALY_APP_PORT=8080
 
