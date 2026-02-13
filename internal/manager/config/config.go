@@ -20,6 +20,11 @@ import (
 	"fusionaly/internal/manager/validation"
 )
 
+// Terminal formatting helpers
+func bold(s string) string  { return "\033[1m" + s + "\033[0m" }
+func dim(s string) string   { return "\033[2m" + s + "\033[0m" }
+func green(s string) string { return "\033[32m" + s + "\033[0m" }
+
 // ConfigData holds the configuration
 type ConfigData struct {
 	Domain       string   // User-provided domain
@@ -179,23 +184,21 @@ func (c *Config) CollectFromUser(reader *bufio.Reader) error {
 	c.data.InstallDir = "/opt/fusionaly"
 
 	// Collect domain
-	fmt.Println("Configuration")
-	fmt.Println()
 	for {
-		fmt.Print("  Domain (e.g., analytics.example.com): ")
+		fmt.Printf("%s (e.g., analytics.example.com): ", bold("Domain"))
 		domain, err := reader.ReadString('\n')
 		if err != nil {
 			return fmt.Errorf("failed to read domain: %w", err)
 		}
 		c.data.Domain = strings.TrimSpace(domain)
 		if c.data.Domain == "" {
-			fmt.Println("  Error: Domain cannot be empty.")
+			fmt.Println("Error: Domain cannot be empty.")
 			continue
 		}
 
 		// Validate domain format immediately using the same validation that will be used during installation
 		if err := validation.ValidateDomain(c.data.Domain); err != nil {
-			fmt.Printf("  Error: %s\n", err.Error())
+			fmt.Printf("Error: %s\n", err.Error())
 			continue
 		}
 		break
@@ -208,17 +211,17 @@ func (c *Config) CollectFromUser(reader *bufio.Reader) error {
 
 	// Show configuration summary and get confirmation
 	for {
-		fmt.Println("Summary")
+		fmt.Println(bold("Summary"))
 		fmt.Println()
 		fmt.Printf("  Domain:  %s\n", c.data.Domain)
 		if c.HasDNSWarnings() {
-			fmt.Printf("  DNS:     Not ready (installation will continue)\n")
+			fmt.Printf("  DNS:     %s\n", dim("Not ready (will continue anyway)"))
 		} else {
-			fmt.Printf("  DNS:     Ready\n")
+			fmt.Printf("  DNS:     %s\n", green("✓ Ready"))
 		}
 
 		fmt.Println()
-		fmt.Print("  Proceed? [Y/n] ")
+		fmt.Printf("%s [Y/n] ", bold("Proceed?"))
 		confirmStr, err := reader.ReadString('\n')
 		if err != nil {
 			return fmt.Errorf("failed to read confirmation: %w", err)
@@ -230,7 +233,7 @@ func (c *Config) CollectFromUser(reader *bufio.Reader) error {
 		}
 
 		fmt.Println()
-		fmt.Println("  Configuration declined. Let's start over.")
+		fmt.Println("Cancelled. Starting over.")
 		fmt.Println()
 		// Reset all values and start over
 		c.data.Domain = ""
@@ -479,16 +482,13 @@ func (c *Config) CheckDNSAndStoreWarnings(domain string) {
 	// Skip DNS checks for localhost - no DNS resolution needed
 	if isLocalhostDomain(domain) {
 		fmt.Println()
-		fmt.Println("Checking DNS...")
-		fmt.Println()
-		fmt.Printf("  ✓ %s (localhost, skipping DNS check)\n", domain)
+		fmt.Printf("%s %s (localhost, skipped)\n", bold("Checking DNS..."), domain)
 		fmt.Println()
 		return
 	}
 
 	fmt.Println()
-	fmt.Println("Checking DNS...")
-	fmt.Println()
+	fmt.Printf("%s ", bold("Checking DNS..."))
 
 	// Get server IP first
 	serverIP, err := getCurrentServerIP()
@@ -500,23 +500,19 @@ func (c *Config) CheckDNSAndStoreWarnings(domain string) {
 
 	ips, err := net.LookupIP(domain)
 	if err != nil || len(ips) == 0 {
-		// DNS not found - show full instructions
+		// DNS not found
 		c.data.DNSType = "not_found"
 		c.data.DNSWarnings = append(c.data.DNSWarnings, "No DNS record found")
 
-		fmt.Printf("  ⚠️  No DNS record found for %s\n", domain)
+		fmt.Printf("not found\n")
 		fmt.Println()
-		fmt.Println("  ┌─ What to do ───────────────────────────────────────────────┐")
-		fmt.Println("  │                                                            │")
-		fmt.Println("  │  Add an A record at your DNS provider:                     │")
-		fmt.Println("  │                                                            │")
-		fmt.Println("  │    Name:   " + extractSubdomain(domain) + padRight("", 43-len(extractSubdomain(domain))) + "│")
-		fmt.Println("  │    Type:   A                                               │")
-		fmt.Printf("  │    Value:  %-14s  ← this server                    │\n", c.data.ServerIP)
-		fmt.Println("  │                                                            │")
-		fmt.Println("  │  SSL will activate automatically once DNS propagates.      │")
-		fmt.Println("  │                                                            │")
-		fmt.Println("  └────────────────────────────────────────────────────────────┘")
+		fmt.Println(dim("Add an A record at your DNS provider:"))
+		fmt.Println()
+		fmt.Printf("    Name:   %s\n", extractSubdomain(domain))
+		fmt.Println("    Type:   A")
+		fmt.Printf("    Value:  %s  (this server)\n", c.data.ServerIP)
+		fmt.Println()
+		fmt.Println(dim("SSL activates automatically once DNS propagates."))
 		fmt.Println()
 		return
 	}
@@ -524,20 +520,20 @@ func (c *Config) CheckDNSAndStoreWarnings(domain string) {
 	// Check if domain resolves to server IP
 	match, matchedIP := checkDomainIPMatch(domain, c.data.ServerIP)
 	if match {
-		fmt.Printf("  ✓ %s → %s (this server)\n", domain, matchedIP)
+		fmt.Printf("%s (this server)\n", green("✓ "+matchedIP))
 		fmt.Println()
 		return
 	}
 
-	// DNS points elsewhere - simple one-line message
+	// DNS points elsewhere
 	c.data.DNSType = "wrong_ip"
 	domainIP := formatIPs(ips)
 	c.data.DNSWarnings = append(c.data.DNSWarnings, fmt.Sprintf("Points to %s instead of this server", domainIP))
 
-	fmt.Printf("  ⚠️  %s → %s (different server)\n", domain, domainIP)
+	fmt.Printf("%s (wrong server)\n", domainIP)
 	fmt.Println()
-	fmt.Printf("  Update your A record: %s → %s\n", domain, c.data.ServerIP)
-	fmt.Println("  SSL will activate automatically once DNS propagates.")
+	fmt.Printf("%s %s -> %s\n", dim("Update A record:"), domain, c.data.ServerIP)
+	fmt.Println(dim("SSL activates automatically once DNS propagates."))
 	fmt.Println()
 }
 

@@ -18,7 +18,7 @@ UA_DATABASE_DIR := internal/pkg/user_agent/database
 # Version from git tag or dev
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 
-.PHONY: default install deps install-tools dev watch-web watch-go dev-server dev-web db-seed db-migrate db-drop test test-e2e perftest perf-run loadtest loadtest-quick loadtest-heavy build build-manager build-manager-linux clean dist lint update-ua-database download-test-fixtures test-ua-parser test-ua-fixtures check release
+.PHONY: default install deps install-tools dev watch-web watch-go dev-server dev-web db-seed db-migrate db-drop test test-e2e test-installer perftest perf-run loadtest loadtest-quick loadtest-heavy build build-manager build-manager-linux clean dist lint update-ua-database download-test-fixtures test-ua-parser test-ua-fixtures check release
 
 # Default target
 default: dev
@@ -176,6 +176,25 @@ test-e2e:
 	@echo "Running Playwright tests..."
 	@cd e2e && FUSIONALY_ENV=test npx playwright test
 	@echo "Cleaning up..."
+
+# Test installer locally using OrbStack VM
+# Requires: brew install orbstack
+test-installer:
+	@echo "Building manager for Linux arm64..."
+	@mkdir -p $(TMP_DIR)
+	@CGO_ENABLED=0 GOOS=linux GOARCH=arm64 $(GO) build \
+		-ldflags "-X main.currentManagerVersion=$(VERSION)" \
+		-o $(TMP_DIR)/fusionaly-test-linux ./cmd/manager/
+	@echo "Recreating OrbStack VM..."
+	@orb delete installer-test -f 2>/dev/null || true
+	@orb create ubuntu:22.04 installer-test
+	@echo ""
+	@echo "Run the installer with:"
+	@echo "  orb -m installer-test -u root $(CURDIR)/$(TMP_DIR)/fusionaly-test-linux install"
+	@echo ""
+	@echo "Or run interactively:"
+	@echo "  orb -m installer-test"
+	@echo ""
 
 perf-run:
 	@echo "Running performance test with custom parameters..."

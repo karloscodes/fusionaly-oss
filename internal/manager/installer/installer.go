@@ -24,6 +24,13 @@ const (
 	DefaultCronSchedule = "0 3 * * *"
 )
 
+// Terminal formatting helpers
+func bold(s string) string   { return "\033[1m" + s + "\033[0m" }
+func dim(s string) string    { return "\033[2m" + s + "\033[0m" }
+func green(s string) string  { return "\033[32m" + s + "\033[0m" }
+func yellow(s string) string { return "\033[33m" + s + "\033[0m" }
+func cyan(s string) string   { return "\033[36m" + s + "\033[0m" }
+
 type Installer struct {
 	logger       *logging.Logger
 	config       *config.Config
@@ -76,66 +83,66 @@ func (i *Installer) RunCompleteInstallation() error {
 
 	// Start installation with progress display
 	fmt.Println()
-	fmt.Println("Installing")
+	fmt.Println(bold("Installing"))
 	fmt.Println()
 
 	// Suppress verbose logging during installation steps
 	i.logger.SetQuiet(true)
 
 	// Step 1: Validate system requirements
-	i.printStep("Checking system", "running")
+	sp := i.startSpinner("Checking system")
 	checker := requirements.NewChecker(i.logger)
 	if err := checker.CheckSystemRequirements(); err != nil {
-		i.printStep("Checking system", "failed")
+		sp.stop(false)
 		i.logger.SetQuiet(false)
 		return fmt.Errorf("system requirements check failed: %w", err)
 	}
-	i.printStep("Checking system", "done")
+	sp.stop(true)
 
 	// Step 2: Install SQLite
-	i.printStep("SQLite", "running")
+	sp = i.startSpinner("SQLite")
 	if err := i.database.EnsureSQLiteInstalled(); err != nil {
-		i.printStep("SQLite", "failed")
+		sp.stop(false)
 		i.logger.SetQuiet(false)
 		return fmt.Errorf("failed to install SQLite: %w", err)
 	}
-	i.printStep("SQLite", "done")
+	sp.stop(true)
 
 	// Step 3: Install Docker
-	i.printStep("Docker", "running")
+	sp = i.startSpinner("Docker")
 	if err := i.docker.EnsureInstalled(); err != nil {
-		i.printStep("Docker", "failed")
+		sp.stop(false)
 		i.logger.SetQuiet(false)
 		return fmt.Errorf("failed to install Docker: %w", err)
 	}
-	i.printStep("Docker", "done")
+	sp.stop(true)
 
 	// Step 4: Configure system
-	i.printStep("Configuring", "running")
+	sp = i.startSpinner("Configuring")
 	if err := i.configureSystem(); err != nil {
-		i.printStep("Configuring", "failed")
+		sp.stop(false)
 		i.logger.SetQuiet(false)
 		return fmt.Errorf("failed to configure system: %w", err)
 	}
-	i.printStep("Configuring", "done")
+	sp.stop(true)
 
 	// Step 5: Deploy application
-	i.printStep("Deploying", "running")
+	sp = i.startSpinner("Deploying")
 	if err := i.docker.Deploy(i.config); err != nil {
-		i.printStep("Deploying", "failed")
+		sp.stop(false)
 		i.logger.SetQuiet(false)
 		return fmt.Errorf("failed to deploy application: %w", err)
 	}
-	i.printStep("Deploying", "done")
+	sp.stop(true)
 
 	// Step 6: Setup maintenance
-	i.printStep("Maintenance", "running")
+	sp = i.startSpinner("Maintenance")
 	if err := i.setupMaintenance(); err != nil {
-		i.printStep("Maintenance", "failed")
+		sp.stop(false)
 		i.logger.SetQuiet(false)
 		return fmt.Errorf("failed to setup maintenance: %w", err)
 	}
-	i.printStep("Maintenance", "done")
+	sp.stop(true)
 
 	// Restore normal logging
 	i.logger.SetQuiet(false)
@@ -148,38 +155,72 @@ func (i *Installer) RunCompleteInstallation() error {
 	return nil
 }
 
-// printStep prints a step with its status
-func (i *Installer) printStep(name string, status string) {
-	// Clear the current line and move to beginning
-	fmt.Print("\r\033[K")
+// spinner handles animated progress display
+type spinner struct {
+	name    string
+	stopCh  chan struct{}
+	doneCh  chan struct{}
+}
 
-	// Pad the name to 20 characters for alignment
+var spinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+
+func (i *Installer) startSpinner(name string) *spinner {
+	s := &spinner{
+		name:   name,
+		stopCh: make(chan struct{}),
+		doneCh: make(chan struct{}),
+	}
+
+	// Pad name to 16 chars
 	paddedName := name
-	for len(paddedName) < 20 {
+	for len(paddedName) < 16 {
 		paddedName += " "
 	}
 
-	switch status {
-	case "done":
-		fmt.Printf("  %s✓\n", paddedName)
-	case "failed":
-		fmt.Printf("  %s✗ Failed\n", paddedName)
-	case "running":
-		fmt.Printf("  %s⠹", paddedName)
-	case "pending":
-		fmt.Printf("  %s·\n", paddedName)
+	go func() {
+		ticker := time.NewTicker(80 * time.Millisecond)
+		defer ticker.Stop()
+		defer close(s.doneCh)
+
+		idx := 0
+		for {
+			select {
+			case <-s.stopCh:
+				return
+			case <-ticker.C:
+				fmt.Printf("\r\033[K  %s%s", paddedName, dim(spinnerFrames[idx]))
+				idx = (idx + 1) % len(spinnerFrames)
+			}
+		}
+	}()
+
+	return s
+}
+
+func (s *spinner) stop(success bool) {
+	close(s.stopCh)
+	<-s.doneCh // wait for goroutine to finish
+
+	paddedName := s.name
+	for len(paddedName) < 16 {
+		paddedName += " "
+	}
+
+	fmt.Print("\r\033[K")
+	if success {
+		fmt.Printf("  %s%s\n", paddedName, green("✓"))
+	} else {
+		fmt.Printf("  %s%s\n", paddedName, yellow("✗"))
 	}
 }
 
 // displayWelcomeMessage shows the initial welcome and requirements message
 func (i *Installer) displayWelcomeMessage() {
-	fmt.Println("┌────────────────────────────────────────────────────────────────┐")
-	fmt.Println("│                       Fusionaly Installer                      │")
-	fmt.Println("└────────────────────────────────────────────────────────────────┘")
 	fmt.Println()
-	fmt.Println("  • Ports 80 and 443 must be available")
-	fmt.Println("  • DNS pointing to this server recommended (for SSL)")
-	fmt.Println("  • Server hardening (firewall, SSH) not included")
+	fmt.Println(bold("Fusionaly Installer"))
+	fmt.Println()
+	fmt.Println(dim("* Ports 80 and 443 must be available"))
+	fmt.Println(dim("* DNS pointing to this server recommended for SSL"))
 	fmt.Println()
 }
 
@@ -265,20 +306,18 @@ func (i *Installer) DisplayCompletionMessage() {
 	data := i.config.GetData()
 
 	fmt.Println()
-	fmt.Println("Installation complete.")
-	fmt.Println()
-	fmt.Printf("  https://%s\n", data.Domain)
+	fmt.Println(bold("Done."))
 	fmt.Println()
 
 	// DNS warning (if any)
 	if i.config.HasDNSWarnings() {
 		serverIP := i.config.GetServerIP()
-		fmt.Printf("  ⚠️  DNS not ready — point %s → %s\n", data.Domain, serverIP)
-		fmt.Println("      SSL activates automatically once DNS propagates.")
+		fmt.Printf("%s Point %s to %s\n", dim("DNS not configured."), data.Domain, serverIP)
+		fmt.Println(dim("SSL activates once DNS propagates."))
 		fmt.Println()
 	}
 
-	fmt.Println("  Visit to create your admin account.")
+	fmt.Printf("Visit %s to create your account.\n", cyan("https://"+data.Domain))
 }
 
 func (i *Installer) Run() error {

@@ -48,7 +48,7 @@ func main() {
 
 	switch os.Args[1] {
 	case "install":
-		runInstall(inst, logger, startTime)
+		runInstall(inst, logger)
 	case "update":
 		runUpdate(inst, logger, startTime)
 	case "reload":
@@ -99,7 +99,7 @@ func initLogging() *logging.Logger {
 	return logger
 }
 
-func runInstall(inst *installer.Installer, logger *logging.Logger, startTime time.Time) {
+func runInstall(inst *installer.Installer, logger *logging.Logger) {
 	logger.Debug("Initializing installation environment")
 
 	// Run the complete installation process
@@ -107,10 +107,6 @@ func runInstall(inst *installer.Installer, logger *logging.Logger, startTime tim
 		logger.Error("Installation failed: %v", err)
 		os.Exit(1)
 	}
-
-	// Calculate and display completion time
-	elapsedTime := time.Since(startTime).Round(time.Second)
-	logger.Success("Installation completed in %s", elapsedTime)
 
 	// Display final success message and access information
 	inst.DisplayCompletionMessage()
