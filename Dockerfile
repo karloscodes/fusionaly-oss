@@ -1,20 +1,20 @@
 # Build stage
 FROM golang:1.25-alpine AS builder
 
-# Install build dependencies (build-base includes gcc, g++, make)
+# Install build dependencies
 RUN apk add --no-cache build-base musl-dev git nodejs npm
 
 WORKDIR /app
 
-# Cache Go dependencies (invalidates only when go.mod/go.sum changes)
+# Cache Go dependencies
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Cache npm dependencies (invalidates only when package.json changes)
+# Cache npm dependencies
 COPY web/package*.json web/package-lock.json ./web/
 RUN cd web && npm ci --legacy-peer-deps --production=false
 
-# Copy only necessary source files (excluding web/node_modules)
+# Copy source files
 COPY Makefile ./
 COPY cmd ./cmd
 COPY internal ./internal
@@ -24,7 +24,7 @@ COPY web/public ./web/public
 COPY web/index.html web/vite.config.ts web/tsconfig*.json web/postcss.config.js web/tailwind.config.ts ./web/
 COPY web/*.go ./web/
 
-# Build web assets first (required for Go embed), then binaries
+# Build web assets (required for Go embed), then Go binaries
 RUN mkdir -p dist && \
   cd web && npm run build && cd .. && \
   CGO_ENABLED=1 go build -o dist/fusionaly-server cmd/fusionaly/main.go && \

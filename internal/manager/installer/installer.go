@@ -79,11 +79,15 @@ func (i *Installer) RunCompleteInstallation() error {
 	fmt.Println("Installing")
 	fmt.Println()
 
+	// Suppress verbose logging during installation steps
+	i.logger.SetQuiet(true)
+
 	// Step 1: Validate system requirements
 	i.printStep("Checking system", "running")
 	checker := requirements.NewChecker(i.logger)
 	if err := checker.CheckSystemRequirements(); err != nil {
 		i.printStep("Checking system", "failed")
+		i.logger.SetQuiet(false)
 		return fmt.Errorf("system requirements check failed: %w", err)
 	}
 	i.printStep("Checking system", "done")
@@ -92,6 +96,7 @@ func (i *Installer) RunCompleteInstallation() error {
 	i.printStep("SQLite", "running")
 	if err := i.database.EnsureSQLiteInstalled(); err != nil {
 		i.printStep("SQLite", "failed")
+		i.logger.SetQuiet(false)
 		return fmt.Errorf("failed to install SQLite: %w", err)
 	}
 	i.printStep("SQLite", "done")
@@ -100,6 +105,7 @@ func (i *Installer) RunCompleteInstallation() error {
 	i.printStep("Docker", "running")
 	if err := i.docker.EnsureInstalled(); err != nil {
 		i.printStep("Docker", "failed")
+		i.logger.SetQuiet(false)
 		return fmt.Errorf("failed to install Docker: %w", err)
 	}
 	i.printStep("Docker", "done")
@@ -108,6 +114,7 @@ func (i *Installer) RunCompleteInstallation() error {
 	i.printStep("Configuring", "running")
 	if err := i.configureSystem(); err != nil {
 		i.printStep("Configuring", "failed")
+		i.logger.SetQuiet(false)
 		return fmt.Errorf("failed to configure system: %w", err)
 	}
 	i.printStep("Configuring", "done")
@@ -116,6 +123,7 @@ func (i *Installer) RunCompleteInstallation() error {
 	i.printStep("Deploying", "running")
 	if err := i.docker.Deploy(i.config); err != nil {
 		i.printStep("Deploying", "failed")
+		i.logger.SetQuiet(false)
 		return fmt.Errorf("failed to deploy application: %w", err)
 	}
 	i.printStep("Deploying", "done")
@@ -124,9 +132,13 @@ func (i *Installer) RunCompleteInstallation() error {
 	i.printStep("Maintenance", "running")
 	if err := i.setupMaintenance(); err != nil {
 		i.printStep("Maintenance", "failed")
+		i.logger.SetQuiet(false)
 		return fmt.Errorf("failed to setup maintenance: %w", err)
 	}
 	i.printStep("Maintenance", "done")
+
+	// Restore normal logging
+	i.logger.SetQuiet(false)
 
 	// Step 7: Verify installation
 	if _, err := i.VerifyInstallation(); err != nil {

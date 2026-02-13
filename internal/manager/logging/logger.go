@@ -170,6 +170,30 @@ func (l *Logger) GetQuiet() bool {
 	return l.config.Quiet
 }
 
+// SetQuiet enables or disables quiet mode at runtime.
+// When quiet, only error-level logs are shown.
+func (l *Logger) SetQuiet(quiet bool) {
+	l.config.Quiet = quiet
+	if quiet {
+		l.Logger.SetLevel(logrus.ErrorLevel)
+	} else {
+		// Restore based on original config
+		switch l.config.Level {
+		case "debug":
+			l.Logger.SetLevel(logrus.DebugLevel)
+		case "warn":
+			l.Logger.SetLevel(logrus.WarnLevel)
+		case "error":
+			l.Logger.SetLevel(logrus.ErrorLevel)
+		default:
+			l.Logger.SetLevel(logrus.InfoLevel)
+		}
+		if l.config.Verbose {
+			l.Logger.SetLevel(logrus.DebugLevel)
+		}
+	}
+}
+
 func DefaultConfig() Config {
 	return Config{
 		Level:   "info",
