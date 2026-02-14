@@ -164,14 +164,16 @@ func runUpgrade(m *matcha.Matcha) {
 	// Switch to Pro image and deploy
 	fmt.Println("Switching to Fusionaly Pro...")
 	m.SetImage(proImage)
-	if err := m.Deploy(); err != nil {
-		fmt.Printf("Error: upgrade failed: %v\n", err)
+
+	// Save image to .env BEFORE Deploy (Deploy calls loadConfig which reads .env)
+	if err := m.SaveImage(); err != nil {
+		fmt.Printf("Error: failed to save image config: %v\n", err)
 		os.Exit(1)
 	}
 
-	// Persist the image change to .env
-	if err := m.SaveImage(); err != nil {
-		fmt.Printf("Warning: failed to save image config: %v\n", err)
+	if err := m.Deploy(); err != nil {
+		fmt.Printf("Error: upgrade failed: %v\n", err)
+		os.Exit(1)
 	}
 
 	fmt.Println("Upgrade completed successfully!")
