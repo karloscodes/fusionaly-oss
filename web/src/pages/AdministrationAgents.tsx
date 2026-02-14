@@ -118,7 +118,7 @@ export const AdministrationAgentsContent: FC = () => {
 						<p className="text-sm text-blue-900">
 							Read-only API key for AI agents to query your analytics.{" "}
 							<a
-								href="https://fusionaly.com/docs/agent-api"
+								href="https://fusionaly.com/docs/agent-api/"
 								target="_blank"
 								rel="noopener noreferrer"
 								className="underline"
