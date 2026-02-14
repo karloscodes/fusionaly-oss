@@ -112,7 +112,10 @@ var (
 
 // Settings functions
 var (
-	SaveGeoLiteCredentials = settings.SaveGeoLiteCredentials
+	SaveGeoLiteCredentials   = settings.SaveGeoLiteCredentials
+	GetAgentAPIKey           = settings.GetAgentAPIKey
+	GetOrCreateAgentAPIKey   = settings.GetOrCreateAgentAPIKey
+	RegenerateAgentAPIKey    = settings.RegenerateAgentAPIKey
 )
 
 // Websites functions
