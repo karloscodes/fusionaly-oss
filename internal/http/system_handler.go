@@ -374,10 +374,10 @@ func SystemAgentAPIKeyRegenerateAction(ctx *cartridge.Context) error {
 	if err != nil {
 		ctx.Logger.Error("Failed to regenerate Agent API key", slog.Any("error", err))
 		flash.SetFlash(ctx.Ctx, "error", "Failed to regenerate API key")
-		return ctx.Redirect("/admin/administration/system", fiber.StatusFound)
+		return ctx.Redirect("/admin/administration/agents", fiber.StatusFound)
 	}
 
 	ctx.Logger.Info("Agent API key regenerated")
 	flash.SetFlash(ctx.Ctx, "success", "API key regenerated successfully. Copy your new key - it won't be shown again in full.")
-	return ctx.Redirect("/admin/administration/system", fiber.StatusFound)
+	return ctx.Redirect("/admin/administration/agents", fiber.StatusFound)
 }

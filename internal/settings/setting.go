@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"strconv"
 	"strings"
 	"time"
@@ -381,16 +382,13 @@ func generateRandomToken(length int) string {
 	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	b := make([]byte, length)
 	for i := range b {
-		b[i] = charset[randInt(len(charset))]
+		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
+		if err != nil {
+			panic("crypto/rand failed")
+		}
+		b[i] = charset[n.Int64()]
 	}
 	return string(b)
-}
-
-// randInt returns a cryptographically secure random int in [0, max)
-func randInt(max int) int {
-	var buf [1]byte
-	_, _ = rand.Read(buf[:])
-	return int(buf[0]) % max
 }
 
 // GetAllSettingsForDisplay retrieves all general (non-website-specific) settings

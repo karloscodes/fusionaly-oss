@@ -114,18 +114,18 @@ export const AdministrationAgentsContent: FC = () => {
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4">
-					<div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-						<p className="text-sm text-blue-900 mb-2">
-							<strong>Endpoints:</strong>
-						</p>
-						<ul className="text-sm text-blue-900 space-y-1 font-mono">
-							<li>GET /z/api/v1/schema — database schema + concepts</li>
-							<li>POST /z/api/v1/sql — execute read-only queries</li>
-						</ul>
-						<p className="text-sm text-blue-900 mt-3">
-							Use header: <code className="bg-blue-100 px-1 rounded">Authorization: Bearer YOUR_KEY</code>
-						</p>
-					</div>
+					<p className="text-sm text-gray-600">
+						See the{" "}
+						<a
+							href="https://docs.fusionaly.com/agent-api"
+							target="_blank"
+							rel="noopener noreferrer"
+							className="text-blue-600 hover:underline"
+						>
+							Agent API documentation
+						</a>
+						{" "}for setup instructions.
+					</p>
 
 					<div className="flex items-center gap-2">
 						<Input
