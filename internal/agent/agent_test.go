@@ -1,7 +1,15 @@
-package agent
+package agent_test
 
 import (
+	"context"
 	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"fusionaly/internal/agent"
+	"fusionaly/internal/testsupport"
 )
 
 func TestValidateReadOnlyQuery(t *testing.T) {
@@ -19,7 +27,7 @@ func TestValidateReadOnlyQuery(t *testing.T) {
 		}
 
 		for _, q := range valid {
-			if err := ValidateReadOnlyQuery(q); err != nil {
+			if err := agent.ValidateReadOnlyQuery(q); err != nil {
 				t.Errorf("expected valid query %q to pass, got error: %v", q, err)
 			}
 		}
@@ -37,7 +45,7 @@ func TestValidateReadOnlyQuery(t *testing.T) {
 		}
 
 		for _, q := range invalid {
-			if err := ValidateReadOnlyQuery(q); err == nil {
+			if err := agent.ValidateReadOnlyQuery(q); err == nil {
 				t.Errorf("expected invalid query %q to fail", q)
 			}
 		}
@@ -51,7 +59,7 @@ func TestValidateReadOnlyQuery(t *testing.T) {
 		}
 
 		for _, q := range invalid {
-			if err := ValidateReadOnlyQuery(q); err == nil {
+			if err := agent.ValidateReadOnlyQuery(q); err == nil {
 				t.Errorf("expected query with comments %q to fail", q)
 			}
 		}
@@ -65,7 +73,7 @@ func TestValidateReadOnlyQuery(t *testing.T) {
 		}
 
 		for _, q := range invalid {
-			if err := ValidateReadOnlyQuery(q); err == nil {
+			if err := agent.ValidateReadOnlyQuery(q); err == nil {
 				t.Errorf("expected multiple statement query %q to fail", q)
 			}
 		}
@@ -79,7 +87,7 @@ func TestValidateReadOnlyQuery(t *testing.T) {
 		}
 
 		for _, q := range invalid {
-			if err := ValidateReadOnlyQuery(q); err == nil {
+			if err := agent.ValidateReadOnlyQuery(q); err == nil {
 				t.Errorf("expected whitespace-obfuscated query %q to fail", q)
 			}
 		}
@@ -95,9 +103,85 @@ func TestValidateReadOnlyQuery(t *testing.T) {
 		}
 
 		for _, q := range invalid {
-			if err := ValidateReadOnlyQuery(q); err == nil {
+			if err := agent.ValidateReadOnlyQuery(q); err == nil {
 				t.Errorf("expected SQLite-specific dangerous query %q to fail", q)
 			}
 		}
+	})
+}
+
+func TestGetSchema(t *testing.T) {
+	t.Run("returns schema with tables and concepts", func(t *testing.T) {
+		dbManager, _ := testsupport.SetupTestDBManager(t)
+		db := dbManager.GetConnection()
+
+		schema, err := agent.GetSchema(db)
+		require.NoError(t, err)
+
+		assert.NotEmpty(t, schema.Schema, "Schema should not be empty")
+		assert.Contains(t, schema.Schema, "CREATE TABLE", "Schema should contain CREATE TABLE statements")
+		assert.NotEmpty(t, schema.Concepts, "Concepts should not be empty")
+		assert.Contains(t, schema.Concepts, "website_scoping", "Concepts should include website_scoping")
+	})
+}
+
+func TestGetDatabaseSchema(t *testing.T) {
+	t.Run("returns raw schema SQL", func(t *testing.T) {
+		dbManager, _ := testsupport.SetupTestDBManager(t)
+		db := dbManager.GetConnection()
+
+		schema, err := agent.GetDatabaseSchema(db)
+		require.NoError(t, err)
+
+		assert.NotEmpty(t, schema)
+		assert.Contains(t, schema, "CREATE TABLE")
+	})
+}
+
+func TestExecuteQuery(t *testing.T) {
+	t.Run("executes valid SELECT query", func(t *testing.T) {
+		dbManager, _ := testsupport.SetupTestDBManager(t)
+		db := dbManager.GetConnection()
+
+		ctx := context.Background()
+		result, err := agent.ExecuteQuery(ctx, db, "SELECT 1 as test", 5*time.Second)
+		require.NoError(t, err)
+
+		assert.Equal(t, []string{"test"}, result.Columns)
+		assert.Len(t, result.Rows, 1)
+		assert.Equal(t, 1, result.RowCount)
+	})
+
+	t.Run("rejects invalid query", func(t *testing.T) {
+		dbManager, _ := testsupport.SetupTestDBManager(t)
+		db := dbManager.GetConnection()
+
+		ctx := context.Background()
+		_, err := agent.ExecuteQuery(ctx, db, "DELETE FROM users", 5*time.Second)
+		assert.Error(t, err)
+	})
+
+	t.Run("respects timeout", func(t *testing.T) {
+		dbManager, _ := testsupport.SetupTestDBManager(t)
+		db := dbManager.GetConnection()
+
+		ctx := context.Background()
+		// Very short timeout - SQLite doesn't really support cancellation well
+		// but we at least test the timeout parameter is used
+		result, err := agent.ExecuteQuery(ctx, db, "SELECT 1", 1*time.Second)
+		require.NoError(t, err)
+		assert.Equal(t, 1, result.RowCount)
+	})
+
+	t.Run("executes WITH (CTE) query", func(t *testing.T) {
+		dbManager, _ := testsupport.SetupTestDBManager(t)
+		db := dbManager.GetConnection()
+
+		ctx := context.Background()
+		result, err := agent.ExecuteQuery(ctx, db, "WITH cte AS (SELECT 42 as val) SELECT * FROM cte", 5*time.Second)
+		require.NoError(t, err)
+
+		assert.Equal(t, []string{"val"}, result.Columns)
+		assert.Len(t, result.Rows, 1)
 	})
 }

@@ -177,7 +177,8 @@ func MountAppRoutesWithoutSession(srv *cartridge.Server) {
 		cartridgemiddleware.WithDuration(time.Minute),
 	))
 	agentAPIConfig := &cartridge.RouteConfig{
-		EnableCORS: true,
+		EnableCORS:         true,
+		EnableSecFetchSite: cartridge.Bool(false), // Allow CLI tools (curl, agents)
 		CustomMiddleware: []fiber.Handler{
 			agentRateLimiter,
 			middleware.AgentAPIKeyAuth(db, logger),
