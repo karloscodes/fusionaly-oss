@@ -169,6 +169,11 @@ func runUpgrade(m *matcha.Matcha) {
 		os.Exit(1)
 	}
 
+	// Persist the image change to .env
+	if err := updateEnvImage("/opt/fusionaly/.env", "FUSIONALY_APP_IMAGE", proImage); err != nil {
+		fmt.Printf("Warning: failed to save image config: %v\n", err)
+	}
+
 	fmt.Println("Upgrade completed successfully!")
 
 	if domain, err := m.GetDomain(); err == nil && domain != "" {
@@ -206,4 +211,29 @@ func printUsage() {
 	fmt.Println("  change-admin-password       Change the admin user password")
 	fmt.Println("  version                     Show version information")
 	fmt.Println("  help                        Show this help message")
+}
+
+// updateEnvImage updates or adds an image key in the .env file
+func updateEnvImage(envPath, key, value string) error {
+	content, err := os.ReadFile(envPath)
+	if err != nil {
+		return err
+	}
+
+	lines := strings.Split(string(content), "\n")
+	found := false
+	for i, line := range lines {
+		if strings.HasPrefix(strings.TrimSpace(line), key+"=") {
+			lines[i] = key + "=" + value
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		// Add before the last empty line if exists
+		lines = append(lines, key+"="+value)
+	}
+
+	return os.WriteFile(envPath, []byte(strings.Join(lines, "\n")), 0600)
 }
