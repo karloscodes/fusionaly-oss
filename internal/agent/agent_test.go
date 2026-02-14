@@ -14,6 +14,8 @@ func TestValidateReadOnlyQuery(t *testing.T) {
 			"SELECT * FROM site_stats WHERE hour >= datetime('now', '-7 days')",
 			"SELECT * FROM page_stats WHERE pathname = '/delete-account'",
 			"SELECT * FROM page_stats WHERE pathname LIKE '%update%'",
+			"WITH daily AS (SELECT DATE(hour) as day FROM site_stats) SELECT * FROM daily",
+			"with cte as (select 1) select * from cte",
 		}
 
 		for _, q := range valid {

@@ -95,8 +95,8 @@ func ValidateReadOnlyQuery(sqlQuery string) error {
 	normalized = regexp.MustCompile(`\s+`).ReplaceAllString(normalized, " ")
 	normalized = strings.TrimSpace(normalized)
 
-	// Must start with SELECT
-	if !strings.HasPrefix(normalized, "select ") {
+	// Must start with SELECT or WITH (CTEs are read-only)
+	if !strings.HasPrefix(normalized, "select ") && !strings.HasPrefix(normalized, "with ") {
 		return fmt.Errorf("only SELECT queries are allowed")
 	}
 
