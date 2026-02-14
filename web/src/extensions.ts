@@ -11,6 +11,7 @@
 export { AdministrationAccountContent } from "./pages/AdministrationAccount";
 export { AdministrationSystemContent } from "./pages/AdministrationSystem";
 export { AdministrationIngestionContent } from "./pages/AdministrationIngestion";
+export { AdministrationAgentsContent } from "./pages/AdministrationAgents";
 
 // Dashboard component with insightsSlot prop for Pro content injection
 export { Dashboard } from "./components/dashboard";
