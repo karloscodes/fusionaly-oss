@@ -114,13 +114,18 @@ export const AdministrationAgentsContent: FC = () => {
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4">
-					<div className="bg-blue-50 p-4 rounded-lg border border-blue-200 space-y-2">
+					<div className="bg-blue-50 p-4 rounded-lg border border-blue-200 space-y-3">
 						<p className="text-sm text-blue-900">
 							Read-only API key for AI agents (Claude Code, Cursor, etc.) to query your analytics with AI.
 						</p>
-						<p className="text-sm text-blue-900">
-							Install the skill: <code className="bg-blue-100 px-1 rounded">claude skill install fusionaly/fusionaly-agent-api</code>
-						</p>
+						<div className="space-y-1">
+							<p className="text-xs text-blue-800 font-medium">Claude Code:</p>
+							<code className="text-xs text-blue-900 bg-blue-100 p-2 rounded block break-all">curl -o ~/.claude/skills/fusionaly.md https://raw.githubusercontent.com/fusionaly/fusionaly-oss/main/skills/fusionaly-agent-api.md</code>
+						</div>
+						<div className="space-y-1">
+							<p className="text-xs text-blue-800 font-medium">Codex:</p>
+							<code className="text-xs text-blue-900 bg-blue-100 p-2 rounded block break-all">curl -o ~/.codex/instructions/fusionaly.md https://raw.githubusercontent.com/fusionaly/fusionaly-oss/main/skills/fusionaly-agent-api.md</code>
+						</div>
 						<p className="text-sm text-blue-900">
 							<a
 								href="https://fusionaly.com/docs/agent-api"
@@ -128,7 +133,7 @@ export const AdministrationAgentsContent: FC = () => {
 								rel="noopener noreferrer"
 								className="underline"
 							>
-								Skill documentation
+								Full setup instructions
 							</a>
 						</p>
 					</div>
