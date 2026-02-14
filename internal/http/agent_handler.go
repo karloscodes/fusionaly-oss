@@ -11,7 +11,12 @@ import (
 
 // AgentSchemaAction returns the database schema for AI agents
 func AgentSchemaAction(ctx *cartridge.Context) error {
-	schema := agent.GetSchema()
+	schema, err := agent.GetSchema(ctx.DB())
+	if err != nil {
+		return ctx.Ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to retrieve schema",
+		})
+	}
 	return ctx.Ctx.JSON(schema)
 }
 

@@ -21,9 +21,6 @@ import {
 	RefreshCw,
 	Globe,
 	AlertTriangle,
-	Key,
-	Copy,
-	Check,
 } from "lucide-react";
 import type { FlashMessage } from "@/types";
 import { AdministrationLayout } from "@/components/administration-layout";
@@ -38,24 +35,19 @@ interface AdministrationSystemProps {
 	geolite_last_update?: string;
 	geolite_db_exists?: boolean;
 	geolite_download_error?: string;
-	agent_api_key?: string;
-	agent_api_key_exists?: boolean;
 	[key: string]: unknown;
 }
 
 // Exported for Pro to wrap with its own layout
 export const AdministrationSystemContent: FC = () => {
 	const { props } = usePage<AdministrationSystemProps>();
-	const { flash, error, show_logs, logs: serverLogs, geolite_account_id, geolite_license_key, geolite_last_update, geolite_db_exists, geolite_download_error, agent_api_key, agent_api_key_exists } = props;
+	const { flash, error, show_logs, logs: serverLogs, geolite_account_id, geolite_license_key, geolite_last_update, geolite_db_exists, geolite_download_error } = props;
 	const [exportLoading, setExportLoading] = useState(false);
 	const [localFlash, setLocalFlash] = useState<FlashMessage | null>(null);
 	const [geoAccountId, setGeoAccountId] = useState(geolite_account_id || "");
 	const [geoLicenseKey, setGeoLicenseKey] = useState(geolite_license_key || "");
 	const [geoSaving, setGeoSaving] = useState(false);
 	const [geoDownloading, setGeoDownloading] = useState(false);
-	const [apiKeyCopied, setApiKeyCopied] = useState(false);
-	const [apiKeyLoading, setApiKeyLoading] = useState(false);
-	const [fullApiKey, setFullApiKey] = useState<string | null>(null);
 
 	// Use server logs if available
 	const logs = serverLogs || "";
@@ -162,58 +154,6 @@ export const AdministrationSystemContent: FC = () => {
 		router.post("/admin/system/geolite/download", {}, {
 			preserveScroll: true,
 			onFinish: () => setGeoDownloading(false),
-		});
-	};
-
-	const handleGetApiKey = async () => {
-		setApiKeyLoading(true);
-		try {
-			const response = await fetch("/admin/api/agent-api-key");
-			if (response.ok) {
-				const data = await response.json();
-				setFullApiKey(data.api_key);
-			} else {
-				setLocalFlash({
-					type: "error",
-					message: "Failed to retrieve API key",
-				});
-				setTimeout(() => setLocalFlash(null), 5000);
-			}
-		} catch {
-			setLocalFlash({
-				type: "error",
-				message: "Failed to retrieve API key",
-			});
-			setTimeout(() => setLocalFlash(null), 5000);
-		} finally {
-			setApiKeyLoading(false);
-		}
-	};
-
-	const handleCopyApiKey = async () => {
-		const keyToCopy = fullApiKey || agent_api_key;
-		if (!keyToCopy) return;
-
-		try {
-			await navigator.clipboard.writeText(fullApiKey || "");
-			setApiKeyCopied(true);
-			setTimeout(() => setApiKeyCopied(false), 2000);
-		} catch {
-			setLocalFlash({
-				type: "error",
-				message: "Failed to copy to clipboard",
-			});
-			setTimeout(() => setLocalFlash(null), 3000);
-		}
-	};
-
-	const handleRegenerateApiKey = () => {
-		if (!window.confirm("Are you sure you want to regenerate the API key? The old key will stop working immediately.")) {
-			return;
-		}
-		setFullApiKey(null);
-		router.post("/admin/system/agent-api-key/regenerate", {}, {
-			preserveScroll: true,
 		});
 	};
 
@@ -341,84 +281,6 @@ export const AdministrationSystemContent: FC = () => {
 							<p className="text-xs text-gray-500">
 								Database download will start shortly. Refresh this page in a minute to check status.
 							</p>
-						)}
-					</div>
-				</CardContent>
-			</Card>
-
-			{/* Agent API Key */}
-			<Card className="border-black shadow-sm">
-				<CardHeader className="pb-4">
-					<div className="flex justify-between items-center">
-						<CardTitle className="text-lg flex items-center gap-2">
-							<Key className="h-5 w-5" /> Agent API Key
-						</CardTitle>
-					</div>
-					<CardDescription>
-						API key for AI agents (Claude Code, etc.) to query your analytics data.
-					</CardDescription>
-				</CardHeader>
-				<CardContent className="space-y-4">
-					<div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-						<p className="text-sm text-blue-900">
-							Use this key with the <code className="bg-blue-100 px-1 rounded">/z/api/v1/</code> endpoints.
-							Set <code className="bg-blue-100 px-1 rounded">FUSIONALY_API_KEY</code> in your environment.
-						</p>
-					</div>
-
-					<div className="flex items-center gap-2">
-						<Input
-							type="text"
-							value={fullApiKey || agent_api_key || "No API key generated"}
-							readOnly
-							className="font-mono text-sm flex-1"
-						/>
-						{agent_api_key_exists && !fullApiKey && (
-							<Button
-								onClick={handleGetApiKey}
-								disabled={apiKeyLoading}
-								variant="outline"
-								size="sm"
-								className="border-black text-black hover:bg-gray-100"
-							>
-								{apiKeyLoading ? "Loading..." : "Reveal"}
-							</Button>
-						)}
-						{fullApiKey && (
-							<Button
-								onClick={handleCopyApiKey}
-								variant="outline"
-								size="sm"
-								className="border-black text-black hover:bg-gray-100"
-							>
-								{apiKeyCopied ? (
-									<Check className="h-4 w-4" />
-								) : (
-									<Copy className="h-4 w-4" />
-								)}
-							</Button>
-						)}
-					</div>
-
-					<div className="flex gap-2">
-						{!agent_api_key_exists && (
-							<Button
-								onClick={handleGetApiKey}
-								disabled={apiKeyLoading}
-								className="bg-black hover:bg-gray-800 text-white rounded-md"
-							>
-								{apiKeyLoading ? "Generating..." : "Generate API Key"}
-							</Button>
-						)}
-						{agent_api_key_exists && (
-							<Button
-								onClick={handleRegenerateApiKey}
-								variant="outline"
-								className="border-black text-black hover:bg-gray-100"
-							>
-								<RefreshCw className="h-4 w-4 mr-2" />
-								Regenerate
-							</Button>
 						)}
 					</div>
 				</CardContent>

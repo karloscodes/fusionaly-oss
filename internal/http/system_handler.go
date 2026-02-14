@@ -132,6 +132,34 @@ func AdministrationAccountPageAction(ctx *cartridge.Context) error {
 	})
 }
 
+// AdministrationAgentsPageAction renders the Agents administration page
+func AdministrationAgentsPageAction(ctx *cartridge.Context) error {
+	db := ctx.DB()
+
+	// Fetch websites for the selector
+	websitesData, err := websites.GetWebsitesForSelector(db)
+	if err != nil {
+		websitesData = []map[string]interface{}{}
+	}
+
+	// Get Agent API key (masked for display, last 4 chars visible)
+	agentAPIKey, _ := settings.GetAgentAPIKey(db)
+	var maskedAPIKey string
+	if agentAPIKey != "" {
+		if len(agentAPIKey) > 4 {
+			maskedAPIKey = "••••••••••••••••••••••••••••" + agentAPIKey[len(agentAPIKey)-4:]
+		} else {
+			maskedAPIKey = agentAPIKey
+		}
+	}
+
+	return inertia.RenderPage(ctx.Ctx, "AdministrationAgents", inertia.Props{
+		"websites":             websitesData,
+		"agent_api_key":        maskedAPIKey,
+		"agent_api_key_exists": agentAPIKey != "",
+	})
+}
+
 // AdministrationSystemPageAction renders the System administration page
 func AdministrationSystemPageAction(ctx *cartridge.Context) error {
 	db := ctx.DB()
@@ -195,17 +223,6 @@ func AdministrationSystemPageAction(ctx *cartridge.Context) error {
 	_, geoDBErr := os.Stat(geoDBPath)
 	geoDBExists := geoDBErr == nil
 
-	// Get Agent API key (masked for display, last 4 chars visible)
-	agentAPIKey, _ := settings.GetAgentAPIKey(db)
-	var maskedAPIKey string
-	if agentAPIKey != "" {
-		if len(agentAPIKey) > 4 {
-			maskedAPIKey = "••••••••••••••••••••••••••••" + agentAPIKey[len(agentAPIKey)-4:]
-		} else {
-			maskedAPIKey = agentAPIKey
-		}
-	}
-
 	return inertia.RenderPage(ctx.Ctx, "AdministrationSystem", inertia.Props{
 		"websites":               websitesData,
 		"show_logs":              showLogs,
@@ -215,8 +232,6 @@ func AdministrationSystemPageAction(ctx *cartridge.Context) error {
 		"geolite_last_update":    geoLastUpdate,
 		"geolite_db_exists":      geoDBExists,
 		"geolite_download_error": geoDownloadError,
-		"agent_api_key":          maskedAPIKey,
-		"agent_api_key_exists":   agentAPIKey != "",
 	})
 }
 

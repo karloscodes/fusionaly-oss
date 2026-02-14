@@ -229,6 +229,7 @@ func MountAppRoutesWithoutSession(srv *cartridge.Server) {
 	// === ADMINISTRATION ROUTES ===
 	srv.Get("/admin/administration", http.AdministrationIndexAction, adminConfig)
 	srv.Get("/admin/administration/ingestion", http.AdministrationIngestionPageAction, adminConfig)
+	srv.Get("/admin/administration/agents", http.AdministrationAgentsPageAction, adminConfig)
 	srv.Get("/admin/administration/account", http.AdministrationAccountPageAction, adminConfig)
 	srv.Get("/admin/administration/system", http.AdministrationSystemPageAction, adminConfig)
 
