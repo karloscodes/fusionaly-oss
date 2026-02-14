@@ -114,18 +114,24 @@ export const AdministrationAgentsContent: FC = () => {
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4">
-					<p className="text-sm text-gray-600">
-						See the{" "}
-						<a
-							href="https://docs.fusionaly.com/agent-api"
-							target="_blank"
-							rel="noopener noreferrer"
-							className="text-blue-600 hover:underline"
-						>
-							Agent API documentation
-						</a>
-						{" "}for setup instructions.
-					</p>
+					<div className="bg-blue-50 p-4 rounded-lg border border-blue-200 space-y-2">
+						<p className="text-sm text-blue-900">
+							Read-only API key for AI agents (Claude Code, Cursor, etc.) to query your analytics with AI.
+						</p>
+						<p className="text-sm text-blue-900">
+							Install the skill: <code className="bg-blue-100 px-1 rounded">claude skill install fusionaly/fusionaly-agent-api</code>
+						</p>
+						<p className="text-sm text-blue-900">
+							<a
+								href="https://fusionaly.com/docs/agent-api"
+								target="_blank"
+								rel="noopener noreferrer"
+								className="underline"
+							>
+								Skill documentation
+							</a>
+						</p>
+					</div>
 
 					<div className="flex items-center gap-2">
 						<Input
