@@ -36,17 +36,6 @@ export const AdministrationAgentsContent: FC = () => {
 	const [apiKeyCopied, setApiKeyCopied] = useState(false);
 	const [apiKeyLoading, setApiKeyLoading] = useState(false);
 	const [fullApiKey, setFullApiKey] = useState<string | null>(null);
-	const [copiedCmd, setCopiedCmd] = useState<string | null>(null);
-
-	const copyCommand = async (cmd: string, id: string) => {
-		try {
-			await navigator.clipboard.writeText(cmd);
-			setCopiedCmd(id);
-			setTimeout(() => setCopiedCmd(null), 2000);
-		} catch {
-			// ignore
-		}
-	};
 
 	const handleGetApiKey = async () => {
 		setApiKeyLoading(true);
@@ -125,36 +114,16 @@ export const AdministrationAgentsContent: FC = () => {
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4">
-					<div className="bg-blue-50 p-4 rounded-lg border border-blue-200 space-y-3">
+					<div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
 						<p className="text-sm text-blue-900">
-							Read-only API key for AI agents (Claude Code, Cursor, etc.) to query your analytics with AI.
-						</p>
-						{[
-							{ id: "claude", label: "Claude Code:", cmd: "curl -o ~/.claude/skills/fusionaly.md https://raw.githubusercontent.com/fusionaly/fusionaly-oss/main/skills/fusionaly-agent-api.md" },
-							{ id: "codex", label: "Codex:", cmd: "curl -o ~/.codex/instructions/fusionaly.md https://raw.githubusercontent.com/fusionaly/fusionaly-oss/main/skills/fusionaly-agent-api.md" },
-						].map(({ id, label, cmd }) => (
-							<div key={id} className="space-y-1">
-								<p className="text-xs text-blue-800 font-medium">{label}</p>
-								<div className="flex items-center gap-2">
-									<code className="text-xs text-blue-900 bg-blue-100 p-2 rounded flex-1 overflow-x-auto whitespace-nowrap">{cmd}</code>
-									<button
-										type="button"
-										onClick={() => copyCommand(cmd, id)}
-										className="p-1.5 text-blue-700 hover:bg-blue-100 rounded shrink-0"
-									>
-										{copiedCmd === id ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-									</button>
-								</div>
-							</div>
-						))}
-						<p className="text-sm text-blue-900">
+							Read-only API key for AI agents to query your analytics.{" "}
 							<a
 								href="https://fusionaly.com/docs/agent-api"
 								target="_blank"
 								rel="noopener noreferrer"
 								className="underline"
 							>
-								Full setup instructions
+								Setup instructions →
 							</a>
 						</p>
 					</div>
