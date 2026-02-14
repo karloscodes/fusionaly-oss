@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
-import { Settings, Database, User, Server } from "lucide-react";
+import { Settings, Database, User, Server, Bot } from "lucide-react";
 import { Link } from "@inertiajs/react";
 import { AdminLayout } from "@/components/admin-layout";
 
 interface AdministrationLayoutProps {
 	children: ReactNode;
-	currentPage: "ingestion" | "ai" | "account" | "system";
+	currentPage: "ingestion" | "ai" | "account" | "system" | "agents";
 }
 
 interface NavItem {
@@ -21,6 +21,12 @@ const navItems: NavItem[] = [
 		label: "Ingestion",
 		href: "/admin/administration/ingestion",
 		icon: Database,
+	},
+	{
+		id: "agents",
+		label: "Agents",
+		href: "/admin/administration/agents",
+		icon: Bot,
 	},
 	{
 		id: "account",

@@ -171,3 +171,54 @@ func TestCacheConsistency(t *testing.T) {
 		assert.False(t, isExcluded, "First IP should no longer be excluded after removal")
 	})
 }
+
+func TestAgentAPIKey(t *testing.T) {
+	t.Run("generates new API key", func(t *testing.T) {
+		dbManager, _ := testsupport.SetupTestDBManager(t)
+		db := dbManager.GetConnection()
+		settings.SetupDefaultSettings(db)
+
+		key, err := settings.GenerateAgentAPIKey(db)
+		require.NoError(t, err)
+		assert.Len(t, key, 32, "API key should be 32 characters")
+		assert.Regexp(t, "^[a-zA-Z0-9]+$", key, "API key should be alphanumeric")
+	})
+
+	t.Run("GetOrCreateAgentAPIKey creates if not exists", func(t *testing.T) {
+		dbManager, _ := testsupport.SetupTestDBManager(t)
+		db := dbManager.GetConnection()
+		settings.SetupDefaultSettings(db)
+
+		key1, err := settings.GetOrCreateAgentAPIKey(db)
+		require.NoError(t, err)
+		assert.NotEmpty(t, key1)
+
+		key2, err := settings.GetOrCreateAgentAPIKey(db)
+		require.NoError(t, err)
+		assert.Equal(t, key1, key2, "Should return same key on subsequent calls")
+	})
+
+	t.Run("RegenerateAgentAPIKey creates new key", func(t *testing.T) {
+		dbManager, _ := testsupport.SetupTestDBManager(t)
+		db := dbManager.GetConnection()
+		settings.SetupDefaultSettings(db)
+
+		key1, err := settings.GetOrCreateAgentAPIKey(db)
+		require.NoError(t, err)
+
+		key2, err := settings.RegenerateAgentAPIKey(db)
+		require.NoError(t, err)
+		assert.NotEqual(t, key1, key2, "Regenerated key should be different")
+		assert.Len(t, key2, 32)
+	})
+
+	t.Run("GetAgentAPIKey returns empty if not set", func(t *testing.T) {
+		dbManager, _ := testsupport.SetupTestDBManager(t)
+		db := dbManager.GetConnection()
+		settings.SetupDefaultSettings(db)
+
+		key, err := settings.GetAgentAPIKey(db)
+		assert.Error(t, err)
+		assert.Empty(t, key)
+	})
+}
