@@ -36,6 +36,17 @@ export const AdministrationAgentsContent: FC = () => {
 	const [apiKeyCopied, setApiKeyCopied] = useState(false);
 	const [apiKeyLoading, setApiKeyLoading] = useState(false);
 	const [fullApiKey, setFullApiKey] = useState<string | null>(null);
+	const [copiedCmd, setCopiedCmd] = useState<string | null>(null);
+
+	const copyCommand = async (cmd: string, id: string) => {
+		try {
+			await navigator.clipboard.writeText(cmd);
+			setCopiedCmd(id);
+			setTimeout(() => setCopiedCmd(null), 2000);
+		} catch {
+			// ignore
+		}
+	};
 
 	const handleGetApiKey = async () => {
 		setApiKeyLoading(true);
@@ -118,14 +129,24 @@ export const AdministrationAgentsContent: FC = () => {
 						<p className="text-sm text-blue-900">
 							Read-only API key for AI agents (Claude Code, Cursor, etc.) to query your analytics with AI.
 						</p>
-						<div className="space-y-1">
-							<p className="text-xs text-blue-800 font-medium">Claude Code:</p>
-							<code className="text-xs text-blue-900 bg-blue-100 p-2 rounded block break-all">curl -o ~/.claude/skills/fusionaly.md https://raw.githubusercontent.com/fusionaly/fusionaly-oss/main/skills/fusionaly-agent-api.md</code>
-						</div>
-						<div className="space-y-1">
-							<p className="text-xs text-blue-800 font-medium">Codex:</p>
-							<code className="text-xs text-blue-900 bg-blue-100 p-2 rounded block break-all">curl -o ~/.codex/instructions/fusionaly.md https://raw.githubusercontent.com/fusionaly/fusionaly-oss/main/skills/fusionaly-agent-api.md</code>
-						</div>
+						{[
+							{ id: "claude", label: "Claude Code:", cmd: "curl -o ~/.claude/skills/fusionaly.md https://raw.githubusercontent.com/fusionaly/fusionaly-oss/main/skills/fusionaly-agent-api.md" },
+							{ id: "codex", label: "Codex:", cmd: "curl -o ~/.codex/instructions/fusionaly.md https://raw.githubusercontent.com/fusionaly/fusionaly-oss/main/skills/fusionaly-agent-api.md" },
+						].map(({ id, label, cmd }) => (
+							<div key={id} className="space-y-1">
+								<p className="text-xs text-blue-800 font-medium">{label}</p>
+								<div className="flex items-center gap-2">
+									<code className="text-xs text-blue-900 bg-blue-100 p-2 rounded flex-1 overflow-x-auto whitespace-nowrap">{cmd}</code>
+									<button
+										type="button"
+										onClick={() => copyCommand(cmd, id)}
+										className="p-1.5 text-blue-700 hover:bg-blue-100 rounded shrink-0"
+									>
+										{copiedCmd === id ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+									</button>
+								</div>
+							</div>
+						))}
 						<p className="text-sm text-blue-900">
 							<a
 								href="https://fusionaly.com/docs/agent-api"
