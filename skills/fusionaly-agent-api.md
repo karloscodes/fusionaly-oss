@@ -15,13 +15,23 @@ Requires these environment variables to be set:
 
 ## Workflow
 
-1. **First, fetch the schema** to understand available tables and columns:
+### Step 1: Fetch and Interpret the Schema
 
 ```bash
 curl -s -H "Authorization: Bearer $FUSIONALY_API_KEY" "$FUSIONALY_HOST/z/api/v1/schema"
 ```
 
-2. **Then, execute SQL queries** against the data:
+The response contains:
+- **`schema`**: Raw SQLite CREATE TABLE statements showing all tables and columns
+- **`concepts`**: Domain-specific explanations of what each table/column means
+
+**How to use the schema:**
+1. Parse the CREATE TABLE statements to learn exact table names and column names
+2. Use the `concepts` section to understand what each column represents
+3. Build your SQL queries using only the columns that exist in the schema
+4. Always use the exact column names as shown (case-sensitive)
+
+### Step 2: Execute SQL Queries
 
 ```bash
 curl -s -X POST "$FUSIONALY_HOST/z/api/v1/sql" \
@@ -29,6 +39,11 @@ curl -s -X POST "$FUSIONALY_HOST/z/api/v1/sql" \
   -H "Content-Type: application/json" \
   -d '{"sql": "SELECT ...", "website_id": 1}'
 ```
+
+Build your SELECT queries based on:
+- Table names from the schema (e.g., `events`, `sessions`, `visitors`)
+- Column names exactly as defined in CREATE TABLE statements
+- Relationships implied by foreign keys (e.g., `website_id`, `visitor_id`)
 
 ## Constraints
 
