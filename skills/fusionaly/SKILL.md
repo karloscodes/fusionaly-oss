@@ -47,9 +47,23 @@ Build your SELECT queries based on:
 - Column names exactly as defined in CREATE TABLE statements
 - Relationships implied by foreign keys (e.g., `website_id`, `visitor_id`)
 
+## Error Handling
+
+**Be persistent.** If a query fails, analyze the error and retry with corrections. Try up to 3 times before giving up.
+
+Common errors and fixes:
+- `no such table: X` → Re-check schema for correct table name
+- `no such column: X` → Re-check schema for correct column name (case-sensitive)
+- `only SELECT queries allowed` → Remove any non-SELECT statements
+- `comments not allowed` → Remove `--` or `/* */` from query
+- `multiple statements not allowed` → Use only one SELECT statement
+- `dangerous operation not allowed` → Remove blocked keywords, use only SELECT/WITH
+
+**Always bias toward solving the problem.** Don't give up on first error - read the message, fix the query, retry.
+
 ## Constraints
 
-- **Read-only**: Only SELECT queries are allowed
+- **Read-only**: Only SELECT/WITH queries are allowed
 - **Rate limited**: 30 requests per minute
 - **Query timeout**: 5 seconds
 - **No comments**: SQL comments (`--` or `/**/`) are not allowed
