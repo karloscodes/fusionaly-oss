@@ -7,6 +7,8 @@ description: Query Fusionaly analytics data via SQL
 
 Query your Fusionaly analytics data using SQL.
 
+**Your role:** The user will ask questions in plain English (e.g., "What were my top pages last week?" or "How many visitors did I get from Google?"). You translate these questions into SQL queries, execute them via the API, and present the results clearly.
+
 ## Environment Variables
 
 Requires these environment variables to be set:
