@@ -1,0 +1,25 @@
+
+Fusionaly Installer
+
+* Ports 80 and 443 must be available
+* DNS pointing to this server recommended for SSL
+
+Domain (e.g., analytics.example.com):
+Checking DNS... X.X.X.X, 2a0d:5642:113:242:5054:ff:fe48:675 (wrong server)
+
+Update A record: analytics.example.com -> X.X.X.X
+SSL activates automatically once DNS propagates.
+
+Summary
+
+  Domain:  analytics.example.com
+  DNS:     Not ready (will continue anyway)
+
+Proceed? [Y/n]
+Installing
+
+  Checking system ✓
+  SQLite          ✓
+  Docker          ✓
+  Configuring     ✗
+Error: failed to configure system: failed to create install dir: failed to create directory: mkdir /opt/fusionaly: permission denied

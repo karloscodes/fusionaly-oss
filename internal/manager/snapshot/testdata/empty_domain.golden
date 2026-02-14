@@ -1,0 +1,23 @@
+
+Fusionaly Installer
+
+* Ports 80 and 443 must be available
+* DNS pointing to this server recommended for SSL
+
+Domain (e.g., analytics.example.com): Error: Domain cannot be empty.
+Domain (e.g., analytics.example.com):
+Checking DNS... localhost (localhost, skipped)
+
+Summary
+
+  Domain:  localhost
+  DNS:     ✓ Ready
+
+Proceed? [Y/n]
+Installing
+
+  Checking system ✓
+  SQLite          ✓
+  Docker          ✓
+  Configuring     ✗
+Error: failed to configure system: failed to create install dir: failed to create directory: mkdir /opt/fusionaly: permission denied
