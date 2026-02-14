@@ -1,6 +1,6 @@
 ---
-name: fusionaly-agent-api
-description: Query Fusionaly analytics data via SQL
+name: fusionaly
+description: Use when user asks about website analytics, traffic, visitors, page views, referrers, or mentions "fusionaly". Queries Fusionaly analytics via SQL API.
 ---
 
 # Fusionaly Agent API
