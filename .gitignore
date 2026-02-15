@@ -89,8 +89,9 @@ test-results/
 .gocache/
 .gopath/
 
-# Claude Code settings (developer-specific)
-.claude/
+# Claude Code settings (developer-specific, but keep skills)
+.claude/*
+!.claude/skills/
 
 # GeoIP database (download from MaxMind)
 *.mmdb
