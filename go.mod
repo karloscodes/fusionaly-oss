@@ -4,7 +4,7 @@ go 1.25.5
 
 require (
 	github.com/gofiber/fiber/v2 v2.52.11
-	github.com/karloscodes/cartridge v0.0.0-20260213163203-8699e759e839
+	github.com/karloscodes/cartridge v0.0.0-20260215191752-240a3c5e87be
 	github.com/karloscodes/matcha v0.10.1
 	github.com/oschwald/geoip2-golang v1.13.0
 	github.com/pariz/gountries v0.1.6
