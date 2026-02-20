@@ -49,60 +49,49 @@ make dev
 
 ---
 
-## Flavor 1: Full Install (VM)
+## Flavor 1: Full Install (OrbStack VM)
 
-Test the actual installation script on a fresh Ubuntu VM.
+Test the actual installer on a fresh Ubuntu VM using OrbStack.
 
-### 1. Create Fresh VM
+### 1. Create VM and Build Manager
 
 ```bash
-multipass delete fusionaly-test --purge 2>/dev/null || true
-multipass launch 24.04 --name fusionaly-test --cpus 2 --memory 2G --disk 10G
+cd /path/to/fusionaly-oss
+make test-installer
 ```
 
-### 2. Run Install Script
+This builds the manager binary for Linux arm64 and creates a fresh `installer-test` VM.
+
+### 2. Run the Installer
 
 ```bash
-multipass exec fusionaly-test -- bash -c '
-sudo apt-get update -qq && sudo apt-get install -y -qq expect
-
-cat > /tmp/run_install.exp << '\''EXPECTSCRIPT'\''
-#!/usr/bin/expect -f
-set timeout 300
-spawn sudo bash -c "curl -fsSL https://fusionaly.com/install | bash"
-expect "Enter your domain name"
-send "test.local\r"
-expect "Proceed with this configuration"
-send "Y\r"
-expect eof
-EXPECTSCRIPT
-
-expect /tmp/run_install.exp
-'
+orb -m installer-test -u root /path/to/fusionaly-oss/tmp/fusionaly-test-linux install
 ```
 
 ### 3. Verify Installation
 
 ```bash
-multipass exec fusionaly-test -- bash -c '
-echo "=== Containers ===" && sudo docker ps
+orb -m installer-test -u root bash -c '
+echo "=== Containers ===" && docker ps
 echo "=== Version ===" && fusionaly version
-echo "=== Health ===" && curl -s http://172.18.0.2:8080/_health
+echo "=== Health ===" && curl -s http://localhost:8080/up
 '
 ```
 
-### 4. Browser Testing (via SSH Tunnel)
+### 4. Other Commands
 
 ```bash
-VM_IP=$(multipass info fusionaly-test | grep IPv4 | awk '{print $2}')
-ssh -L 8080:172.18.0.2:8080 ubuntu@$VM_IP
-# Then open: http://localhost:8080/setup
+# Test update
+orb -m installer-test -u root /path/to/fusionaly-oss/tmp/fusionaly-test-linux update
+
+# Shell into the VM
+orb -m installer-test
 ```
 
 ### 5. Cleanup
 
 ```bash
-multipass delete fusionaly-test --purge
+make test-installer-clean
 ```
 
 ---
@@ -192,7 +181,7 @@ make build
 | Issue | Cause | Fix |
 |-------|-------|-----|
 | E2E tests fail with "Setup already complete" | Dev server running (wrong database) | Kill process on port 3000 first |
-| VM SSH connection refused | VM not ready | Wait for cloud-init: `multipass exec fusionaly-test -- cloud-init status --wait` |
+| VM not starting | OrbStack issue | Check `orb list`, try `make test-installer-clean` then retry |
 | Can't reach 172.18.0.2 | Docker internal network | Use SSH tunnel |
 | Tests timeout | Server slow to start | Increase timeout in playwright.config.js |
 

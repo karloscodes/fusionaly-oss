@@ -18,7 +18,7 @@ UA_DATABASE_DIR := internal/pkg/user_agent/database
 # Version from git tag or dev
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 
-.PHONY: default install deps install-tools dev watch-web watch-go dev-server dev-web db-seed db-migrate db-drop test test-e2e test-installer perftest perf-run loadtest loadtest-quick loadtest-heavy build build-manager build-manager-linux clean dist lint update-ua-database download-test-fixtures test-ua-parser test-ua-fixtures check release
+.PHONY: default install deps install-tools dev watch-web watch-go dev-server dev-web db-seed db-migrate db-drop test test-e2e test-installer test-installer-clean perftest perf-run loadtest loadtest-quick loadtest-heavy build build-manager build-manager-linux clean dist lint update-ua-database download-test-fixtures test-ua-parser test-ua-fixtures check release
 
 # Default target
 default: dev
@@ -179,6 +179,9 @@ test-e2e:
 
 # Test installer locally using OrbStack VM
 # Requires: brew install orbstack
+# Usage:
+#   make test-installer          # Build, create VM, print instructions
+#   make test-installer-clean    # Delete the VM
 test-installer:
 	@echo "Building manager for Linux arm64..."
 	@mkdir -p $(TMP_DIR)
@@ -187,14 +190,25 @@ test-installer:
 		-o $(TMP_DIR)/fusionaly-test-linux ./cmd/manager/
 	@echo "Recreating OrbStack VM..."
 	@orb delete installer-test -f 2>/dev/null || true
-	@orb create ubuntu:22.04 installer-test
+	@orb create ubuntu:24.04 installer-test
 	@echo ""
-	@echo "Run the installer with:"
+	@echo "VM ready. Run the installer:"
+	@echo ""
 	@echo "  orb -m installer-test -u root $(CURDIR)/$(TMP_DIR)/fusionaly-test-linux install"
 	@echo ""
-	@echo "Or run interactively:"
+	@echo "Other commands:"
+	@echo "  orb -m installer-test -u root $(CURDIR)/$(TMP_DIR)/fusionaly-test-linux update"
+	@echo "  orb -m installer-test -u root $(CURDIR)/$(TMP_DIR)/fusionaly-test-linux version"
+	@echo ""
+	@echo "Shell into the VM:"
 	@echo "  orb -m installer-test"
 	@echo ""
+	@echo "Cleanup when done:"
+	@echo "  make test-installer-clean"
+
+test-installer-clean:
+	@orb delete installer-test -f 2>/dev/null || true
+	@echo "VM deleted."
 
 perf-run:
 	@echo "Running performance test with custom parameters..."

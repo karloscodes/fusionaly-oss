@@ -69,6 +69,7 @@ func newMatcha() *matcha.Matcha {
 	return matcha.New(matcha.Config{
 		Name:           "fusionaly",
 		AppImage:       "karloscodes/fusionaly:latest",
+		HealthPath:     "/_health",
 		CronUpdates:    true,
 		Backups:        true,
 		ManagerRepo:    "karloscodes/fusionaly-oss",
