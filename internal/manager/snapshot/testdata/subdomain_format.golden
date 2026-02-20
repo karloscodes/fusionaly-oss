@@ -1,11 +1,10 @@
-
 Fusionaly Installer
 
 * Ports 80 and 443 must be available
 * DNS pointing to this server recommended for SSL
 
 Domain (e.g., analytics.example.com):
-Checking DNS... X.X.X.X, 2a0d:5642:113:242:5054:ff:fe48:675 (wrong server)
+Checking DNS... X.X.X.X, 2a00:11c0:1e:4::3 (wrong server)
 
 Update A record: analytics.example.com -> X.X.X.X
 SSL activates automatically once DNS propagates.

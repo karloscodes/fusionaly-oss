@@ -69,8 +69,6 @@ func newMatcha() *matcha.Matcha {
 	return matcha.New(matcha.Config{
 		Name:           "fusionaly",
 		AppImage:       "karloscodes/fusionaly:latest",
-		CaddyImage:     "caddy:2.9-alpine",
-		BlueGreen:      true,
 		CronUpdates:    true,
 		Backups:        true,
 		ManagerRepo:    "karloscodes/fusionaly-oss",

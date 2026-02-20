@@ -62,9 +62,11 @@ func GetScenarios() []Scenario {
 
 // NormalizeOutput removes dynamic content from output for comparison
 func NormalizeOutput(output string) string {
-	// Remove ANSI escape codes for spinner animations
+	// Remove ANSI escape codes and spinner frames
 	ansiPattern := regexp.MustCompile(`\x1b\[[0-9;]*[mK]|\r`)
 	output = ansiPattern.ReplaceAllString(output, "")
+	spinnerPattern := regexp.MustCompile(`[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]\s*`)
+	output = spinnerPattern.ReplaceAllString(output, "")
 
 	// Normalize IP addresses (replace with placeholder)
 	ipPattern := regexp.MustCompile(`\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}`)
@@ -86,6 +88,19 @@ func NormalizeOutput(output string) string {
 	lines := strings.Split(output, "\n")
 	for i, line := range lines {
 		lines[i] = strings.TrimRight(line, " \t")
+	}
+	output = strings.Join(lines, "\n")
+
+	// Remove duplicate labels from spinner overwrites (e.g., "  Docker          Docker          ✓" → "  Docker          ✓")
+	lines = strings.Split(output, "\n")
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		parts := strings.Fields(trimmed)
+		if len(parts) >= 3 && parts[0] == parts[1] {
+			// Duplicate label — keep only the second occurrence with the status
+			indent := line[:len(line)-len(strings.TrimLeft(line, " \t"))]
+			lines[i] = indent + strings.Join(parts[1:], "          ")
+		}
 	}
 	output = strings.Join(lines, "\n")
 
@@ -126,7 +141,7 @@ func RunScenario(t *testing.T, scenario Scenario, binaryPath string) string {
 
 // SnapshotDir returns the directory for snapshot files
 func SnapshotDir() string {
-	return filepath.Join("internal", "manager", "snapshot", "testdata")
+	return "testdata"
 }
 
 // LoadSnapshot loads a saved snapshot

@@ -1,10 +1,9 @@
-
 Fusionaly Installer
 
 * Ports 80 and 443 must be available
 * DNS pointing to this server recommended for SSL
 
-Domain (e.g., analytics.example.com): Error: validation failed for field 'domain' with value 'https://example.com': invalid domain format
+Domain (e.g., analytics.example.com): Error: validation failed for field 'domain' with value 'http://example.com': invalid domain format
 Domain (e.g., analytics.example.com):
 Checking DNS... localhost (localhost, skipped)
 
