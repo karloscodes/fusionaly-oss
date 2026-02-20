@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
 	"regexp"
 	"strings"
 	"syscall"
@@ -33,6 +34,7 @@ func main() {
 			os.Exit(1)
 		}
 	case "update":
+		migrateCaddyToKamalProxy(m)
 		if err := m.Update(); err != nil {
 			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
@@ -199,6 +201,25 @@ func validatePassword(password string) error {
 		return fmt.Errorf("password must be at least 8 characters")
 	}
 	return nil
+}
+
+// migrateCaddyToKamalProxy removes legacy Caddy and blue-green containers
+// from pre-v1.6.0 installs so kamal-proxy can bind ports 80/443.
+func migrateCaddyToKamalProxy(m *matcha.Matcha) {
+	legacy := []string{"fusionaly-caddy", m.AppContainerName() + "-1", m.AppContainerName() + "-2"}
+	migrated := false
+	for _, name := range legacy {
+		if exec.Command("docker", "inspect", name).Run() == nil {
+			fmt.Printf("Migrating: removing legacy container %s...\n", name)
+			exec.Command("docker", "stop", name).Run()
+			exec.Command("docker", "rm", name).Run()
+			migrated = true
+		}
+	}
+	if migrated {
+		fmt.Println("Re-registering service with proxy...")
+		m.Reload()
+	}
 }
 
 func printUsage() {
