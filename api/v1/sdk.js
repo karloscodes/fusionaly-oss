@@ -19,6 +19,7 @@
 		scrollDepthEventKey: "scroll:depth",
 		scrollSectionEventKey: "scroll:section",
 		scrollSectionThreshold: 0.5,
+		useKeepaliveFetch: false,
 	};
 
 	window.Fusionaly.config.scrollDepthThresholds =
@@ -256,6 +257,31 @@
 		window.Fusionaly.userId = data.userId;
 	};
 
+	// Send event reliably during page navigation.
+	// Uses fetch+keepalive when configured (avoids ad blocker ping blocking),
+	// falls back to sendBeacon.
+	const sendBeaconEvent = (eventData) => {
+		const url = `${baseUrl}/x/api/v1/events/beacon`;
+		const body = JSON.stringify(eventData);
+
+		if (window.Fusionaly.config.useKeepaliveFetch) {
+			try {
+				fetch(url, {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: body,
+					keepalive: true,
+				}).catch(() => storeEventLocally(eventData));
+				return true;
+			} catch (e) {
+				storeEventLocally(eventData);
+				return false;
+			}
+		}
+
+		return navigator.sendBeacon(url, body);
+	};
+
 	window.addEventListener("beforeunload", () => {
 		if (!shouldTrack()) {
 			return;
@@ -267,11 +293,7 @@
 		for (const eventData of eventsToSend) {
 			eventData.userAgent = navigator.userAgent;
 
-			const sent = navigator.sendBeacon(
-				`${window.Fusionaly.config.host}/x/api/v1/events/beacon`,
-				JSON.stringify(eventData),
-			);
-			if (!sent) {
+			if (!sendBeaconEvent(eventData)) {
 				storeEventLocally(eventData);
 			}
 		}
@@ -439,15 +461,10 @@
 						console.log('Fusionaly: Sending beacon payload:', beaconData);
 					}
 
-					// Send the beacon
-					const sent = navigator.sendBeacon(
-						`${window.Fusionaly.config.host}/x/api/v1/events/beacon`,
-						JSON.stringify(beaconData)
-					);
+					const sent = sendBeaconEvent(beaconData);
 
 					if (!sent) {
-						// If sendBeacon fails, fall back to storing the event locally
-						log("sendBeacon failed, storing event locally", "warn");
+						log("sendBeaconEvent failed, storing event locally", "warn");
 						storeEventLocally(beaconData);
 					}
 
