@@ -263,12 +263,12 @@
 	// Uses fetch+keepalive when configured (avoids ad blocker ping blocking),
 	// falls back to sendBeacon.
 	const sendBeaconEvent = (eventData) => {
-		const url = `${baseUrl}/x/api/v1/events/beacon`;
 		const body = JSON.stringify(eventData);
 
 		if (window.Fusionaly.config.useKeepaliveFetch) {
+			// Use regular events endpoint - it's a proper fetch request
 			try {
-				fetch(url, {
+				fetch(`${baseUrl}/x/api/v1/events`, {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
 					body: body,
@@ -281,7 +281,8 @@
 			}
 		}
 
-		return navigator.sendBeacon(url, body);
+		// sendBeacon needs the special endpoint (text/plain quirk)
+		return navigator.sendBeacon(`${baseUrl}/x/api/v1/events/beacon`, body);
 	};
 
 	window.addEventListener("beforeunload", () => {
