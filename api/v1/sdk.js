@@ -1,7 +1,7 @@
 ((window) => {
 	window.Fusionaly = window.Fusionaly || {};
 
-	window.Fusionaly.config = window.Fusionaly.config || {
+	const defaults = {
 		host: "{{.BaseURL}}",
 		eventTypes: {
 			pageView: 1,
@@ -21,6 +21,8 @@
 		scrollSectionThreshold: 0.5,
 		useKeepaliveFetch: false,
 	};
+
+	window.Fusionaly.config = Object.assign(defaults, window.Fusionaly.config || {});
 
 	window.Fusionaly.config.scrollDepthThresholds =
 		window.Fusionaly.config.scrollDepthThresholds || [25, 50, 75, 100];
