@@ -72,6 +72,7 @@ func newMatcha() *matcha.Matcha {
 		Name:           "fusionaly",
 		AppImage:       "karloscodes/fusionaly:latest",
 		HealthPath:     "/_health",
+		Volumes:        []string{"/app/storage", "/app/logs"},
 		CronUpdates:    true,
 		Backups:        true,
 		ManagerRepo:    "karloscodes/fusionaly-oss",
