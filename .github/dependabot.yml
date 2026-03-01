@@ -14,6 +14,8 @@ updates:
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-minor", "version-update:semver-patch"]
+      - dependency-name: "github.com/karloscodes/*"
+        update-types: []
 
   # npm (web) - grouped, major/security only
   - package-ecosystem: "npm"
