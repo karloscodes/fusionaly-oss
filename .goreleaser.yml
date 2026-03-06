@@ -62,6 +62,7 @@ changelog:
       order: 999
 
 dockers:
+  # Docker Hub - amd64
   - image_templates:
       - "karloscodes/fusionaly:{{ .Version }}-amd64"
       - "karloscodes/fusionaly:latest-amd64"
@@ -83,6 +84,7 @@ dockers:
       - web
       - scripts
 
+  # Docker Hub - arm64
   - image_templates:
       - "karloscodes/fusionaly:{{ .Version }}-arm64"
       - "karloscodes/fusionaly:latest-arm64"
@@ -105,7 +107,55 @@ dockers:
       - web
       - scripts
 
+  # GitHub Container Registry - amd64
+  - image_templates:
+      - "ghcr.io/karloscodes/fusionaly:{{ .Version }}-amd64"
+      - "ghcr.io/karloscodes/fusionaly:latest-amd64"
+    use: buildx
+    dockerfile: Dockerfile
+    build_flag_templates:
+      - "--platform=linux/amd64"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--label=org.opencontainers.image.source=https://github.com/karloscodes/fusionaly-oss"
+    extra_files:
+      - go.mod
+      - go.sum
+      - Makefile
+      - cmd
+      - internal
+      - api
+      - web
+      - scripts
+
+  # GitHub Container Registry - arm64
+  - image_templates:
+      - "ghcr.io/karloscodes/fusionaly:{{ .Version }}-arm64"
+      - "ghcr.io/karloscodes/fusionaly:latest-arm64"
+    use: buildx
+    goarch: arm64
+    dockerfile: Dockerfile
+    build_flag_templates:
+      - "--platform=linux/arm64"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--label=org.opencontainers.image.source=https://github.com/karloscodes/fusionaly-oss"
+    extra_files:
+      - go.mod
+      - go.sum
+      - Makefile
+      - cmd
+      - internal
+      - api
+      - web
+      - scripts
+
 docker_manifests:
+  # Docker Hub manifests
   - name_template: "karloscodes/fusionaly:{{ .Version }}"
     image_templates:
       - "karloscodes/fusionaly:{{ .Version }}-amd64"
@@ -125,6 +175,27 @@ docker_manifests:
     image_templates:
       - "karloscodes/fusionaly:latest-amd64"
       - "karloscodes/fusionaly:latest-arm64"
+
+  # GitHub Container Registry manifests
+  - name_template: "ghcr.io/karloscodes/fusionaly:{{ .Version }}"
+    image_templates:
+      - "ghcr.io/karloscodes/fusionaly:{{ .Version }}-amd64"
+      - "ghcr.io/karloscodes/fusionaly:{{ .Version }}-arm64"
+
+  - name_template: "ghcr.io/karloscodes/fusionaly:v{{ .Major }}"
+    image_templates:
+      - "ghcr.io/karloscodes/fusionaly:{{ .Version }}-amd64"
+      - "ghcr.io/karloscodes/fusionaly:{{ .Version }}-arm64"
+
+  - name_template: "ghcr.io/karloscodes/fusionaly:v{{ .Major }}.{{ .Minor }}"
+    image_templates:
+      - "ghcr.io/karloscodes/fusionaly:{{ .Version }}-amd64"
+      - "ghcr.io/karloscodes/fusionaly:{{ .Version }}-arm64"
+
+  - name_template: "ghcr.io/karloscodes/fusionaly:latest"
+    image_templates:
+      - "ghcr.io/karloscodes/fusionaly:latest-amd64"
+      - "ghcr.io/karloscodes/fusionaly:latest-arm64"
 
 release:
   github:
@@ -149,7 +220,11 @@ release:
     ### Docker
 
     ```bash
+    # Docker Hub
     docker pull karloscodes/fusionaly:{{ .Version }}
+
+    # GitHub Container Registry
+    docker pull ghcr.io/karloscodes/fusionaly:{{ .Version }}
     ```
   footer: |
     ---
