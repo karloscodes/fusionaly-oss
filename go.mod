@@ -3,7 +3,7 @@ module fusionaly
 go 1.25.5
 
 require (
-	github.com/gofiber/fiber/v2 v2.52.11
+	github.com/gofiber/fiber/v2 v2.52.12
 	github.com/karloscodes/cartridge v0.0.0-20260215191752-240a3c5e87be
 	github.com/karloscodes/matcha v0.12.10
 	github.com/oschwald/geoip2-golang v1.13.0
