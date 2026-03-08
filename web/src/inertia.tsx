@@ -49,7 +49,7 @@ function createProgressBar() {
     top: 0;
     left: 0;
     height: 3px;
-    background: #00D678;
+    background: #00D1FF;
     transition: width 0.3s ease;
     z-index: 9999;
     width: 0%;
