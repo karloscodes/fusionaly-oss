@@ -118,7 +118,7 @@ export const Dashboard = (props: DashboardComponentProps) => {
 	const [data, setData] = useState<AnalyticsData | null>(null);
 	const [activeChart, setActiveChart] = useState<
 		"views" | "visitors"
-	>("views"); // Toggle between charts
+	>("visitors"); // Toggle between charts
 	const [showRevenueLine, setShowRevenueLine] = useState(true); // Control revenue line visibility
 	const [tooltipOpen, setTooltipOpen] = useState(false);
 
@@ -131,6 +131,14 @@ export const Dashboard = (props: DashboardComponentProps) => {
 
 	// State for share link copy feedback
 	const [shareCopied, setShareCopied] = useState(false);
+
+	// Mobile detection for chart responsiveness
+	const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 640);
+	useEffect(() => {
+		const onResize = () => setIsMobile(window.innerWidth < 640);
+		window.addEventListener("resize", onResize);
+		return () => window.removeEventListener("resize", onResize);
+	}, []);
 
 	// Add effect to sync URL params with state
 
@@ -419,12 +427,12 @@ export const Dashboard = (props: DashboardComponentProps) => {
 		switch (activeChart) {
 			case "views":
 				return {
-					default: "#00D1FF",
+					default: "#00D678",
 					hover: "#E5E7EB", // Light gray
 				};
 			case "visitors":
 				return {
-					default: "#00D678",
+					default: "#00D1FF",
 					hover: "#E5E7EB", // Light gray
 				};
 		}
@@ -452,12 +460,7 @@ export const Dashboard = (props: DashboardComponentProps) => {
 
 	// Get the revenue line color (darker version of the active chart color)
 	const getRevenueLineColor = () => {
-		switch (activeChart) {
-			case "views":
-				return "#0E7490"; // Muted teal that complements the view bars
-			case "visitors":
-				return "#047857"; // Balanced emerald tone for visitor view
-		}
+		return "#000000";
 	};
 
 	// Get the revenue axis domain with a reasonable minimum
@@ -537,10 +540,10 @@ export const Dashboard = (props: DashboardComponentProps) => {
 		return (
 			<ComposedChart
 				data={chartData}
-				margin={{ top: 60, right: 20, bottom: 80, left: 20 }}
-				barGap={8}
-				barCategoryGap={16}
-				barSize={36}
+				margin={{ top: 60, right: isMobile ? 10 : 20, bottom: 80, left: isMobile ? 0 : 20 }}
+				barGap={isMobile ? 2 : 8}
+				barCategoryGap={isMobile ? 4 : 16}
+				barSize={isMobile ? 12 : 36}
 				onClick={props.is_public_view ? undefined : handleChartClick}
 			>
 				<CartesianGrid
@@ -552,19 +555,20 @@ export const Dashboard = (props: DashboardComponentProps) => {
 				<XAxis
 					dataKey="formattedDate"
 					strokeWidth={1}
-					tick={{ fill: "#374151", fontSize: 10, textAnchor: "end" }}
+					tick={{ fill: "#374151", fontSize: isMobile ? 9 : 10, textAnchor: "end" }}
 					axisLine={{ stroke: "#E5E7EB" }}
 					tickLine={{ stroke: "#E5E7EB" }}
 					dy={10}
-					interval="preserveStartEnd"
+					interval={isMobile ? "equidistantPreserveStart" : "preserveStartEnd"}
 					angle={-45}
 				/>
 				<YAxis
 					strokeWidth={1}
-					tick={{ fill: "#374151", fontSize: 10 }}
+					tick={{ fill: "#374151", fontSize: isMobile ? 9 : 10 }}
 					axisLine={{ stroke: "#E5E7EB" }}
 					tickLine={{ stroke: "#E5E7EB" }}
 					dx={-10}
+					width={isMobile ? 30 : 60}
 					domain={[0, getMaxValue()]}
 					allowDecimals={false}
 					tickCount={getTickCount()}
@@ -573,10 +577,11 @@ export const Dashboard = (props: DashboardComponentProps) => {
 					yAxisId="right"
 					orientation="right"
 					strokeWidth={1}
-					tick={{ fill: "#374151", fontSize: 10 }}
+					tick={{ fill: "#374151", fontSize: isMobile ? 9 : 10 }}
 					axisLine={{ stroke: "#E5E7EB" }}
 					tickLine={{ stroke: "#E5E7EB" }}
 					dx={10}
+					width={isMobile ? 35 : 60}
 					domain={getRevenueAxisDomain()}
 					allowDecimals={true}
 					tickFormatter={(value) => `$${(value / 100).toFixed(0)}`}
@@ -629,9 +634,9 @@ export const Dashboard = (props: DashboardComponentProps) => {
 						dataKey="revenue"
 						name="Revenue"
 						stroke={getRevenueLineColor()}
-						strokeWidth={2}
-						dot={{ fill: getRevenueLineColor(), r: 3 }}
-						activeDot={{ r: 6, fill: getRevenueLineColor() }}
+						strokeWidth={isMobile ? 1.5 : 2}
+						dot={isMobile ? false : { fill: getRevenueLineColor(), r: 3 }}
+						activeDot={{ r: isMobile ? 4 : 6, fill: getRevenueLineColor() }}
 						yAxisId="right"
 					/>
 				)}
@@ -790,17 +795,17 @@ export const Dashboard = (props: DashboardComponentProps) => {
 							<div className="flex flex-wrap gap-2">
 								<button
 									type="button"
-									onClick={() => setActiveChart("views")}
-									className={`px-3 sm:px-4 py-2 text-sm border rounded ${activeChart === "views" ? "bg-black text-white" : "bg-white text-black"}`}
+									onClick={() => setActiveChart("visitors")}
+									className={`w-24 sm:w-28 py-1.5 sm:py-2 text-xs sm:text-sm border rounded text-center ${activeChart === "visitors" ? "bg-black text-white" : "bg-white text-black"}`}
 								>
-									Page Views
+									Visitors
 								</button>
 								<button
 									type="button"
-									onClick={() => setActiveChart("visitors")}
-									className={`px-3 sm:px-4 py-2 text-sm border rounded ${activeChart === "visitors" ? "bg-black text-white" : "bg-white text-black"}`}
+									onClick={() => setActiveChart("views")}
+									className={`w-24 sm:w-28 py-1.5 sm:py-2 text-xs sm:text-sm border rounded text-center ${activeChart === "views" ? "bg-black text-white" : "bg-white text-black"}`}
 								>
-									Visitors
+									Page Views
 								</button>
 								{data.conversion_goals && data.conversion_goals.length > 0 && (
 									<div className="flex items-center space-x-2 sm:space-x-3 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors">

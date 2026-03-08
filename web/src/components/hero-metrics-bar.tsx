@@ -57,11 +57,11 @@ const TrendIndicator = ({ trend, loading }: { trend?: number; loading?: boolean 
 export const HeroMetricsBar = ({ metrics, trendLoading }: HeroMetricsBarProps) => {
 	return (
 		<div className="bg-white rounded-lg border border-black shadow-sm">
-			<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 divide-x divide-gray-200">
+			<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
 				{metrics.map((metric, index) => (
 					<div
 						key={index}
-						className="px-4 py-4 flex flex-col gap-2"
+						className="px-3 sm:px-4 py-3 sm:py-4 flex flex-col gap-1.5 sm:gap-2 border-gray-200 border-r last:border-r-0 [&:nth-child(2n)]:border-r-0 md:[&:nth-child(2n)]:border-r md:[&:nth-child(3n)]:border-r-0 lg:[&:nth-child(3n)]:border-r lg:last:border-r-0 [&:nth-child(n+3)]:border-t md:[&:nth-child(n+3)]:border-t-0 md:[&:nth-child(n+4)]:border-t lg:[&:nth-child(n+4)]:border-t-0"
 					>
 						<div className="flex items-center justify-between">
 							<span className="text-xs font-medium text-gray-600 uppercase tracking-wide">
@@ -70,7 +70,7 @@ export const HeroMetricsBar = ({ metrics, trendLoading }: HeroMetricsBarProps) =
 							<div className="text-gray-600">{metric.icon}</div>
 						</div>
 						<div className="flex items-end justify-between gap-2">
-							<span className="text-2xl font-bold text-black">
+							<span className="text-xl sm:text-2xl font-bold text-black">
 								{typeof metric.value === 'number' ? formatNumber(metric.value) : metric.value}
 							</span>
 							<TrendIndicator trend={metric.trend} loading={trendLoading} />
