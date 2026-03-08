@@ -6,7 +6,7 @@ import (
 	"io/fs"
 )
 
-//go:embed dist
+//go:embed all:dist
 var distFS embed.FS
 
 // Assets returns the hashed assets (JS, CSS) served under /assets.
