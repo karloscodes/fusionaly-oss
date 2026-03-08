@@ -36,7 +36,8 @@ func WithStaticFS(staticFS fs.FS) AppOption {
 	}
 }
 
-// WithPublicFS sets root-level public files (favicon.svg, robots.txt) for production builds.
+// WithPublicFS sets root-level public files (favicon.svg, robots.txt).
+// In production these are embedded; in development they're served from web/public.
 func WithPublicFS(publicFS fs.FS) AppOption {
 	return func(o *appOptions) {
 		o.publicFS = publicFS
@@ -95,11 +96,12 @@ func NewAppWithRoutes(cfg *config.Config, routeMount func(*cartridge.Server), op
 	serverConfig := cartridge.DefaultServerConfig()
 	serverConfig.SecFetchSiteAllowedValues = []string{"cross-site", "same-site", "same-origin"}
 
-	// Use embedded static assets in production, disk in development for hot-reload
+	// Static assets: embedded in production, disk in development
 	if !cfg.IsDevelopment() && options.staticFS != nil {
 		serverConfig.StaticFS = options.staticFS
 		serverConfig.PublicFS = options.publicFS
 	}
+	serverConfig.PublicDirectory = "web/public"
 
 	// Create the cartridge application with custom route mount
 	app, err := cartridge.NewApplication(cartridge.ApplicationOptions{
@@ -158,11 +160,12 @@ func NewAppWithConfig(cfg *config.Config, opts ...AppOption) (*Application, erro
 	serverConfig := cartridge.DefaultServerConfig()
 	serverConfig.SecFetchSiteAllowedValues = []string{"cross-site", "same-site", "same-origin"}
 
-	// Use embedded static assets in production, disk in development for hot-reload
+	// Static assets: embedded in production, disk in development
 	if !cfg.IsDevelopment() && options.staticFS != nil {
 		serverConfig.StaticFS = options.staticFS
 		serverConfig.PublicFS = options.publicFS
 	}
+	serverConfig.PublicDirectory = "web/public"
 
 	// Create the cartridge application using NewApplication
 	app, err := cartridge.NewApplication(cartridge.ApplicationOptions{

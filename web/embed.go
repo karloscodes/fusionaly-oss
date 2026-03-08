@@ -6,39 +6,51 @@ import (
 	"io/fs"
 )
 
-//go:embed dist/assets dist/.vite/manifest.json
-var assetsFS embed.FS
+//go:embed dist
+var distFS embed.FS
 
-//go:embed dist/favicon.svg dist/fusionaly-icon.svg dist/robots.txt
-var publicFS embed.FS
-
-// Assets returns the embedded static assets filesystem.
-// Returns nil in development mode (assets served from disk for hot-reload).
-// The returned fs.FS has the path prefix stripped (files at root, not dist/assets/).
+// Assets returns the hashed assets (JS, CSS) served under /assets.
 func Assets() fs.FS {
-	sub, err := fs.Sub(assetsFS, "dist/assets")
+	sub, err := fs.Sub(distFS, "dist/assets")
 	if err != nil {
 		panic(err)
 	}
 	return sub
 }
 
-// PublicFiles returns the embedded root-level public files (favicon.svg, robots.txt).
-// These are served at / by the framework.
+// PublicFiles returns root-level public files (favicon.svg, robots.txt) served at /.
 func PublicFiles() fs.FS {
-	sub, err := fs.Sub(publicFS, "dist")
-	if err != nil {
-		panic(err)
-	}
-	return sub
+	return &rootFilesOnly{distFS: distFS}
 }
 
 // ManifestJSON returns the embedded Vite manifest.json contents.
-// Used to resolve hashed asset filenames in production.
 func ManifestJSON() []byte {
-	data, err := assetsFS.ReadFile("dist/.vite/manifest.json")
+	data, err := distFS.ReadFile("dist/.vite/manifest.json")
 	if err != nil {
 		return nil
 	}
 	return data
+}
+
+// rootFilesOnly exposes only the top-level files from dist/ (not subdirectories).
+type rootFilesOnly struct {
+	distFS embed.FS
+}
+
+func (r *rootFilesOnly) Open(name string) (fs.File, error) {
+	return r.distFS.Open("dist/" + name)
+}
+
+func (r *rootFilesOnly) ReadDir(name string) ([]fs.DirEntry, error) {
+	entries, err := fs.ReadDir(r.distFS, "dist")
+	if err != nil {
+		return nil, err
+	}
+	var files []fs.DirEntry
+	for _, e := range entries {
+		if !e.IsDir() {
+			files = append(files, e)
+		}
+	}
+	return files, nil
 }
