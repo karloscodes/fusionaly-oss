@@ -21,6 +21,7 @@ func main() {
 	// Initialize application with embedded assets and manifest
 	app, err := internal.NewApp(
 		internal.WithStaticFS(web.Assets()),
+		internal.WithPublicFS(web.PublicFiles()),
 		internal.WithManifestData(web.ManifestJSON()),
 	)
 	if err != nil {

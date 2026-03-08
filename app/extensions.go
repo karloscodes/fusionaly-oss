@@ -33,6 +33,11 @@ func WithStaticFS(staticFS fs.FS) AppOption {
 	return internal.WithStaticFS(staticFS)
 }
 
+// WithPublicFS sets root-level public files (favicon.svg, robots.txt) for production builds.
+func WithPublicFS(publicFS fs.FS) AppOption {
+	return internal.WithPublicFS(publicFS)
+}
+
 // WithManifestData sets the embedded Vite manifest JSON for production builds.
 // Used to resolve hashed asset filenames when manifest is not available on filesystem.
 func WithManifestData(data []byte) AppOption {

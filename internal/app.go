@@ -24,6 +24,7 @@ type AppOption func(*appOptions)
 
 type appOptions struct {
 	staticFS     fs.FS
+	publicFS     fs.FS
 	manifestData []byte
 }
 
@@ -32,6 +33,13 @@ type appOptions struct {
 func WithStaticFS(staticFS fs.FS) AppOption {
 	return func(o *appOptions) {
 		o.staticFS = staticFS
+	}
+}
+
+// WithPublicFS sets root-level public files (favicon.svg, robots.txt) for production builds.
+func WithPublicFS(publicFS fs.FS) AppOption {
+	return func(o *appOptions) {
+		o.publicFS = publicFS
 	}
 }
 
@@ -90,6 +98,7 @@ func NewAppWithRoutes(cfg *config.Config, routeMount func(*cartridge.Server), op
 	// Use embedded static assets in production, disk in development for hot-reload
 	if !cfg.IsDevelopment() && options.staticFS != nil {
 		serverConfig.StaticFS = options.staticFS
+		serverConfig.PublicFS = options.publicFS
 	}
 
 	// Create the cartridge application with custom route mount
@@ -152,6 +161,7 @@ func NewAppWithConfig(cfg *config.Config, opts ...AppOption) (*Application, erro
 	// Use embedded static assets in production, disk in development for hot-reload
 	if !cfg.IsDevelopment() && options.staticFS != nil {
 		serverConfig.StaticFS = options.staticFS
+		serverConfig.PublicFS = options.publicFS
 	}
 
 	// Create the cartridge application using NewApplication
