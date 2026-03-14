@@ -44,6 +44,15 @@ func validateIPList(ipList string) (bool, string) {
 // IngestionSettingsFormAction handles POST form submission for ingestion settings (Inertia)
 func IngestionSettingsFormAction(ctx *cartridge.Context) error {
 	excludedIPs := ctx.FormValue("excluded_ips")
+	if excludedIPs == "" {
+		// Inertia's form.post() sends JSON, not form-encoded
+		var jsonBody struct {
+			ExcludedIPs string `json:"excluded_ips"`
+		}
+		if err := ctx.BodyParser(&jsonBody); err == nil {
+			excludedIPs = jsonBody.ExcludedIPs
+		}
+	}
 
 	// Validate IP list
 	if valid, msg := validateIPList(excludedIPs); !valid {
