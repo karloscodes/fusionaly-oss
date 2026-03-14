@@ -24,9 +24,10 @@ COPY web/public ./web/public
 COPY web/index.html web/vite.config.ts web/tsconfig*.json web/postcss.config.js web/tailwind.config.ts ./web/
 COPY web/*.go ./web/
 
-# Build web assets (required for Go embed), then Go binaries
+# Minify SDK, build web assets (required for Go embed), then Go binaries
 RUN mkdir -p dist && \
-  cd web && npm run build && cd .. && \
+  cd web && npx esbuild ../api/v1/sdk.js --minify --bundle=false --outfile=../api/v1/sdk.min.js && \
+  npm run build && cd .. && \
   CGO_ENABLED=1 go build -o dist/fusionaly-server cmd/fusionaly/main.go && \
   CGO_ENABLED=1 go build -o dist/fnctl cmd/fnctl/main.go
 

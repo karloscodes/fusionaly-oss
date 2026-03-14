@@ -11,7 +11,7 @@ import (
 	"github.com/karloscodes/cartridge"
 )
 
-//go:embed sdk.js
+//go:embed sdk.min.js
 var sdkTemplate string
 
 func GetSDKAction(ctx *cartridge.Context) error {
