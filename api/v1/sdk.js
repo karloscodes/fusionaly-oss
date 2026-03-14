@@ -76,8 +76,8 @@
 	// Add SPA support by monitoring navigation
 	const setupSPATracking = () => {
 		const originalPushState = history.pushState;
-		history.pushState = (...args) => {
-			originalPushState.apply(this, args);
+		history.pushState = function (...args) {
+			originalPushState.apply(history, args);
 			if (window.Fusionaly.config.autoSendPageViews) {
 				setTimeout(sendPageView, 50);
 			}

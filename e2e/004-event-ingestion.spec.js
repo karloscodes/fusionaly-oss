@@ -234,6 +234,28 @@ test.describe("Event Ingestion E2E", () => {
 	expect(sectionData.eventMetadata.source).toBe('demo');
 	});
 
+	test("should not throw when history.pushState is called after SDK patches it", async ({ page }) => {
+		await page.goto('/_demo');
+		await page.waitForLoadState('domcontentloaded');
+
+		// Simulate what Next.js / SvelteKit do internally:
+		// call history.pushState after the SDK has monkey-patched it.
+		// Before the fix, this threw: "Can only call History.pushState on instances of History"
+		const error = await page.evaluate(() => {
+			try {
+				history.pushState({}, '', '/test-spa-nav');
+				history.pushState(null, '', '/test-spa-nav-2');
+				history.replaceState({}, '', '/test-spa-nav-3');
+				return null;
+			} catch (e) {
+				return e.message;
+			}
+		});
+
+		expect(error, "history.pushState should not throw after SDK patches it").toBeNull();
+		expect(consoleErrors, "Expected no console errors").toEqual([]);
+	});
+
 	test("should ingest page view, custom event, and purchase registration without errors", async ({
 		page,
 	}) => {
