@@ -18,7 +18,7 @@ UA_DATABASE_DIR := internal/pkg/user_agent/database
 # Version from git tag or dev
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 
-.PHONY: default install deps install-tools dev watch-web watch-go dev-server dev-web db-seed db-migrate db-drop test test-e2e test-installer test-installer-clean perftest perf-run loadtest loadtest-quick loadtest-heavy build build-manager build-manager-linux clean dist lint update-ua-database download-test-fixtures test-ua-parser test-ua-fixtures check release
+.PHONY: default install deps install-tools dev watch-web watch-go dev-server dev-web db-seed db-migrate db-drop test test-e2e test-installer test-installer-clean perftest perf-run loadtest loadtest-quick loadtest-heavy build build-manager build-manager-linux clean dist lint update-ua-database download-test-fixtures test-ua-parser test-ua-fixtures check release minify-sdk
 
 # Default target
 default: dev
@@ -99,8 +99,12 @@ watch-web:
 		-r \
 		-- $(MAKE) dev-web
 
+# Minify SDK for production embedding (24KB → 11KB, ~4KB gzipped)
+minify-sdk:
+	@cd web && npx esbuild ../api/v1/sdk.js --minify --bundle=false --outfile=../api/v1/sdk.min.js
+
 # Target for Go server with auto-reload
-dev-server:
+dev-server: minify-sdk
 	@echo "Building and starting server..."
 	@mkdir -p $(TMP_DIR)
 	$(GO) build -o $(TMP_DIR)/$(BINARY_NAME) cmd/fusionaly/main.go
@@ -137,7 +141,7 @@ db-drop:
 	fi
 
 # Testing
-test:
+test: minify-sdk
 	@echo "Running Go unit tests..."
 	@mkdir -p storage
 	FUSIONALY_ENV=test $(MAKE) db-drop
@@ -234,7 +238,7 @@ loadtest-heavy:
 	@SCENARIOS="heavy extreme" ./scripts/run_production_loadtest.sh
 
 # Build distribution (app only)
-build: clean
+build: clean minify-sdk
 	@echo "Building distribution..."
 	@mkdir -p $(DIST_DIR)
 	@$(eval export CGO_ENABLED=1)

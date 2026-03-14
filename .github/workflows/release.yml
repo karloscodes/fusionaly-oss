@@ -33,10 +33,11 @@ jobs:
           go mod download
           go mod tidy
 
-      - name: Build web assets
+      - name: Build web assets and minify SDK
         run: |
           cd web
           npm install --legacy-peer-deps
+          npx esbuild ../api/v1/sdk.js --minify --bundle=false --outfile=../api/v1/sdk.min.js
           npm run build
 
       - name: Run unit tests

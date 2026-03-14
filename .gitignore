@@ -115,3 +115,6 @@ debug
 
 # Air (hot reload) temp files
 .air.toml
+
+# Minified SDK (build artifact)
+api/v1/sdk.min.js
