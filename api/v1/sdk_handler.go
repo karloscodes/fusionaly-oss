@@ -36,20 +36,21 @@ func GetSDKAction(ctx *cartridge.Context) error {
 	content := buf.Bytes()
 	etag := generateETag(content)
 
+	// Headers that must be present on every response (including 304)
+	ctx.Set("Cache-Control", "public, max-age=3600") // 1 hour
+	ctx.Set("ETag", etag)
+	ctx.Set("Cross-Origin-Resource-Policy", "cross-origin")
+
 	// Check if the client has the latest version via If-None-Match
 	ifNoneMatch := ctx.Get("If-None-Match")
 	if ifNoneMatch == etag {
 		ctx.Logger.Debug("ETag match, returning 304",
 			slog.String("etag", etag),
 			slog.String("path", ctx.Path()))
-		return ctx.Status(fiber.StatusNotModified).Send(nil) // No body for 304
+		return ctx.Status(fiber.StatusNotModified).Send(nil)
 	}
 
-	// Set response headers and send content
 	ctx.Set("Content-Type", "application/javascript")
-	ctx.Set("Cache-Control", "public, max-age=3600") // 1 hour
-	ctx.Set("ETag", etag)
-	ctx.Set("Cross-Origin-Resource-Policy", "cross-origin") // Allow cross-origin requests
 	ctx.Logger.Debug("Serving SDK with new ETag",
 		slog.String("etag", etag),
 		slog.String("path", ctx.Path()))

@@ -22,6 +22,54 @@ import (
 	"fusionaly/internal/testsupport"
 )
 
+func TestGetSDKHandler(t *testing.T) {
+	t.Run("returns SDK with correct headers", func(t *testing.T) {
+		dbManager, _ := testsupport.SetupTestDBManager(t)
+		db := dbManager.GetConnection()
+
+		app := testsupport.CreateMinimalTestApp(t, db)
+
+		req := httptest.NewRequest("GET", "/y/api/v1/sdk.js", nil)
+
+		resp, err := app.Test(req, 30000)
+		require.NoError(t, err)
+
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		assert.Equal(t, "application/javascript", resp.Header.Get("Content-Type"))
+		assert.Equal(t, "public, max-age=3600", resp.Header.Get("Cache-Control"))
+		assert.Equal(t, "cross-origin", resp.Header.Get("Cross-Origin-Resource-Policy"))
+		assert.NotEmpty(t, resp.Header.Get("ETag"))
+	})
+
+	t.Run("returns 304 with CORP header when ETag matches", func(t *testing.T) {
+		dbManager, _ := testsupport.SetupTestDBManager(t)
+		db := dbManager.GetConnection()
+
+		app := testsupport.CreateMinimalTestApp(t, db)
+
+		// First request to get the ETag
+		req := httptest.NewRequest("GET", "/y/api/v1/sdk.js", nil)
+		resp, err := app.Test(req, 30000)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+		etag := resp.Header.Get("ETag")
+		require.NotEmpty(t, etag)
+
+		// Second request with If-None-Match should return 304 with CORP header
+		req2 := httptest.NewRequest("GET", "/y/api/v1/sdk.js", nil)
+		req2.Header.Set("If-None-Match", etag)
+
+		resp2, err := app.Test(req2, 30000)
+		require.NoError(t, err)
+
+		assert.Equal(t, http.StatusNotModified, resp2.StatusCode)
+		assert.Equal(t, "cross-origin", resp2.Header.Get("Cross-Origin-Resource-Policy"))
+		assert.Equal(t, "public, max-age=3600", resp2.Header.Get("Cache-Control"))
+		assert.Equal(t, etag, resp2.Header.Get("ETag"))
+	})
+}
+
 func TestCreateEventPublicAPIHandler(t *testing.T) {
 	t.Run("accepts valid event with registered origin", func(t *testing.T) {
 		dbManager, _ := testsupport.SetupTestDBManager(t)
