@@ -129,7 +129,8 @@ export const AdministrationIngestionContent: FC = () => {
 							<div className="text-sm text-gray-700">
 								<p>
 									Useful for excluding your own visits, internal team traffic,
-									or testing services.
+									or testing services. You can use CIDR ranges to block entire
+									subnets (e.g., 85.23.45.0/24 blocks 85.23.45.0–85.23.45.255).
 								</p>
 								<button
 									type="button"
@@ -151,14 +152,14 @@ export const AdministrationIngestionContent: FC = () => {
 							<Textarea
 								id="excluded_ips"
 								name="excluded_ips"
-								placeholder="Enter comma-separated IP addresses (e.g., 192.168.1.1, 10.0.0.1)"
+								placeholder="e.g., 192.168.1.1, 85.23.45.0/24"
 								value={form.data.excluded_ips}
 								onChange={(e) => form.setData("excluded_ips", e.target.value)}
 								disabled={form.processing}
 								className="h-36 w-full resize-y border-gray-300 focus:border-black focus:ring-black rounded-md"
 							/>
 							<p className="text-xs text-gray-500 mt-1.5">
-								Separate multiple IP addresses with commas.
+								Separate entries with commas. Supports single IPs and CIDR ranges.
 							</p>
 							{form.errors.excluded_ips && (
 								<p className="text-sm text-red-600 mt-1">{form.errors.excluded_ips}</p>

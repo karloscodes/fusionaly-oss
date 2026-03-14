@@ -12,25 +12,29 @@ import (
 	"fusionaly/internal/settings"
 )
 
-// validateIPList validates a comma-separated list of IP addresses
+// validateIPList validates a comma-separated list of IP addresses or CIDR ranges
 func validateIPList(ipList string) (bool, string) {
 	if ipList == "" {
 		return true, ""
 	}
 
-	// Split by commas and validate each IP
 	ips := strings.Split(ipList, ",")
-	for _, ip := range ips {
-		// Trim whitespace
-		ip = strings.TrimSpace(ip)
-		if ip == "" {
+	for _, entry := range ips {
+		entry = strings.TrimSpace(entry)
+		if entry == "" {
 			continue
 		}
 
-		// Try to parse the IP
-		parsed := net.ParseIP(ip)
-		if parsed == nil {
-			return false, "Invalid IP address format: " + ip
+		if strings.Contains(entry, "/") {
+			// CIDR range
+			if _, _, err := net.ParseCIDR(entry); err != nil {
+				return false, "Invalid IP range format: " + entry
+			}
+		} else {
+			// Single IP
+			if net.ParseIP(entry) == nil {
+				return false, "Invalid IP address format: " + entry
+			}
 		}
 	}
 

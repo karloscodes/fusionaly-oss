@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"net"
 	"strconv"
 	"strings"
 	"time"
@@ -58,21 +59,36 @@ func SetupDefaultSettings(dbConn *gorm.DB) error {
 }
 
 func IsIPExcluded(ip string) (bool, error) {
-	// If the cache isn't initialized yet, return false
 	if excludedIPsCache == nil {
 		return false, nil
 	}
 
-	// Fetch excluded IPs from the cache
 	excludedIPs, err := excludedIPsCache.Get("excluded_ips")
 	if err != nil {
 		return false, fmt.Errorf("failed to check excluded IPs: %w", err)
 	}
 
-	// Check if the IP is in the excluded list
-	for _, excludedIP := range excludedIPs {
-		if excludedIP == ip {
-			return true, nil
+	parsedIP := net.ParseIP(ip)
+
+	for _, entry := range excludedIPs {
+		if entry == "" {
+			continue
+		}
+
+		if strings.Contains(entry, "/") {
+			// CIDR range match
+			_, cidr, err := net.ParseCIDR(entry)
+			if err != nil {
+				continue
+			}
+			if parsedIP != nil && cidr.Contains(parsedIP) {
+				return true, nil
+			}
+		} else {
+			// Exact IP match
+			if entry == ip {
+				return true, nil
+			}
 		}
 	}
 	return false, nil
