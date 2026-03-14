@@ -43,7 +43,7 @@ func PublicDashboardAction(ctx *cartridge.Context) error {
 	websiteId := int(website.ID)
 	db := ctx.DB()
 
-	metrics, err := fetchMetrics(db, timeFrame, websiteId, ctx.Logger)
+	metrics, err := analytics.FetchDashboardMetrics(db, timeFrame, websiteId, ctx.Logger)
 	if err != nil {
 		ctx.Logger.Error("Error fetching public dashboard metrics", slog.Any("error", err))
 		return ctx.Status(fiber.StatusInternalServerError).SendString("Error loading dashboard")
@@ -64,7 +64,7 @@ func PublicDashboardAction(ctx *cartridge.Context) error {
 
 	// Add comparison data for trends
 	props["comparison"] = inertia.Defer(func() interface{} {
-		return fetchComparisonMetrics(db, timeFrame, websiteId, metrics, ctx.Logger)
+		return analytics.FetchComparisonMetrics(db, timeFrame, websiteId, metrics, ctx.Logger)
 	})
 
 	// Add user flow data

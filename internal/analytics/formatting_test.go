@@ -1,26 +1,25 @@
-package http
+package analytics
 
 import (
 	"testing"
 
-	"fusionaly/internal/analytics"
 	"fusionaly/internal/events"
 )
 
-func Test_convertReferrerStats(t *testing.T) {
+func TestFormatReferrerStats(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    []analytics.MetricCountResult
-		expected []analytics.MetricCountResult
+		input    []MetricCountResult
+		expected []MetricCountResult
 	}{
 		{
 			name: "Convert direct or unknown referrer",
-			input: []analytics.MetricCountResult{
+			input: []MetricCountResult{
 				{Name: events.DirectOrUnknownReferrer, Count: 15},
 				{Name: "Twitter", Count: 6},
 				{Name: "tinylaun.ch", Count: 1},
 			},
-			expected: []analytics.MetricCountResult{
+			expected: []MetricCountResult{
 				{Name: "Direct / Unknown", Count: 15},
 				{Name: "Twitter", Count: 6},
 				{Name: "tinylaun.ch", Count: 1},
@@ -28,16 +27,16 @@ func Test_convertReferrerStats(t *testing.T) {
 		},
 		{
 			name:     "Empty input",
-			input:    []analytics.MetricCountResult{},
-			expected: []analytics.MetricCountResult{},
+			input:    []MetricCountResult{},
+			expected: []MetricCountResult{},
 		},
 		{
 			name: "No conversion needed",
-			input: []analytics.MetricCountResult{
+			input: []MetricCountResult{
 				{Name: "google.com", Count: 10},
 				{Name: "Twitter", Count: 5},
 			},
-			expected: []analytics.MetricCountResult{
+			expected: []MetricCountResult{
 				{Name: "google.com", Count: 10},
 				{Name: "Twitter", Count: 5},
 			},
@@ -46,7 +45,7 @@ func Test_convertReferrerStats(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := convertReferrerStats(tt.input)
+			result := FormatReferrerStats(tt.input)
 
 			if len(result) != len(tt.expected) {
 				t.Errorf("Expected %d items, got %d", len(tt.expected), len(result))
