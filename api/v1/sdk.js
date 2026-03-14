@@ -430,7 +430,7 @@
 			if (link) {
 				const href = link.getAttribute("href");
 				// Skip processing if it's not a real navigation link
-				if (!href || href === "#" || href.startsWith("javascript:")) {
+				if (!href || href === "#" || /^(?:javascript|data):/i.test(href)) {
 					// Still track the event, but don't interfere with the link behavior
 					processLinkEvent(link, href);
 					return;
@@ -511,7 +511,7 @@
 		}
 
 		// For non-navigation links, send the event through the normal flow
-		if (!href || href === "#" || href.startsWith("javascript:")) {
+		if (!href || href === "#" || /^(?:javascript|data):/i.test(href)) {
 			// Use the original event name directly from the attribute
 			const originalEventName = getDataAttribute(link, 'event-name');
 			sendCustomEvent(originalEventName, metadata);

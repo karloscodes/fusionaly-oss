@@ -145,6 +145,57 @@ test.describe("Event Ingestion E2E", () => {
 		expect(consoleErrors, "Expected no console errors").toEqual([]);
 	});
 
+	test("should track clicks on javascript: href links without errors", async ({ page }) => {
+		await page.goto('/_demo');
+		await page.waitForLoadState('domcontentloaded');
+
+		// Inject links with javascript: href (common pattern in SPAs)
+		await page.evaluate(() => {
+			document.body.innerHTML += `
+				<a href="javascript:void(0)" id="js-link" data-fusionaly-event-name="click:js-link" data-fusionaly-metadata-type="javascript">JS Link</a>
+				<a href="JavaScript:void(0)" id="js-link-upper" data-fusionaly-event-name="click:js-link-upper">JS Upper</a>
+			`;
+		});
+
+		await page.waitForTimeout(200);
+
+		// Click lowercase javascript: link
+		const jsLinkPromise = page.waitForRequest(
+			request => {
+				if (!request.url().includes('/x/api/v1/events') || request.method() !== 'POST') return false;
+				try {
+					const data = JSON.parse(request.postData());
+					return data.eventKey === 'click:js-link';
+				} catch (e) { }
+				return false;
+			},
+			{ timeout: 5000 }
+		);
+		await page.click('#js-link');
+		const jsLinkRequest = await jsLinkPromise;
+		const jsLinkData = JSON.parse(jsLinkRequest.postData());
+		expect(jsLinkData.eventKey).toBe('click:js-link');
+		expect(jsLinkData.eventMetadata.type).toBe('javascript');
+
+		// Click mixed-case JavaScript: link (verifies case-insensitive check)
+		const jsUpperPromise = page.waitForRequest(
+			request => {
+				if (!request.url().includes('/x/api/v1/events') || request.method() !== 'POST') return false;
+				try {
+					const data = JSON.parse(request.postData());
+					return data.eventKey === 'click:js-link-upper';
+				} catch (e) { }
+				return false;
+			},
+			{ timeout: 5000 }
+		);
+		await page.click('#js-link-upper');
+		const jsUpperRequest = await jsUpperPromise;
+		expect(JSON.parse(jsUpperRequest.postData()).eventKey).toBe('click:js-link-upper');
+
+		expect(consoleErrors, "Expected no console errors").toEqual([]);
+	});
+
 	test("should emit scroll depth events via data attribute", async ({ page }) => {
 		await page.goto('/_demo');
 		await page.waitForLoadState('domcontentloaded');
