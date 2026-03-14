@@ -145,6 +145,58 @@ test.describe("Event Ingestion E2E", () => {
 		expect(consoleErrors, "Expected no console errors").toEqual([]);
 	});
 
+	test("should track clicks on javascript: and data: links without errors", async ({ page }) => {
+		await page.goto('/_demo');
+		await page.waitForLoadState('domcontentloaded');
+
+		// Inject links with non-navigation href schemes (javascript:, data:, mixed case)
+		await page.evaluate(() => {
+			document.body.innerHTML += `
+				<a href="javascript:void(0)" id="js-link" data-fusionaly-event-name="click:js-link" data-fusionaly-metadata-type="javascript">JS Link</a>
+				<a href="JavaScript:void(0)" id="js-link-upper" data-fusionaly-event-name="click:js-link-upper">JS Upper</a>
+				<a href="data:text/html," id="data-link" data-fusionaly-event-name="click:data-link">Data Link</a>
+			`;
+		});
+
+		await page.waitForTimeout(200);
+
+		// Click javascript: link and verify event is tracked
+		const jsLinkPromise = page.waitForRequest(
+			request => {
+				if (!request.url().includes('/x/api/v1/events') || request.method() !== 'POST') return false;
+				try {
+					const data = JSON.parse(request.postData());
+					return data.eventKey === 'click:js-link';
+				} catch (e) { }
+				return false;
+			},
+			{ timeout: 5000 }
+		);
+		await page.click('#js-link');
+		const jsLinkRequest = await jsLinkPromise;
+		const jsLinkData = JSON.parse(jsLinkRequest.postData());
+		expect(jsLinkData.eventKey).toBe('click:js-link');
+		expect(jsLinkData.eventMetadata.type).toBe('javascript');
+
+		// Click data: link and verify event is tracked
+		const dataLinkPromise = page.waitForRequest(
+			request => {
+				if (!request.url().includes('/x/api/v1/events') || request.method() !== 'POST') return false;
+				try {
+					const data = JSON.parse(request.postData());
+					return data.eventKey === 'click:data-link';
+				} catch (e) { }
+				return false;
+			},
+			{ timeout: 5000 }
+		);
+		await page.click('#data-link');
+		const dataLinkRequest = await dataLinkPromise;
+		expect(JSON.parse(dataLinkRequest.postData()).eventKey).toBe('click:data-link');
+
+		expect(consoleErrors, "Expected no console errors").toEqual([]);
+	});
+
 	test("should emit scroll depth events via data attribute", async ({ page }) => {
 		await page.goto('/_demo');
 		await page.waitForLoadState('domcontentloaded');
