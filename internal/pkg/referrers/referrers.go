@@ -128,14 +128,6 @@ func FriendlyName(hostname string) string {
 		}
 	}
 
-	// Capitalize first letter for unknown hostnames
-	return capitalizeFirst(hostname)
-}
-
-// capitalizeFirst capitalizes the first letter of a string
-func capitalizeFirst(s string) string {
-	if s == "" {
-		return s
-	}
-	return strings.ToUpper(s[:1]) + s[1:]
+	// Return unknown hostnames as-is (lowercase)
+	return hostname
 }

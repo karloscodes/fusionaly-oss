@@ -152,7 +152,8 @@ func (s *Seeder) generateRealisticDataForSingleSite(ctx context.Context, website
 
 			input := &events.CollectEventInput{
 				IPAddress:   ip,
-				UserAgent:   userAgent,
+				UserAgent:   userAgent.ua,
+				SecChUa:     userAgent.secChUa,
 				ReferrerURL: referrer,
 				EventType:   events.EventTypePageView,
 				Timestamp:   timestamp,
@@ -177,7 +178,8 @@ func (s *Seeder) generateRealisticDataForSingleSite(ctx context.Context, website
 
 			input := &events.CollectEventInput{
 				IPAddress:       ip,
-				UserAgent:       userAgent,
+				UserAgent:       userAgent.ua,
+				SecChUa:         userAgent.secChUa,
 				ReferrerURL:     "",
 				EventType:       events.EventTypeCustomEvent,
 				CustomEventName: goalEvent.name,
@@ -473,7 +475,8 @@ func (s *Seeder) generateRealisticData(ctx context.Context, website *websites.We
 			// Use the events.CollectEvent function to simulate event ingestion
 			input := &events.CollectEventInput{
 				IPAddress:   ip,
-				UserAgent:   userAgent,
+				UserAgent:   userAgent.ua,
+				SecChUa:     userAgent.secChUa,
 				ReferrerURL: referrer,
 				EventType:   events.EventTypePageView,
 				Timestamp:   timestamp,
@@ -502,7 +505,8 @@ func (s *Seeder) generateRealisticData(ctx context.Context, website *websites.We
 
 			input := &events.CollectEventInput{
 				IPAddress:       ip,
-				UserAgent:       userAgent,
+				UserAgent:       userAgent.ua,
+				SecChUa:         userAgent.secChUa,
 				ReferrerURL:     "",
 				EventType:       events.EventTypeCustomEvent,
 				CustomEventName: goalEvent.name,
@@ -601,17 +605,44 @@ func generateIPPool(count int) []string {
 	return ips
 }
 
-// getUserAgents returns a list of common user agent strings
-func getUserAgents() []string {
-	return []string{
-		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
-		"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Safari/605.1.15",
-		"Mozilla/5.0 (iPhone; CPU iPhone OS 16_1_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Mobile/15E148 Safari/605.1",
-		"Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Mobile Safari/537.36",
-		"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
-		"Mozilla/5.0 (iPad; CPU OS 16_1_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Mobile/15E148 Safari/605.1",
-		"Googlebot/2.1 (+http://www.google.com/bot.html)",
-		"curl/7.81.0",
+// userAgentEntry pairs a User-Agent string with an optional Sec-CH-UA header
+type userAgentEntry struct {
+	ua      string
+	secChUa string
+}
+
+// getUserAgents returns a list of user agent entries with optional Sec-CH-UA headers
+func getUserAgents() []userAgentEntry {
+	return []userAgentEntry{
+		// Chrome on Windows
+		{ua: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
+			secChUa: `"Chromium";v="108", "Google Chrome";v="108", "Not=A?Brand";v="8"`},
+		// Safari on macOS
+		{ua: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Safari/605.1.15"},
+		// Safari on iPhone
+		{ua: "Mozilla/5.0 (iPhone; CPU iPhone OS 16_1_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Mobile/15E148 Safari/605.1"},
+		// Chrome on Android
+		{ua: "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Mobile Safari/537.36"},
+		// Chrome on Linux
+		{ua: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
+			secChUa: `"Chromium";v="108", "Google Chrome";v="108", "Not=A?Brand";v="8"`},
+		// Safari on iPad
+		{ua: "Mozilla/5.0 (iPad; CPU OS 16_1_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Mobile/15E148 Safari/605.1"},
+		// Firefox on Windows
+		{ua: "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:108.0) Gecko/20100101 Firefox/108.0"},
+		// Edge on Windows (Sec-CH-UA distinguishes from Chrome)
+		{ua: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36 Edg/108.0.1462.54",
+			secChUa: `"Chromium";v="108", "Microsoft Edge";v="108", "Not=A?Brand";v="8"`},
+		// Chrome Mobile iOS
+		{ua: "Mozilla/5.0 (iPhone; CPU iPhone OS 16_1_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/108.0.5359.124 Mobile/15E148 Safari/604.1"},
+		// Chrome OS
+		{ua: "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
+			secChUa: `"Chromium";v="108", "Google Chrome";v="108", "Not=A?Brand";v="8"`},
+		// Ubuntu Linux (triggers $1 OS name substitution)
+		{ua: "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:108.0) Gecko/20100101 Firefox/108.0"},
+		// Bots (filtered out)
+		{ua: "Googlebot/2.1 (+http://www.google.com/bot.html)"},
+		{ua: "curl/7.81.0"},
 	}
 }
 
@@ -626,7 +657,10 @@ func getReferrers() []string {
 		"https://twitter.com",
 		"https://linkedin.com",
 		"https://github.com",
+		"https://producthunt.com",
+		"https://news.ycombinator.com",
 		"https://some-other-website.com/blog/post",
+		"https://another-blog.dev/articles/intro",
 		"android-app://com.google.android.gm", // Example app referrer
 	}
 }

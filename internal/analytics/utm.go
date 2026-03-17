@@ -1,6 +1,8 @@
 package analytics
 
 import (
+	"fusionaly/internal/events"
+
 	"gorm.io/gorm"
 )
 
@@ -9,12 +11,13 @@ func GetTopUTMMediumsInTimeFrame(db *gorm.DB, params WebsiteScopedQueryParams) (
 	var results []MetricCountResult
 
 	query := `
-		SELECT 
-			utm_medium AS name, 
+		SELECT
+			utm_medium AS name,
 			SUM(visitors_count) AS count
 		FROM utm_stats
 		WHERE hour BETWEEN ? AND ?
         AND website_id = ?
+        AND utm_medium != '' AND utm_medium != ?
 		GROUP BY utm_medium
 		HAVING count > 0
 		ORDER BY count DESC
@@ -25,6 +28,7 @@ func GetTopUTMMediumsInTimeFrame(db *gorm.DB, params WebsiteScopedQueryParams) (
 		params.TimeFrame.From.UTC(),
 		params.TimeFrame.To.UTC(),
 		params.WebsiteID,
+		events.EmptyUTMAttr,
 		params.Limit,
 	).Scan(&results).Error
 	if err != nil {
@@ -39,13 +43,13 @@ func GetTopUTMSourcesInTimeFrame(db *gorm.DB, params WebsiteScopedQueryParams) (
 	var results []MetricCountResult
 
 	query := `
-		SELECT 
-			utm_source AS name, 
+		SELECT
+			utm_source AS name,
 			SUM(visitors_count) AS count
 		FROM utm_stats
 		WHERE hour BETWEEN ? AND ?
         AND website_id = ?
-        AND utm_source != ''
+        AND utm_source != '' AND utm_source != ?
 		GROUP BY utm_source
 		HAVING count > 0
 		ORDER BY count DESC
@@ -56,6 +60,7 @@ func GetTopUTMSourcesInTimeFrame(db *gorm.DB, params WebsiteScopedQueryParams) (
 		params.TimeFrame.From.UTC(),
 		params.TimeFrame.To.UTC(),
 		params.WebsiteID,
+		events.EmptyUTMAttr,
 		params.Limit,
 	).Scan(&results).Error
 	if err != nil {
@@ -70,13 +75,13 @@ func GetTopUTMCampaignsInTimeFrame(db *gorm.DB, params WebsiteScopedQueryParams)
 	var results []MetricCountResult
 
 	query := `
-		SELECT 
-			utm_campaign AS name, 
+		SELECT
+			utm_campaign AS name,
 			SUM(visitors_count) AS count
 		FROM utm_stats
 		WHERE hour BETWEEN ? AND ?
         AND website_id = ?
-        AND utm_campaign != ''
+        AND utm_campaign != '' AND utm_campaign != ?
 		GROUP BY utm_campaign
 		HAVING count > 0
 		ORDER BY count DESC
@@ -87,6 +92,7 @@ func GetTopUTMCampaignsInTimeFrame(db *gorm.DB, params WebsiteScopedQueryParams)
 		params.TimeFrame.From.UTC(),
 		params.TimeFrame.To.UTC(),
 		params.WebsiteID,
+		events.EmptyUTMAttr,
 		params.Limit,
 	).Scan(&results).Error
 	if err != nil {
@@ -101,13 +107,13 @@ func GetTopUTMTermsInTimeFrame(db *gorm.DB, params WebsiteScopedQueryParams) ([]
 	var results []MetricCountResult
 
 	query := `
-		SELECT 
-			utm_term AS name, 
+		SELECT
+			utm_term AS name,
 			SUM(visitors_count) AS count
 		FROM utm_stats
 		WHERE hour BETWEEN ? AND ?
         AND website_id = ?
-        AND utm_term != ''
+        AND utm_term != '' AND utm_term != ?
 		GROUP BY utm_term
 		HAVING count > 0
 		ORDER BY count DESC
@@ -118,6 +124,7 @@ func GetTopUTMTermsInTimeFrame(db *gorm.DB, params WebsiteScopedQueryParams) ([]
 		params.TimeFrame.From.UTC(),
 		params.TimeFrame.To.UTC(),
 		params.WebsiteID,
+		events.EmptyUTMAttr,
 		params.Limit,
 	).Scan(&results).Error
 	if err != nil {
@@ -132,13 +139,13 @@ func GetTopUTMContentsInTimeFrame(db *gorm.DB, params WebsiteScopedQueryParams) 
 	var results []MetricCountResult
 
 	query := `
-		SELECT 
-			utm_content AS name, 
+		SELECT
+			utm_content AS name,
 			SUM(visitors_count) AS count
 		FROM utm_stats
 		WHERE hour BETWEEN ? AND ?
         AND website_id = ?
-        AND utm_content != ''
+        AND utm_content != '' AND utm_content != ?
 		GROUP BY utm_content
 		HAVING count > 0
 		ORDER BY count DESC
@@ -149,6 +156,7 @@ func GetTopUTMContentsInTimeFrame(db *gorm.DB, params WebsiteScopedQueryParams) 
 		params.TimeFrame.From.UTC(),
 		params.TimeFrame.To.UTC(),
 		params.WebsiteID,
+		events.EmptyUTMAttr,
 		params.Limit,
 	).Scan(&results).Error
 	if err != nil {

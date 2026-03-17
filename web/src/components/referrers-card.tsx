@@ -74,12 +74,12 @@ export const ReferrersCard = ({ data }: ReferrersCardProps) => {
 						<span>{getMetricDisplayName(selectedMetricType)}</span>
 					</div>
 					<div>
-						<DropdownMenu>
+						<DropdownMenu modal={false}>
 							<DropdownMenuTrigger asChild>
 								<Button
 									variant="outline"
 									size="default"
-									className="py-1.5 sm:py-2 px-3 sm:px-4 h-auto sm:h-[38px] text-sm"
+									className="py-1.5 sm:py-2 px-3 sm:px-4 h-auto sm:h-[38px] text-sm w-[140px] sm:w-[160px] justify-between"
 								>
 									{getMetricDisplayName(selectedMetricType)}{" "}
 									<ChevronDown className="ml-1 h-3 w-3" />

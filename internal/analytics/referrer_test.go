@@ -28,7 +28,7 @@ func TestNormalizeReferrerHostname(t *testing.T) {
 		{"youtu.be", "YouTube"},
 		{"t.co", "Twitter"},
 
-		// Unknown hostnames should be cleaned
+		// Unknown hostnames should be cleaned (kept lowercase)
 		{"www.example.com", "example.com"},
 		{"m.example.com", "example.com"},
 		{"mobile.example.com", "example.com"},

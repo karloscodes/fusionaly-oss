@@ -42,6 +42,12 @@ var ReferrerMappings = map[string][]string{
 	"GitHub": {
 		"github.com",
 	},
+	"Product Hunt": {
+		"producthunt.com",
+	},
+	"Hacker News": {
+		"news.ycombinator.com", "hn.algolia.com",
+	},
 	"Stack Overflow": {
 		"stackoverflow.com",
 	},
@@ -108,7 +114,8 @@ func NormalizeReferrerHostname(hostname string) string {
 		cleaned = strings.TrimPrefix(cleaned, prefix)
 	}
 
-	return cleaned
+	// Use the friendly name lookup for unknown hostnames
+	return referrers.FriendlyName(cleaned)
 }
 
 // GetTopReferrersInTimeFrame fetches top referrers from RefStat with proper normalization
@@ -159,11 +166,11 @@ func GetTopReferrersInTimeFrame(db *gorm.DB, params WebsiteScopedQueryParams) ([
 		normalizedCounts[normalized] += result.Count
 	}
 
-	// Convert to final results with friendly names and sort
+	// Convert to final results and sort
 	var results []MetricCountResult
 	for hostname, count := range normalizedCounts {
 		results = append(results, MetricCountResult{
-			Name:  referrers.FriendlyName(hostname),
+			Name:  hostname,
 			Count: count,
 		})
 	}

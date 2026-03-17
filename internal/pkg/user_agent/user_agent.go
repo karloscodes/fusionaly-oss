@@ -228,16 +228,23 @@ func (p *DeviceDetectorParser) parseOS(userAgent string) (string, string) {
 	for _, entry := range p.oss {
 		if regex, err := p.regexCache.get(entry.Regex); err == nil {
 			if matches := regex.FindStringSubmatch(userAgent); len(matches) > 0 {
+				name := entry.Name
 				version := ""
-				if entry.Version != "" && len(matches) > 1 {
+				if len(matches) > 1 {
 					// Replace $1, $2, etc. with actual match groups
-					version = entry.Version
 					for i, match := range matches[1:] {
 						placeholder := fmt.Sprintf("$%d", i+1)
-						version = strings.ReplaceAll(version, placeholder, match)
+						name = strings.ReplaceAll(name, placeholder, match)
+					}
+					if entry.Version != "" {
+						version = entry.Version
+						for i, match := range matches[1:] {
+							placeholder := fmt.Sprintf("$%d", i+1)
+							version = strings.ReplaceAll(version, placeholder, match)
+						}
 					}
 				}
-				return entry.Name, version
+				return name, version
 			}
 		}
 	}

@@ -641,7 +641,7 @@ export const Dashboard = (props: DashboardComponentProps) => {
 					/>
 				)}
 				{/* Render annotation markers */}
-				{annotationsWithChartMatch.map((annotation) => (
+				{annotationsWithChartMatch.map((annotation, index) => (
 					<ReferenceLine
 						key={annotation.id}
 						x={annotation.chartX as string}
@@ -652,6 +652,9 @@ export const Dashboard = (props: DashboardComponentProps) => {
 							const { viewBox } = labelProps;
 							const x = viewBox?.x ?? 0;
 							const color = annotation.color || "#f97316";
+							// Stagger vertically to avoid overlapping labels
+							const yOffset = (index % 3) * 18;
+							const cy = 14 + yOffset;
 							return (
 								<g
 									style={{ cursor: "pointer" }}
@@ -663,14 +666,14 @@ export const Dashboard = (props: DashboardComponentProps) => {
 									{/* Circle marker */}
 									<circle
 										cx={x}
-										cy={14}
+										cy={cy}
 										r={6}
 										fill={color}
 									/>
 									{/* Title text */}
 									<text
 										x={x + 12}
-										y={18}
+										y={cy + 4}
 										fill={color}
 										fontSize={11}
 										fontWeight={600}

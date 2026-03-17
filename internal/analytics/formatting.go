@@ -95,6 +95,8 @@ func FormatOSStats(items []MetricCountResult) []MetricCountResult {
 				name = "iPadOS"
 			case "macos", "mac os", "mac os x", "darwin":
 				name = "macOS"
+			case "chrome os", "chromeos":
+				name = "Chrome OS"
 			default:
 				name = caser.String(name)
 			}
@@ -104,7 +106,7 @@ func FormatOSStats(items []MetricCountResult) []MetricCountResult {
 	return result
 }
 
-// FormatBrowserStats title-cases browser names.
+// FormatBrowserStats title-cases browser names with special-case handling.
 func FormatBrowserStats(items []MetricCountResult) []MetricCountResult {
 	caser := cases.Title(language.AmericanEnglish)
 
@@ -117,8 +119,12 @@ func FormatBrowserStats(items []MetricCountResult) []MetricCountResult {
 		name := item.Name
 		if name == events.UnknownBrowser {
 			name = "Unknown"
+		} else {
+			name = caser.String(name)
+			// Fix title-casing artifacts for known abbreviations
+			name = strings.ReplaceAll(name, " Ios", " iOS")
 		}
-		result[i] = MetricCountResult{Name: caser.String(name), Count: item.Count}
+		result[i] = MetricCountResult{Name: name, Count: item.Count}
 	}
 	return result
 }

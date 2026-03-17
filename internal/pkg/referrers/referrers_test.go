@@ -23,10 +23,10 @@ func TestFriendlyName(t *testing.T) {
 		{"m.facebook.com", "Facebook"},
 		{"mobile.twitter.com", "X/Twitter"},
 
-		// Unknown referrers (capitalized)
-		{"example.com", "Example.com"},
-		{"www.example.com", "Example.com"}, // www. stripped
-		{"myblog.io", "Myblog.io"},
+		// Unknown referrers (kept lowercase)
+		{"example.com", "example.com"},
+		{"www.example.com", "example.com"}, // www. stripped
+		{"myblog.io", "myblog.io"},
 
 		// Case insensitive
 		{"GOOGLE.COM", "Google"},

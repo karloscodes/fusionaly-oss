@@ -156,6 +156,11 @@ func NormalizeOperatingSystem(os string) string {
 		return "Windows"
 	}
 
+	// Normalize Chrome OS
+	if strings.Contains(osLower, "chrome os") || strings.Contains(osLower, "chromeos") {
+		return "Chrome OS"
+	}
+
 	// For other operating systems, capitalize the first letter and return as is
 	if len(os) > 0 {
 		return strings.ToUpper(os[:1]) + strings.ToLower(os[1:])
