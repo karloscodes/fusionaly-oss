@@ -54,6 +54,10 @@ func main() {
 			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
 		}
+	case "check":
+		if err := matcha.Check(); err != nil {
+			os.Exit(1)
+		}
 	case "upgrade":
 		runUpgrade(m)
 	case "version", "--version", "-v":
@@ -233,6 +237,7 @@ func printUsage() {
 	fmt.Println("  restore-db                  Interactively restore database from a backup")
 	fmt.Println("  change-admin-password       Change the admin user password")
 	fmt.Println("  version                     Show version information")
+	fmt.Println("  check                       Check server security")
 	fmt.Println("  help                        Show this help message")
 }
 
