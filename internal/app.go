@@ -95,6 +95,7 @@ func NewAppWithRoutes(cfg *config.Config, routeMount func(*cartridge.Server), op
 	// Analytics SDK sends events from customer sites (cross-site) to our API
 	serverConfig := cartridge.DefaultServerConfig()
 	serverConfig.SecFetchSiteAllowedValues = []string{"cross-site", "same-site", "same-origin"}
+	serverConfig.ProxyHeader = "X-Forwarded-For"
 
 	// Static assets: embedded in production, disk in development
 	if !cfg.IsDevelopment() && options.staticFS != nil {
@@ -159,6 +160,7 @@ func NewAppWithConfig(cfg *config.Config, opts ...AppOption) (*Application, erro
 	// Analytics SDK sends events from customer sites (cross-site) to our API
 	serverConfig := cartridge.DefaultServerConfig()
 	serverConfig.SecFetchSiteAllowedValues = []string{"cross-site", "same-site", "same-origin"}
+	serverConfig.ProxyHeader = "X-Forwarded-For"
 
 	// Static assets: embedded in production, disk in development
 	if !cfg.IsDevelopment() && options.staticFS != nil {
