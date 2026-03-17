@@ -325,4 +325,28 @@ Single entry point for all React exports:
 
 ---
 
+## QA
+
+Use the `/qa` skill (`skills/qa/SKILL.md`) for all testing — it covers unit tests, E2E, visual QA with agent-browser, and VM install testing. The skill has a decision tree to pick the right level based on what changed.
+
+---
+
+## IP & Browser Detection
+
+### Real client IP chain
+```
+Client → Cloudflare (optional) → kamal-proxy (--forward-headers) → Fusionaly app
+```
+- **ProxyHeader**: Fiber reads real IP from `X-Forwarded-For` (configured in `internal/app.go`)
+- **getClientIP()**: Event handler reads `X-Forwarded-For` → `X-Real-IP` → `CF-Connecting-IP` (in `api/v1/utils.go`)
+- **Visitor signature**: `hash(domain + IP + userAgent + privateKey)` — privacy-first, no cookies
+
+### Browser detection via Sec-CH-UA
+- Chromium browsers (Chrome, Brave, Edge, Opera, Vivaldi) send identical User-Agent strings
+- `Sec-CH-UA` header distinguishes them: captured at ingestion, used during event processing
+- Safari/Firefox don't send `Sec-CH-UA` — fall back to UA-regex parsing
+- Affects `browser_stats` only, **not** visitor signatures
+
+---
+
 Keep AGENTS.md synchronized when workflows change.

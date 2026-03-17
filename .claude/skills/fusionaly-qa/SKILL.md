@@ -1,178 +1,170 @@
 ---
 name: fusionaly-qa
-description: Use when testing Fusionaly features, checking for regressions, or verifying releases - supports OSS and Pro, install scripts, E2E tests, and feature testing
+description: Use after code changes, before releases, or when testing features - runs the right level of QA based on what changed
 ---
 
-# Fusionaly QA Testing
+# QA Testing
 
-## Overview
+## What did you change? Start here.
 
-Quality assurance for Fusionaly across different testing scenarios. Supports both OSS and Pro editions with multiple testing flavors.
-
-## Testing Flavors
-
-| Flavor | Purpose | When to Use |
-|--------|---------|-------------|
-| **full-install** | VM install → onboarding → verification | Before releases, after install script changes |
-| **e2e** | E2E tests against local server | After code changes, before commits |
-| **feature** | Test specific feature manually | Debugging, exploring behavior |
-| **build-verify** | Build + quick health check | After dependency updates |
-
-## Quick Reference
-
-### E2E Tests (Most Common)
-
-```bash
-# OSS
-cd /path/to/fusionaly-oss
-lsof -ti :3000 | xargs kill -9 2>/dev/null  # Kill any running dev server first!
-make test-e2e
-
-# Pro
-cd /path/to/fusionaly-pro
-lsof -ti :3000 | xargs kill -9 2>/dev/null  # Kill any running dev server first!
-make test-e2e
-```
-
-**CRITICAL**: E2E tests will fail if a dev server is running (uses different database).
-
-### Feature Testing
-
-```bash
-# Start dev server
-make dev
-
-# In browser:
-# OSS: http://localhost:3000
-# Pro: http://localhost:3000 (includes AI features)
-```
+| Change | Test level | Command |
+|--------|-----------|---------|
+| Bug fix, refactor, small feature | **Unit** | `make test` |
+| Feature, UI, big change | **Unit + E2E** | `make test` then `make test-e2e` |
+| Visual / UI verification | **Agent-browser** | `make dev` + agent-browser |
+| Install script, matcha, infra | **VM install** | multipass VM |
+| Release | **All of the above** | See release checklist |
 
 ---
 
-## Flavor 1: Full Install (OrbStack VM)
-
-Test the actual installer on a fresh Ubuntu VM using OrbStack.
-
-### 1. Create VM and Build Manager
+## Level 1: Unit Tests (~3 seconds)
 
 ```bash
-cd /path/to/fusionaly-oss
-make test-installer
+make test
 ```
 
-This builds the manager binary for Linux arm64 and creates a fresh `installer-test` VM.
+Run after every change. No excuses.
 
-### 2. Run the Installer
+---
+
+## Level 2: E2E Tests (~5 minutes)
 
 ```bash
-orb -m installer-test -u root /path/to/fusionaly-oss/tmp/fusionaly-test-linux install
+# CRITICAL: Kill any running dev server first — E2E uses its own database
+lsof -ti :3000 | xargs kill -9 2>/dev/null
+make test-e2e
 ```
 
-### 3. Verify Installation
+Playwright tests that run onboarding, create websites, check dashboards, ingest events. Run after features or big changes.
 
+---
+
+## Level 3: Visual QA with agent-browser
+
+For verifying UI rendering, checking that data displays correctly, or testing flows that E2E doesn't cover.
+
+### Setup (one-time)
 ```bash
-orb -m installer-test -u root bash -c '
-echo "=== Containers ===" && docker ps
-echo "=== Version ===" && fusionaly version
-echo "=== Health ===" && curl -s http://localhost:8080/up
+npm i -g agent-browser
+agent-browser install
+```
+
+### Start dev server
+```bash
+make dev    # MUST use make dev (Go + Vite together)
+```
+
+### Dev credentials
+- Email: `admin@example.com`
+- Password: `password`
+- Created by `make db-seed`
+
+### Login
+```bash
+agent-browser open "http://localhost:3000/login"
+agent-browser snapshot -i
+agent-browser fill @e1 "admin@example.com"
+agent-browser fill @e3 "password"
+agent-browser click @e4
+```
+
+### Navigate and verify
+```bash
+agent-browser snapshot -i           # list interactive elements with refs
+agent-browser click @e11            # click element by ref
+agent-browser scroll down 1000      # scroll to find sections
+agent-browser screenshot            # capture page as PNG
+agent-browser get url               # check current URL
+```
+
+### Generate real browser events
+```bash
+# The /_demo page includes the tracking script — fires real pageviews
+agent-browser open "http://localhost:3000/_demo"
+
+# Wait for event processing (~10s), then check dashboard
+```
+
+### Key pages to verify
+
+| Page | How to reach | What to check |
+|------|-------------|---------------|
+| Admin home | `/admin` | Website list loads |
+| Dashboard | Click arrow (→) on a website | Charts, stats, time range |
+| Browsers tab | Scroll to Device Analytics, click "Browsers" | Browser names (Brave, Edge, etc.) |
+| Settings | Click "Settings" in nav | Forms save, flash messages |
+| Events | Click "Events" tab on dashboard | Event list, sessions view |
+
+### Important
+- **Always `make dev`** — `make watch-go` alone won't render Inertia pages
+- **Click through the UI** — don't force navigation with `open` after login (breaks Inertia state)
+- **`/_demo` for real events** — sends actual `Sec-CH-UA` headers from the browser
+- Dev database: `storage/fusionaly-development.db`
+
+---
+
+## Level 4: VM Install Test
+
+Only needed when changing: install script, matcha, Docker setup, or release infrastructure.
+
+### Create fresh VM
+```bash
+multipass delete fusionaly-test --purge 2>/dev/null || true
+multipass launch 24.04 --name fusionaly-test --cpus 2 --memory 2G --disk 10G
+```
+
+### Run install
+```bash
+multipass exec fusionaly-test -- bash -c '
+sudo apt-get update -qq && sudo apt-get install -y -qq expect
+
+cat > /tmp/run_install.exp << '\''EXPECTSCRIPT'\''
+#!/usr/bin/expect -f
+set timeout 300
+spawn sudo bash -c "curl -fsSL https://fusionaly.com/install | bash"
+expect "Enter your domain name"
+send "test.local\r"
+expect "Proceed with this configuration"
+send "Y\r"
+expect eof
+EXPECTSCRIPT
+
+expect /tmp/run_install.exp
 '
 ```
 
-### 4. Other Commands
-
+### Verify
 ```bash
-# Test update
-orb -m installer-test -u root /path/to/fusionaly-oss/tmp/fusionaly-test-linux update
-
-# Shell into the VM
-orb -m installer-test
+multipass exec fusionaly-test -- bash -c '
+echo "=== Containers ===" && sudo docker ps
+echo "=== Version ===" && fusionaly version
+echo "=== Health ===" && curl -s http://172.18.0.2:8080/_health
+'
 ```
 
-### 5. Cleanup
-
+### Browser test via tunnel
 ```bash
-make test-installer-clean
+VM_IP=$(multipass info fusionaly-test | grep IPv4 | awk '{print $2}')
+ssh -L 8080:172.18.0.2:8080 ubuntu@$VM_IP
+# Open http://localhost:8080/setup
+```
+
+### Cleanup
+```bash
+multipass delete fusionaly-test --purge
 ```
 
 ---
 
-## Flavor 2: E2E Tests
+## Release Checklist
 
-Run automated E2E tests against local application.
+Before tagging a release:
 
-### OSS E2E
-
-```bash
-cd /path/to/fusionaly-oss
-lsof -ti :3000 | xargs kill -9 2>/dev/null  # Important!
-make test-e2e
-```
-
-**Tests include:**
-- Onboarding flow (creates test user)
-- Website creation
-- Dashboard loading
-- Event ingestion
-
-### Pro E2E
-
-```bash
-cd /path/to/fusionaly-pro
-lsof -ti :3000 | xargs kill -9 2>/dev/null  # Important!
-make test-e2e
-```
-
-**Additional Pro tests:**
-- AI settings page
-- License page
-- Lens interface
-- Pro sidebar links
-- AI API endpoints
-
----
-
-## Flavor 3: Feature Testing
-
-Manual testing of specific features.
-
-### Start Dev Server
-
-```bash
-# OSS
-cd /path/to/fusionaly-oss && make dev
-
-# Pro
-cd /path/to/fusionaly-pro && make dev
-```
-
-### Key Pages to Test
-
-| Page | URL | What to Verify |
-|------|-----|----------------|
-| Onboarding | `/setup` | Form submission, validation, step progression |
-| Dashboard | `/admin/websites/:id/dashboard` | Charts load, date picker works |
-| Settings | `/admin/administration/ingestion` | Form saves, flash messages |
-| **Pro: Lens** | `/admin/websites/:id/lens` | AI textarea, example questions |
-| **Pro: AI Settings** | `/admin/administration/ai` | API key saves |
-| **Pro: License** | `/admin/administration/license` | License key saves |
-
----
-
-## Flavor 4: Build Verification
-
-Quick sanity check that the build works.
-
-```bash
-# OSS
-cd /path/to/fusionaly-oss
-make build
-./tmp/fusionaly --help
-
-# Pro
-cd /path/to/fusionaly-pro
-make build
-./tmp/fusionaly-pro --help
-```
+- [ ] `make test` passes
+- [ ] `make test-e2e` passes (kill dev server first!)
+- [ ] Visual QA: dashboard loads, browser stats correct, events ingesting
+- [ ] VM install test (if install/infra changed)
+- [ ] Pro: update OSS submodule, build, test
 
 ---
 
@@ -180,19 +172,8 @@ make build
 
 | Issue | Cause | Fix |
 |-------|-------|-----|
-| E2E tests fail with "Setup already complete" | Dev server running (wrong database) | Kill process on port 3000 first |
-| VM not starting | OrbStack issue | Check `orb list`, try `make test-installer-clean` then retry |
-| Can't reach 172.18.0.2 | Docker internal network | Use SSH tunnel |
-| Tests timeout | Server slow to start | Increase timeout in playwright.config.js |
-
-## Release Checklist
-
-Before announcing a release:
-
-- [ ] E2E tests pass (both OSS and Pro if applicable)
-- [ ] Fresh VM install works
-- [ ] Onboarding completes successfully
-- [ ] Dashboard loads with data
-- [ ] **Pro:** AI features work (with API key configured)
-- [ ] **Pro:** License validation works
-- [ ] Build produces working binaries
+| E2E fails "Setup already complete" | Dev server running (wrong DB) | `lsof -ti :3000 \| xargs kill -9` |
+| agent-browser login doesn't work | Vite not running | Use `make dev`, not `make watch-go` |
+| Dashboard shows JSON error | Navigated directly after forced POST | Start fresh browser, click through UI |
+| `/_demo` events not appearing | Processing job hasn't run yet | Wait ~10 seconds, check `ingested_events` table |
+| VM can't reach app | Docker internal network | Use SSH tunnel to 172.18.0.2:8080 |
