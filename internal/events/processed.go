@@ -205,7 +205,7 @@ func prepareEventProcessingData(db *gorm.DB, tempEvent *IngestedEvent, eventID u
 		ReferrerHostname: tempEvent.ReferrerHostname,
 		ReferrerPathname: tempEvent.ReferrerPathname,
 		DeviceType:       getDeviceTypeFromParsedUA(parsedUA),
-		Browser:          getBrowserFromParsedUA(parsedUA),
+		Browser:          getBrowserFromParsedUA(parsedUA, tempEvent.SecChUa),
 		OperatingSystem:  getOSFromParsedUA(parsedUA),
 		Country:          tempEvent.Country,
 		UTMSource:        utmSource,

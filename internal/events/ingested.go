@@ -32,6 +32,7 @@ type IngestedEvent struct {
 	CustomEventMeta  string
 	Timestamp        time.Time `gorm:"index"`
 	UserAgent        string
+	SecChUa          string
 	Country          string
 	CreatedAt        time.Time `gorm:"index"`
 	Processed        int       `gorm:"index"`
@@ -41,6 +42,7 @@ type IngestedEvent struct {
 type CollectEventInput struct {
 	IPAddress       string
 	UserAgent       string
+	SecChUa         string
 	ReferrerURL     string
 	EventType       EventType
 	CustomEventName string
@@ -231,6 +233,7 @@ func prepareTempEvent(db *gorm.DB, logger *slog.Logger, input *CollectEventInput
 		CustomEventMeta:  input.CustomEventMeta,
 		Timestamp:        input.Timestamp,
 		UserAgent:        input.UserAgent,
+		SecChUa:          input.SecChUa,
 		Country:          country,
 		CreatedAt:        time.Now().UTC(),
 		Processed:        0,

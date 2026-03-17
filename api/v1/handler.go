@@ -52,6 +52,7 @@ func CreateEventPublicAPIHandler(ctx *cartridge.Context) error {
 	input := &events.CollectEventInput{
 		IPAddress:       getClientIP(ctx.Ctx),
 		UserAgent:       params.UserAgent,
+		SecChUa:         ctx.Get("Sec-CH-UA"),
 		ReferrerURL:     params.Referrer,
 		EventType:       params.EventType,
 		CustomEventName: params.EventKey,
@@ -196,6 +197,7 @@ func CreateEventBeaconHandler(ctx *cartridge.Context) error {
 	input := &events.CollectEventInput{
 		IPAddress:       getClientIP(ctx.Ctx),
 		UserAgent:       userAgentHeader,
+		SecChUa:         ctx.Get("Sec-CH-UA"),
 		ReferrerURL:     params.Referrer,
 		EventType:       params.EventType,
 		CustomEventName: params.EventKey,

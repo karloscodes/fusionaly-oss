@@ -26,11 +26,18 @@ func getDeviceTypeFromParsedUA(ua ua.UserAgent) string {
 	return UnknownDevice
 }
 
-// getBrowserFromParsedUA extracts and normalizes browser name from parsed user agent
-func getBrowserFromParsedUA(ua ua.UserAgent) string {
+// getBrowserFromParsedUA extracts and normalizes browser name from parsed user agent.
+// If secChUa is present (Sec-CH-UA header from Chromium browsers), it's used to
+// distinguish browsers that share identical User-Agent strings (Chrome, Brave, Edge, etc.).
+func getBrowserFromParsedUA(ua ua.UserAgent, secChUa string) string {
 	// Bot filtering should ideally happen before this function is called (as it does in processEventBatch).
 	if ua.Bot || ua.Browser == "" {
 		return UnknownBrowser
+	}
+
+	// Try Sec-CH-UA first — it distinguishes Chromium-based browsers
+	if browser := parseBrowserFromClientHints(secChUa); browser != "" {
+		return browser
 	}
 
 	browserName := strings.ToLower(ua.Browser)
@@ -54,6 +61,65 @@ func getBrowserFromParsedUA(ua ua.UserAgent) string {
 		// Return the normalized name from the parser directly
 		return browserName
 	}
+}
+
+// parseBrowserFromClientHints extracts the real browser name from the Sec-CH-UA header.
+// Returns empty string if the header is absent or can't be parsed.
+//
+// Example header: "Chromium";v="146", "Brave";v="146", "Not-A.Brand";v="24"
+// Returns: "brave"
+func parseBrowserFromClientHints(secChUa string) string {
+	if secChUa == "" {
+		return ""
+	}
+
+	// Known brand names to skip — these appear in every Chromium browser
+	skip := map[string]bool{
+		"chromium":      true,
+		"not-a.brand":   true,
+		"not a;brand":   true,
+		"not/a)brand":   true,
+		"not_a brand":   true,
+		"not?a_brand":   true,
+	}
+
+	// Known browser brands and their display names
+	brands := map[string]string{
+		"google chrome":  "chrome",
+		"brave":          "brave",
+		"microsoft edge": "microsoft edge",
+		"opera":          "opera",
+		"vivaldi":        "vivaldi",
+		"arc":            "arc",
+		"samsung internet": "samsung browser",
+		"yandex":         "yandex browser",
+	}
+
+	for _, part := range strings.Split(secChUa, ",") {
+		part = strings.TrimSpace(part)
+		// Extract brand name from "Brand";v="version" format
+		idx := strings.Index(part, ";")
+		if idx == -1 {
+			idx = len(part)
+		}
+		brand := strings.Trim(part[:idx], `" `)
+		brandLower := strings.ToLower(brand)
+
+		if skip[brandLower] {
+			continue
+		}
+
+		if name, ok := brands[brandLower]; ok {
+			return name
+		}
+
+		// Unknown brand that isn't Chromium or grease — return it lowercased
+		if brand != "" {
+			return strings.ToLower(brand)
+		}
+	}
+
+	return ""
 }
 
 // NormalizeOperatingSystem normalizes operating system names to standardize them
