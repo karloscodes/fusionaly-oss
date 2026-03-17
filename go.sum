@@ -34,6 +34,8 @@ github.com/karloscodes/cartridge v0.13.2 h1:NgE+uvI9U5ixco9sSzo+S71JWVp8G0sbBCix
 github.com/karloscodes/cartridge v0.13.2/go.mod h1:jwNv+4v57uydGfREtRWUaWSudhf+oWu92JAOxlK8O9o=
 github.com/karloscodes/matcha v0.12.10 h1:H6Ag3uzLnq2hQnFzbwB+HHMcCv29BKBiy+ku5UAm9j4=
 github.com/karloscodes/matcha v0.12.10/go.mod h1:Zpy+ZfP/5OQMfdChOxzxP++m1mBFWJiXPjt3yYsCb9g=
+github.com/karloscodes/matcha v0.12.12 h1:Kwxx9RSj33hyVUdOUYcTsTXeZ5TU8JAXcMJN6uhCslw=
+github.com/karloscodes/matcha v0.12.12/go.mod h1:Zpy+ZfP/5OQMfdChOxzxP++m1mBFWJiXPjt3yYsCb9g=
 github.com/klauspost/compress v1.18.2 h1:iiPHWW0YrcFgpBYhsA6D1+fqHssJscY/Tm/y2Uqnapk=
 github.com/klauspost/compress v1.18.2/go.mod h1:R0h/fSBs8DE4ENlcrlib3PsXS61voFxhIs2DeRhCvJ4=
 github.com/kr/pretty v0.2.1/go.mod h1:ipq/a2n7PKx3OHsz4KJII5eveXtPO4qwEXGdVfWzfnI=
