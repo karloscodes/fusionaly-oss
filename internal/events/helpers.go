@@ -49,9 +49,9 @@ func getBrowserFromParsedUA(ua ua.UserAgent, secChUa string) string {
 		return "ie"
 	case "mobile safari":
 		return "safari"
-	case "chrome mobile", "chrome mobile webview":
+	case "chrome mobile", "chrome mobile webview", "chrome webview":
 		return "chrome"
-	case "firefox mobile":
+	case "firefox mobile", "firefox mobile ios":
 		return "firefox"
 	case "opera mini", "opera mobile":
 		return "opera"
