@@ -14,6 +14,7 @@
 		respectDoNotTrack: true,
 		debug: false,
 		autoInstrumentButtons: true,
+		autoInstrumentLinks: true,
 		autoSendPageViews: true,
 		scrollDepthThresholds: [25, 50, 75, 100],
 		scrollDepthEventKey: "scroll:depth",
@@ -409,14 +410,90 @@
 				'button, [role="button"], input[type="button"], input[type="submit"]',
 			);
 			if (button) {
-				// If this "button" is an <a> tag that will be handled by data-driven link tracking,
-				// let that specific handler take precedence to avoid double tracking.
-				if (button.tagName === 'A' && hasDataAttribute(button, 'event-name')) {
+				// Skip <a> tags - they are handled by link tracking (auto or data-driven)
+				if (button.tagName === 'A') {
 					return;
 				}
 
 				const eventData = processButtonEvent(button);
 				sendCustomEvent(eventData.eventName, eventData.metadata);
+			}
+		});
+	};
+
+	// Auto-track links (external links, downloads, mailto/tel)
+	const autoInstrumentLinks = () => {
+		if (!shouldTrack()) {
+			return;
+		}
+
+		const downloadExtensions = /\.(pdf|zip|tar|gz|tgz|bz2|exe|dmg|pkg|deb|rpm|msi|apk|ipa|doc|docx|xls|xlsx|ppt|pptx|mp3|mp4|mov|avi|wmv|flv|svg|eps|psd|sketch|fig)$/i;
+
+		document.addEventListener("click", (event) => {
+			const link = event.target.closest('a[href]');
+			if (!link) return;
+
+			// Skip if link has custom event name (handled by data-driven tracking)
+			if (hasDataAttribute(link, 'event-name')) {
+				return;
+			}
+
+			const href = link.getAttribute('href');
+			if (!href || href === '#' || href.startsWith('javascript:')) {
+				return;
+			}
+
+			let eventName = null;
+			let metadata = {
+				href: href,
+				text: (link.textContent || '').trim().substring(0, 50)
+			};
+
+			// Check for download
+			const filename = href.split('/').pop().split('?')[0];
+			if (downloadExtensions.test(filename)) {
+				const ext = filename.match(downloadExtensions)[1].toLowerCase();
+				eventName = `link:download:${ext}`;
+				metadata.filename = filename;
+			}
+			// Check for external link
+			else if (href.startsWith('http') && !href.includes(window.location.hostname)) {
+				eventName = 'link:external';
+				metadata.domain = new URL(href).hostname;
+			}
+			// Check for mailto/tel
+			else if (href.startsWith('mailto:')) {
+				eventName = 'link:mailto';
+				metadata.email = href.substring(7);
+			}
+			else if (href.startsWith('tel:')) {
+				eventName = 'link:tel';
+				metadata.phone = href.substring(4);
+			}
+
+			if (eventName) {
+				// For navigation links, use sendBeacon
+				if (!href.startsWith('mailto:') && !href.startsWith('tel:') && !href.startsWith('#')) {
+					const beaconData = {
+						url: window.location.href,
+						referrer: document.referrer || '',
+						timestamp: new Date().toISOString(),
+						userId: window.Fusionaly.userId || null,
+						eventType: window.Fusionaly.config.eventTypes.customEvent,
+						eventMetadata: metadata,
+						eventKey: eventName,
+						userAgent: navigator.userAgent
+					};
+
+					// Try sendBeacon first, fall back to normal send
+					if (!sendBeaconEvent(beaconData)) {
+						sendCustomEvent(eventName, metadata);
+					}
+				} else {
+					sendCustomEvent(eventName, metadata);
+				}
+
+				log(`Tracked link: ${eventName}`);
 			}
 		});
 	};
@@ -848,6 +925,9 @@
 	}
 	if (window.Fusionaly.config.autoInstrumentButtons) {
 		autoInstrumentButtons();
+	}
+	if (window.Fusionaly.config.autoInstrumentLinks) {
+		autoInstrumentLinks();
 	}
 	setupDataDrivenLinkTracking();
 	setupScrollTrackingFromAttributes();
