@@ -15,6 +15,7 @@
 		debug: false,
 		autoInstrumentButtons: true,
 		autoInstrumentLinks: true,
+		autoInstrumentForms: true,
 		autoSendPageViews: true,
 		scrollDepthThresholds: [25, 50, 75, 100],
 		scrollDepthEventKey: "scroll:depth",
@@ -498,6 +499,46 @@
 		});
 	};
 
+	// Auto-track form submissions via data-fusionaly-track="submit"
+	const autoInstrumentForms = () => {
+		if (!shouldTrack()) {
+			return;
+		}
+
+		document.addEventListener('submit', (event) => {
+			const form = event.target.closest('form[data-fusionaly-track="submit"]');
+			if (!form) return;
+
+			// Get event name from data-fusionaly-event-name, or generate from form ID/name
+			let eventName = getDataAttribute(form, 'event-name');
+			if (!eventName) {
+				const formId = form.id || form.getAttribute('name') || 'form';
+				eventName = `form:submit:${sanitizeForEventKey(formId) || formId}`;
+			}
+
+			const metadata = {
+				formId: form.id || null,
+				formName: form.getAttribute('name') || null,
+				action: form.action || null,
+				method: form.method || 'get'
+			};
+
+			// Collect additional metadata from data attributes
+			for (let i = 0; i < form.attributes.length; i++) {
+				const attr = form.attributes[i];
+				if (attr.name.startsWith('data-fusionaly-metadata-')) {
+					const metadataKey = attr.name.substring('data-fusionaly-metadata-'.length);
+					if (metadataKey) {
+						metadata[metadataKey] = attr.value;
+					}
+				}
+			}
+
+			sendCustomEvent(eventName, metadata);
+			log(`Tracked form submission: ${eventName}`);
+		});
+	};
+
 	const setupDataDrivenLinkTracking = () => {
 		if (!shouldTrack()) {
 			return;
@@ -928,6 +969,9 @@
 	}
 	if (window.Fusionaly.config.autoInstrumentLinks) {
 		autoInstrumentLinks();
+	}
+	if (window.Fusionaly.config.autoInstrumentForms) {
+		autoInstrumentForms();
 	}
 	setupDataDrivenLinkTracking();
 	setupScrollTrackingFromAttributes();
