@@ -9,7 +9,7 @@ Privacy-first, self-hosted web analytics. No cookies, no fingerprinting, no pers
 
 **One script tag. One attribute. You own everything.**
 
-[Website](https://fusionaly.com) · [Documentation](https://fusionaly.com/docs) · [Live Demo](https://fusionaly.com/demo) · [Installation](https://fusionaly.com/docs/installation/) · [Free vs Pro](https://fusionaly.com/docs/editions/)
+[Website](https://fusionaly.com) · [Documentation](https://fusionaly.com/docs) · [Installation](https://fusionaly.com/docs/installation/) · [Free vs Pro](https://fusionaly.com/docs/editions/)
 
 ---
 
@@ -106,10 +106,10 @@ fusionaly/
 Defaults work out of the box for development.
 
 For production, set:
-- `FUSIONALY_ENV=production`
+- `FUSIONALY_DOMAIN` — your domain name
 - `FUSIONALY_PRIVATE_KEY` — generate with `openssl rand -hex 32`
 
-See [Configuration docs](https://fusionaly.com/docs/configuration/) for SDK options.
+See [Installation Guide](https://fusionaly.com/docs/installation/) for Docker setup and [SDK Configuration](https://fusionaly.com/docs/configuration/) for tracking options.
 
 ## Contributing
 
