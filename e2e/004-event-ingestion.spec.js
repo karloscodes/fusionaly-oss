@@ -196,43 +196,44 @@ test.describe("Event Ingestion E2E", () => {
 		expect(consoleErrors, "Expected no console errors").toEqual([]);
 	});
 
-	test("should emit scroll depth events via data attribute", async ({ page }) => {
+	test("should emit scroll depth events via JS API", async ({ page }) => {
 		await page.goto('/_demo');
 		await page.waitForLoadState('domcontentloaded');
 
-	await page.evaluate(() => {
-		document.body.setAttribute('data-fusionaly-track-scroll-depth', '25,50');
-		document.body.setAttribute('data-fusionaly-track-scroll-depth-event', 'scroll:depth');
-		document.body.setAttribute('data-fusionaly-track-scroll-depth-metadata-page', 'demo');
-		const filler = document.createElement('div');
-		filler.style.height = '5000px';
-		document.body.appendChild(filler);
-		if (window.Fusionaly?.setupScrollTrackingFromAttributes) {
-			window.Fusionaly.setupScrollTrackingFromAttributes();
-		}
-	});
+		await page.evaluate(() => {
+			const filler = document.createElement('div');
+			filler.style.height = '5000px';
+			document.body.appendChild(filler);
 
-	const depthRequestPromise = page.waitForRequest((request) => {
-		if (!request.url().includes('/x/api/v1/events') || request.method() !== 'POST') {
-			return false;
-		}
-		try {
-			const data = JSON.parse(request.postData() || '{}');
-			return data.eventKey === 'scroll:depth:25' || data.eventKey === 'scroll:depth:50';
-		} catch (error) {
-			return false;
-		}
-	}, { timeout: 10_000 });
+			// Use JS API (data attribute for depth tracking is removed)
+			if (window.Fusionaly?.trackScrollDepth) {
+				window.Fusionaly.trackScrollDepth([25, 50], {
+					metadata: { page: 'demo' }
+				});
+			}
+		});
+
+		const depthRequestPromise = page.waitForRequest((request) => {
+			if (!request.url().includes('/x/api/v1/events') || request.method() !== 'POST') {
+				return false;
+			}
+			try {
+				const data = JSON.parse(request.postData() || '{}');
+				return data.eventKey === 'scroll:depth:25' || data.eventKey === 'scroll:depth:50';
+			} catch (error) {
+				return false;
+			}
+		}, { timeout: 10_000 });
 
 		await page.evaluate(() => {
 			window.scrollTo({ top: document.body.scrollHeight, behavior: 'instant' });
 		});
 
-	const depthRequest = await depthRequestPromise;
-	const depthData = JSON.parse(depthRequest.postData());
-	expect(['scroll:depth:25', 'scroll:depth:50']).toContain(depthData.eventKey);
-	expect(depthData.eventMetadata.page).toBe('demo');
-	expect(depthData.eventMetadata.percentage).toBeDefined();
+		const depthRequest = await depthRequestPromise;
+		const depthData = JSON.parse(depthRequest.postData());
+		expect(['scroll:depth:25', 'scroll:depth:50']).toContain(depthData.eventKey);
+		expect(depthData.eventMetadata.page).toBe('demo');
+		expect(depthData.eventMetadata.percentage).toBeDefined();
 	});
 
 	test("should track scroll into view via data-fusionaly-event-name on sections", async ({ page }) => {
