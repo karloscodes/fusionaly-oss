@@ -635,7 +635,10 @@
 							...metadata,
 							section: sectionName,
 						};
-						const eventKey = buildEventKey(baseEventName, sectionName);
+						// Use event name directly if specified, otherwise build key from base + section
+						const eventKey = options.useEventNameDirectly
+							? baseEventName
+							: buildEventKey(baseEventName, sectionName);
 						sendCustomEvent(eventKey, payload);
 						log(`Tracked scroll section: ${eventKey}`);
 
@@ -801,11 +804,50 @@
 		return cleanup;
 	};
 
+	// Interactive elements handled by other tracking (buttons, links, forms)
+	const INTERACTIVE_TAGS = new Set(['BUTTON', 'A', 'INPUT', 'FORM']);
+	const isInteractiveElement = (el) =>
+		INTERACTIVE_TAGS.has(el.tagName) || el.getAttribute('role') === 'button';
+
+	// data-fusionaly-event-name on non-interactive elements → scroll into view
+	const setupScrollEventNameTracking = () => {
+		if (typeof document === "undefined" || typeof IntersectionObserver === "undefined") {
+			return;
+		}
+
+		const elements = document.querySelectorAll('[data-fusionaly-event-name]');
+
+		elements.forEach((element) => {
+			if (isInteractiveElement(element)) return;
+			if (element.dataset.fusionalyScrollTracked === "true") return;
+
+			const eventName = getDataAttribute(element, 'event-name');
+			if (!eventName || eventName.trim() === '') return;
+
+			const metadata = collectMetadataAttributes(element, 'metadata-');
+			const section = element.id || eventName;
+
+			trackScrollSection(element, {
+				section: section,
+				eventName: eventName,
+				useEventNameDirectly: true,
+				metadata,
+				__markElement: false,
+			});
+
+			element.dataset.fusionalyScrollTracked = "true";
+		});
+	};
+
 	const setupScrollTrackingFromAttributes = () => {
 		if (typeof document === "undefined") {
 			return;
 		}
 
+		// New: data-fusionaly-event-name on non-interactive elements
+		setupScrollEventNameTracking();
+
+		// Legacy: data-fusionaly-scroll-section (backwards compat)
 		const sectionSelector = [
 			"[data-fusionaly-scroll-section]",
 			"[data-fusionaly-track-scroll]",
@@ -843,33 +885,6 @@
 				metadata,
 				__markElement: true,
 			});
-		});
-
-		const depthElements = document.querySelectorAll(
-			"[data-fusionaly-track-scroll-depth]",
-		);
-
-		depthElements.forEach((depthElement) => {
-			if (depthElement.dataset.fusionalyTrackScrollDepthTracked === "true") {
-				return;
-			}
-
-			const thresholdsAttr = getDataAttribute(depthElement, "track-scroll-depth");
-			const eventName =
-				getDataAttribute(depthElement, "track-scroll-depth-event") ||
-				window.Fusionaly.config.scrollDepthEventKey ||
-				"scroll:depth";
-			const metadata = collectMetadataAttributes(
-				depthElement,
-				"track-scroll-depth-metadata-",
-			);
-
-			trackScrollDepth(thresholdsAttr, {
-				eventName,
-				metadata,
-			});
-
-			depthElement.dataset.fusionalyTrackScrollDepthTracked = "true";
 		});
 	};
 
