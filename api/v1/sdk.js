@@ -303,14 +303,14 @@
 	});
 
 	const sanitizeForEventKey = (text) => {
-		if (!text) return "unnamed_button";
+		if (!text) return "";
 		const sanitized = text
 			.toLowerCase()
 			.trim()
 			.replace(/\s+/g, "_") // Replace whitespace with underscore
 			.replace(/[^a-z0-9_:]/g, "") // Remove non-alphanumeric characters except underscore and colon
 			.substring(0, 50); // Truncate to 50 chars
-		return sanitized || "unnamed_button";
+		return sanitized || "";
 	};
 
 	const formatEventSuffix = (value) => {
@@ -365,9 +365,8 @@
 	const processButtonEvent = (button) => {
 		let eventName = getDataAttribute(button, 'event-name');
 
-		// If no custom event name, use the original auto-generated logic
+		// If no custom event name, generate a clean event name from button text
 		if (!eventName || eventName.trim() === "") {
-			const buttonId = button.id || "noid";
 			const buttonText = (
 				button.textContent ||
 				button.value ||
@@ -376,7 +375,9 @@
 			).trim();
 
 			const sanitizedName = sanitizeForEventKey(buttonText);
-			eventName = `click:button:${sanitizedName}:${buttonId}`;
+			eventName = sanitizedName
+				? `button:${sanitizedName}`
+				: "button:clicked";
 		}
 
 		const metadata = {
