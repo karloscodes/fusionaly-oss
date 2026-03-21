@@ -235,6 +235,155 @@ test.describe("Event Ingestion E2E", () => {
 	expect(depthData.eventMetadata.percentage).toBeDefined();
 	});
 
+	test("should track scroll into view via data-fusionaly-event-name on sections", async ({ page }) => {
+		await page.goto('/_demo');
+		await page.waitForLoadState('domcontentloaded');
+
+		await page.evaluate(() => {
+			// Push section below the fold
+			const spacer = document.createElement('div');
+			spacer.style.height = '2000px';
+			document.body.appendChild(spacer);
+
+			const section = document.createElement('section');
+			section.id = 'pricing';
+			section.style.height = '600px';
+			section.setAttribute('data-fusionaly-event-name', 'pricing_viewed');
+			section.setAttribute('data-fusionaly-metadata-plan', 'pro');
+			document.body.appendChild(section);
+
+			const tail = document.createElement('div');
+			tail.style.height = '2000px';
+			document.body.appendChild(tail);
+
+			if (window.Fusionaly?.setupScrollTrackingFromAttributes) {
+				window.Fusionaly.setupScrollTrackingFromAttributes();
+			}
+		});
+
+		const scrollRequestPromise = page.waitForRequest((request) => {
+			if (!request.url().includes('/x/api/v1/events') || request.method() !== 'POST') {
+				return false;
+			}
+			try {
+				const data = JSON.parse(request.postData() || '{}');
+				return data.eventKey === 'pricing_viewed';
+			} catch (error) {
+				return false;
+			}
+		}, { timeout: 10_000 });
+
+		await page.evaluate(() => {
+			document.getElementById('pricing')?.scrollIntoView({ behavior: 'instant' });
+		});
+
+		const scrollRequest = await scrollRequestPromise;
+		const scrollData = JSON.parse(scrollRequest.postData());
+
+		expect(scrollData.eventKey).toBe('pricing_viewed');
+		expect(scrollData.eventMetadata.plan).toBe('pro');
+		expect(scrollData.eventMetadata.section).toBe('pricing');
+		expect(consoleErrors).toEqual([]);
+	});
+
+	test("should NOT fire scroll tracking for buttons, links, or forms with data-fusionaly-event-name", async ({ page }) => {
+		await page.goto('/_demo');
+		await page.waitForLoadState('domcontentloaded');
+
+		// Inject interactive elements — these should NOT trigger scroll tracking
+		await page.evaluate(() => {
+			const spacer = document.createElement('div');
+			spacer.style.height = '2000px';
+			document.body.appendChild(spacer);
+
+			// Button with event-name — should track on click, not scroll
+			const button = document.createElement('button');
+			button.id = 'test-btn';
+			button.textContent = 'Click Me';
+			button.setAttribute('data-fusionaly-event-name', 'btn_event');
+			document.body.appendChild(button);
+
+			// Form with event-name — should track on submit, not scroll
+			const form = document.createElement('form');
+			form.id = 'test-form';
+			form.setAttribute('data-fusionaly-event-name', 'form_event');
+			form.innerHTML = '<button type="submit">Submit</button>';
+			document.body.appendChild(form);
+
+			if (window.Fusionaly?.setupScrollTrackingFromAttributes) {
+				window.Fusionaly.setupScrollTrackingFromAttributes();
+			}
+		});
+
+		// Scroll to the bottom to make all elements visible
+		await page.evaluate(() => {
+			window.scrollTo({ top: document.body.scrollHeight, behavior: 'instant' });
+		});
+
+		// Wait and verify no scroll events fire for interactive elements
+		await page.waitForTimeout(1000);
+
+		// Now click the button — THIS should fire the event
+		const buttonRequestPromise = page.waitForRequest((request) => {
+			if (!request.url().includes('/x/api/v1/events') || request.method() !== 'POST') {
+				return false;
+			}
+			try {
+				const data = JSON.parse(request.postData() || '{}');
+				return data.eventKey === 'btn_event';
+			} catch (error) {
+				return false;
+			}
+		}, { timeout: 5000 });
+
+		await page.click('#test-btn');
+
+		const buttonRequest = await buttonRequestPromise;
+		const buttonData = JSON.parse(buttonRequest.postData());
+		expect(buttonData.eventKey).toBe('btn_event');
+		expect(consoleErrors).toEqual([]);
+	});
+
+	test("should track form submission via data-fusionaly-event-name and suppress button tracking", async ({ page }) => {
+		await page.goto('/_demo');
+		await page.waitForLoadState('domcontentloaded');
+
+		await page.evaluate(() => {
+			const form = document.createElement('form');
+			form.id = 'contact';
+			form.setAttribute('data-fusionaly-event-name', 'contact_submitted');
+			form.setAttribute('data-fusionaly-metadata-source', 'test');
+			form.setAttribute('action', 'javascript:void(0)');
+			form.innerHTML = '<input type="email" name="email" value="test@test.com"><button type="submit">Send</button>';
+			document.body.appendChild(form);
+		});
+
+		await page.waitForTimeout(200);
+
+		// Should fire form event, NOT button event
+		const formRequestPromise = page.waitForRequest((request) => {
+			if (!request.url().includes('/x/api/v1/events') || request.method() !== 'POST') {
+				return false;
+			}
+			try {
+				const data = JSON.parse(request.postData() || '{}');
+				return data.eventKey === 'contact_submitted';
+			} catch (error) {
+				return false;
+			}
+		}, { timeout: 5000 });
+
+		await page.click('#contact button[type="submit"]');
+
+		const formRequest = await formRequestPromise;
+		const formData = JSON.parse(formRequest.postData());
+
+		expect(formData.eventKey).toBe('contact_submitted');
+		expect(formData.eventMetadata.source).toBe('test');
+		expect(formData.eventMetadata.formId).toBe('contact');
+		expect(consoleErrors).toEqual([]);
+	});
+
 	test("should emit scroll section events via data attribute", async ({ page }) => {
 		await page.goto('/_demo');
 		await page.waitForLoadState('domcontentloaded');
