@@ -408,15 +408,48 @@
 				'button, [role="button"], input[type="button"], input[type="submit"]',
 			);
 			if (button) {
-				// If this "button" is an <a> tag that will be handled by data-driven link tracking,
-				// let that specific handler take precedence to avoid double tracking.
+				// Skip <a> tags — handled by data-driven link tracking
 				if (button.tagName === 'A' && hasDataAttribute(button, 'event-name')) {
+					return;
+				}
+
+				// Skip buttons inside forms with data-fusionaly-event-name
+				// — the form-level submit event handles tracking
+				if (button.closest('form[data-fusionaly-event-name]')) {
 					return;
 				}
 
 				const eventData = processButtonEvent(button);
 				sendCustomEvent(eventData.eventName, eventData.metadata);
 			}
+		});
+	};
+
+	// Track form submissions when data-fusionaly-event-name is on a <form>
+	const setupFormTracking = () => {
+		if (!shouldTrack()) {
+			return;
+		}
+
+		document.addEventListener('submit', (event) => {
+			const form = event.target.closest('form[data-fusionaly-event-name]');
+			if (!form) return;
+
+			const eventName = getDataAttribute(form, 'event-name');
+			if (!eventName || eventName.trim() === '') return;
+
+			const metadata = {
+				formId: form.id || null,
+				formName: form.getAttribute('name') || null,
+				method: form.method || 'get'
+			};
+
+			// Collect additional metadata from data attributes
+			const customMetadata = collectMetadataAttributes(form, 'metadata-');
+			Object.assign(metadata, customMetadata);
+
+			sendCustomEvent(eventName, metadata);
+			log(`Tracked form submission: ${eventName}`);
 		});
 	};
 
@@ -848,6 +881,7 @@
 	if (window.Fusionaly.config.autoInstrumentButtons) {
 		autoInstrumentButtons();
 	}
+	setupFormTracking();
 	setupDataDrivenLinkTracking();
 	setupScrollTrackingFromAttributes();
 
