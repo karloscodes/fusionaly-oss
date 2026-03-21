@@ -239,27 +239,8 @@ test.describe("Event Ingestion E2E", () => {
 		await page.goto('/_demo');
 		await page.waitForLoadState('domcontentloaded');
 
-		await page.evaluate(() => {
-			// Push section below the fold
-			const spacer = document.createElement('div');
-			spacer.style.height = '2000px';
-			document.body.appendChild(spacer);
-
-			const section = document.createElement('section');
-			section.id = 'pricing';
-			section.style.height = '600px';
-			section.setAttribute('data-fusionaly-event-name', 'pricing_viewed');
-			section.setAttribute('data-fusionaly-metadata-plan', 'pro');
-			document.body.appendChild(section);
-
-			const tail = document.createElement('div');
-			tail.style.height = '2000px';
-			document.body.appendChild(tail);
-
-			if (window.Fusionaly?.setupScrollTrackingFromAttributes) {
-				window.Fusionaly.setupScrollTrackingFromAttributes();
-			}
-		});
+		// The demo page has a <section id="pricing" data-fusionaly-event-name="pricing_viewed">
+		// below a 2000px spacer — it's below the fold
 
 		const scrollRequestPromise = page.waitForRequest((request) => {
 			if (!request.url().includes('/x/api/v1/events') || request.method() !== 'POST') {
@@ -348,19 +329,18 @@ test.describe("Event Ingestion E2E", () => {
 		await page.goto('/_demo');
 		await page.waitForLoadState('domcontentloaded');
 
-		await page.evaluate(() => {
-			const form = document.createElement('form');
-			form.id = 'contact';
-			form.setAttribute('data-fusionaly-event-name', 'contact_submitted');
-			form.setAttribute('data-fusionaly-metadata-source', 'test');
-			form.setAttribute('action', 'javascript:void(0)');
-			form.innerHTML = '<input type="email" name="email" value="test@test.com"><button type="submit">Send</button>';
-			document.body.appendChild(form);
+		// The demo page has a <form id="contact" data-fusionaly-event-name="contact_submitted">
+		// Clicking submit should fire ONE event (form), not two (form + button)
+
+		const trackedEvents = [];
+		page.on('request', (request) => {
+			if (!request.url().includes('/x/api/v1/events') || request.method() !== 'POST') return;
+			try {
+				const data = JSON.parse(request.postData() || '{}');
+				if (data.eventType === 2) trackedEvents.push(data.eventKey);
+			} catch (e) {}
 		});
 
-		await page.waitForTimeout(200);
-
-		// Should fire form event, NOT button event
 		const formRequestPromise = page.waitForRequest((request) => {
 			if (!request.url().includes('/x/api/v1/events') || request.method() !== 'POST') {
 				return false;
@@ -379,8 +359,15 @@ test.describe("Event Ingestion E2E", () => {
 		const formData = JSON.parse(formRequest.postData());
 
 		expect(formData.eventKey).toBe('contact_submitted');
-		expect(formData.eventMetadata.source).toBe('test');
+		expect(formData.eventMetadata.source).toBe('demo');
 		expect(formData.eventMetadata.formId).toBe('contact');
+
+		// Wait to ensure no delayed button event fires
+		await page.waitForTimeout(500);
+
+		// Verify only ONE event was sent — no button:send alongside contact_submitted
+		const clickEvents = trackedEvents.filter(e => e !== 'user:subscribed' && e !== 'revenue:purchased');
+		expect(clickEvents).toEqual(['contact_submitted']);
 		expect(consoleErrors).toEqual([]);
 	});
 

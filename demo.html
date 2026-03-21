@@ -49,6 +49,22 @@
     Test Link (Example)
   </a>
 
+  <!-- Test form for e2e tests -->
+  <form id="contact" data-fusionaly-event-name="contact_submitted" data-fusionaly-metadata-source="demo" action="javascript:void(0)">
+    <input type="email" name="email" value="test@test.com">
+    <button type="submit">Send</button>
+  </form>
+
+  <!-- Spacer to push section below the fold -->
+  <div style="height: 2000px"></div>
+
+  <!-- Test section for scroll tracking e2e tests -->
+  <section id="pricing" style="height: 600px; background: #f0f0f0;" data-fusionaly-event-name="pricing_viewed" data-fusionaly-metadata-plan="pro">
+    <h2>Pricing Section</h2>
+  </section>
+
+  <div style="height: 2000px"></div>
+
 </body>
 
 </html>
