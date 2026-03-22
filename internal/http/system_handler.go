@@ -235,6 +235,31 @@ func AdministrationSystemPageAction(ctx *cartridge.Context) error {
 	})
 }
 
+// Notification represents a system message shown in the feedback widget.
+type Notification struct {
+	ID      string `json:"id"`
+	Title   string `json:"title"`
+	Body    string `json:"body"`
+	Expires string `json:"expires"` // ISO 8601 date, e.g. "2026-04-22"
+}
+
+// systemNotifications returns active notifications for the current state.
+func systemNotifications() []Notification {
+	var notifications []Notification
+
+	managerVersion := os.Getenv("MATCHA_MANAGER_VERSION")
+	if managerVersion == "" || managerVersion == "dev" {
+		notifications = append(notifications, Notification{
+			ID:      "cli-selfupdate-fix-2026-03",
+			Title:   "CLI update available",
+			Body:    "If you are using the Fusionaly manager, run this command on your server to patch a self-updating issue:\n\ncurl -fsSL https://github.com/karloscodes/fusionaly-oss/releases/latest/download/fusionaly-linux-$(uname -m | sed 's/x86_64/amd64/' | sed 's/aarch64/arm64/') -o /tmp/fusionaly && chmod +x /tmp/fusionaly && sudo mv /tmp/fusionaly /usr/local/bin/fusionaly",
+			Expires: "2026-04-22",
+		})
+	}
+
+	return notifications
+}
+
 // SystemHealthAction returns the system health status for UI warning indicators
 func SystemHealthAction(ctx *cartridge.Context) error {
 	db := ctx.DB()
@@ -267,6 +292,7 @@ func SystemHealthAction(ctx *cartridge.Context) error {
 		"geolite_configured": geoConfigured,
 		"geolite_db_exists":  geoDBExists,
 		"geolite_error":      geoDownloadError,
+		"notifications":      systemNotifications(),
 	})
 }
 
