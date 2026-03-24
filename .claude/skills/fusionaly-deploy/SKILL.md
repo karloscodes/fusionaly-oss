@@ -199,9 +199,51 @@ Do you use Cloudflare for DNS on this domain? (y/n)
 ```
 
 If yes:
-- Check if `flarectl` is installed. If not: "Should I install it?" → `brew install cloudflare/cloudflare/flarectl`
-- Ask for Cloudflare API token (explain: Cloudflare dashboard → My Profile → API Tokens → Create Token → Edit zone DNS)
-- Set `CF_API_TOKEN` for flarectl
+
+**1. Install flarectl** (if not already installed):
+```bash
+brew install cloudflare/cloudflare/flarectl
+```
+
+**2. Get a Cloudflare API token.** Walk the user through this:
+
+```
+You need a Cloudflare API token with DNS edit permissions.
+
+  1. Go to https://dash.cloudflare.com/profile/api-tokens
+  2. Click "Create Token"
+  3. Use the "Edit zone DNS" template
+  4. Under Zone Resources: select the zone for your domain
+  5. Click "Continue to summary" → "Create Token"
+  6. Copy the token (you won't see it again)
+```
+
+**3. Store and verify the token.** Ask the user to paste it, then:
+
+```bash
+# Export for this session
+export CF_API_TOKEN="<token-user-provided>"
+
+# Verify it works — this MUST succeed before proceeding
+flarectl zone list
+```
+
+If `flarectl zone list` fails (401, no zones, etc.) — stop and troubleshoot. Do NOT continue to DNS setup with a broken token.
+
+**4. Persist the token** (ask the user):
+
+```
+Your Cloudflare token works. Want me to add it to ~/.zshrc so it persists across sessions? (y/n)
+```
+
+If yes:
+```bash
+echo '' >> ~/.zshrc
+echo '# Cloudflare API token (flarectl)' >> ~/.zshrc
+echo 'export CF_API_TOKEN="<token-user-provided>"' >> ~/.zshrc
+```
+
+If no: remind them the token is only set for this session.
 
 ## Phase 3: Confirm & Create
 
@@ -305,6 +347,17 @@ The Fusionaly installer is interactive (asks for domain). Run this:
 
 **Wait for user to confirm installation is complete.**
 
+### Preflight: Verify Install URLs Are Reachable
+
+Before telling the user to SSH in, verify the URLs are reachable from here:
+
+```bash
+curl --head --silent --fail https://raw.githubusercontent.com/karloscodes/server-hardener/main/harden.sh > /dev/null && echo "server-hardener: reachable" || echo "server-hardener: UNREACHABLE"
+curl --head --silent --fail https://fusionaly.com/install > /dev/null && echo "fusionaly installer: reachable" || echo "fusionaly installer: UNREACHABLE"
+```
+
+If either URL is unreachable, tell the user before proceeding — don't let them discover it mid-SSH session.
+
 ### Cloudflare DNS (if opted in, ask first)
 
 ```
@@ -312,10 +365,11 @@ Should I create the A record now?
   analytics.example.com → <server-ip>
 ```
 
-If yes:
+If yes — `CF_API_TOKEN` should already be exported from the Cloudflare setup step earlier:
 
 ```bash
-CF_API_TOKEN=<token> flarectl dns create \
+# CF_API_TOKEN was exported during Cloudflare setup in Phase 2
+flarectl dns create \
   --zone <base-domain> \
   --name <subdomain> \
   --type A \
@@ -323,6 +377,11 @@ CF_API_TOKEN=<token> flarectl dns create \
 ```
 
 Where `<base-domain>` is extracted from the domain (e.g. `example.com` from `analytics.example.com`) and `<subdomain>` is the prefix (e.g. `analytics`).
+
+If `CF_API_TOKEN` is not set (e.g. new shell session), re-export it:
+```bash
+export CF_API_TOKEN="<token-from-earlier>"
+```
 
 ## Phase 5: Summary
 
