@@ -230,21 +230,6 @@ flarectl zone list
 
 If `flarectl zone list` fails (401, no zones, etc.) — stop and troubleshoot. Do NOT continue to DNS setup with a broken token.
 
-**4. Persist the token** (ask the user):
-
-```
-Your Cloudflare token works. Want me to add it to ~/.zshrc so it persists across sessions? (y/n)
-```
-
-If yes:
-```bash
-echo '' >> ~/.zshrc
-echo '# Cloudflare API token (flarectl)' >> ~/.zshrc
-echo 'export CF_API_TOKEN="<token-user-provided>"' >> ~/.zshrc
-```
-
-If no: remind them the token is only set for this session.
-
 ## Phase 3: Confirm & Create
 
 ### Confirmation
@@ -412,3 +397,4 @@ Only show what's relevant:
 - **If Fusionaly skipped:** "Fusionaly is not installed yet. SSH in and run the installer when ready."
 - **Always (if Fusionaly installed):** "Auto-updates run daily at 3 AM. Backups stored at `/opt/fusionaly/storage/backups/`."
 - **Always (if Fusionaly installed):** "Consider off-server backups: VPS snapshots, rsync, or Litestream to S3."
+- **If Cloudflare was used:** "Your Cloudflare token is set for this session only. To persist it, add to `~/.zshrc`: `export CF_API_TOKEN=\"your-token\"`"
