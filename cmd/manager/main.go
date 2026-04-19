@@ -29,6 +29,7 @@ func main() {
 
 	switch os.Args[1] {
 	case "install":
+		printInstallBanner()
 		if err := m.Install(); err != nil {
 			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
@@ -229,6 +230,39 @@ func migrateCaddyToKamalProxy(m *matcha.Matcha) {
 		fmt.Println("Re-registering service with proxy...")
 		m.Reload()
 	}
+}
+
+// printInstallBanner warns the operator to avoid subdomain labels that
+// Brave Shields, uBlock Origin, AdGuard and EasyPrivacy blocklists reject
+// outright. If Fusionaly is served from e.g. analytics.example.com, the
+// tracking script URL itself gets blocked and events never reach the app.
+func printInstallBanner() {
+	const (
+		bold   = "\033[1m"
+		yellow = "\033[33m"
+		dim    = "\033[2m"
+		reset  = "\033[0m"
+	)
+	fmt.Println()
+	fmt.Println(bold + yellow + "!  Pick a subdomain ad blockers won't block" + reset)
+	fmt.Println(strings.Repeat("-", 60))
+	fmt.Println("Fusionaly is served from the domain you enter next. Browsers")
+	fmt.Println("running Brave Shields, uBlock Origin, AdGuard, or any")
+	fmt.Println("EasyPrivacy-based blocklist drop requests to hosts that begin")
+	fmt.Println("with these labels, which means the tracking script loaded by")
+	fmt.Println("your visitors will fail:")
+	fmt.Println()
+	fmt.Println("  " + bold + "AVOID:" + reset + "  analytics.  tracking.  track.  stats.  metrics.")
+	fmt.Println("          telemetry.  counter.  pixel.  beacon.  collect.")
+	fmt.Println("          ads.  adserver.  tagmanager.  tags.")
+	fmt.Println()
+	fmt.Println("  " + bold + "SAFE:" + reset + "   your apex domain (example.com) or a neutral")
+	fmt.Println("          subdomain like fs., data., api., app., hub., m.,")
+	fmt.Println("          or your own brand prefix.")
+	fmt.Println()
+	fmt.Println(dim + "More: https://fusionaly.com/docs/adblockers" + reset)
+	fmt.Println(strings.Repeat("-", 60))
+	fmt.Println()
 }
 
 func printUsage() {
