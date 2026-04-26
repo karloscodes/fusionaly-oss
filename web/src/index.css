@@ -8,6 +8,8 @@
   }
   html {
     overflow-y: scroll;
+    scrollbar-width: thin;
+    scrollbar-color: gray transparent;
   }
   body {
     min-height: calc(100vh + 60px);
