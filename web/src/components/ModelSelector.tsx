@@ -1,11 +1,11 @@
 import React from "react";
+import { Check, ChevronDown } from "lucide-react";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // Curated short list of OpenRouter model ids. The server (internal/ai) threads
 // the same curated list in via the `models` prop; this acts as the fallback.
@@ -29,13 +29,14 @@ interface ModelSelectorProps {
   value: string;
   onChange: (model: ModelId) => void;
   disabled?: boolean;
-  /** Live OpenRouter model ids from the server. Falls back to AI_MODELS. */
+  /** Model ids from the server. Falls back to AI_MODELS. */
   models?: string[];
 }
 
-// Use the live OpenRouter catalog when provided, otherwise the static fallback.
-// Renders the project's standard shadcn Select so the picker is consistent with
-// the rest of the app's dropdowns.
+// Looks like the app's Select trigger, but uses a DropdownMenu with
+// modal={false}. Radix Select has no way to disable its scroll-lock, which
+// shifts centered page content sideways on scrollable pages; the non-modal
+// DropdownMenu (same as the home feed) avoids that.
 export const ModelSelector: React.FC<ModelSelectorProps> = ({
   value,
   onChange,
@@ -46,17 +47,32 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   const selected = value || DEFAULT_MODEL;
 
   return (
-    <Select value={selected} onValueChange={onChange} disabled={disabled}>
-      <SelectTrigger className="h-8 w-[220px] text-sm border-black/20 focus:border-black">
-        <SelectValue placeholder={DEFAULT_MODEL} />
-      </SelectTrigger>
-      <SelectContent className="border-black">
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger asChild disabled={disabled}>
+        <button
+          type="button"
+          disabled={disabled}
+          className="flex h-8 w-[220px] items-center justify-between rounded-md border border-black/20 bg-white px-3 text-sm focus:border-black focus:outline-none disabled:opacity-50"
+        >
+          <span className="truncate">{selected}</span>
+          <ChevronDown className="h-4 w-4 opacity-50 shrink-0" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="start"
+        className="w-[220px] max-h-72 overflow-y-auto border-black"
+      >
         {options.map((model) => (
-          <SelectItem key={model} value={model} className="text-sm">
-            {model}
-          </SelectItem>
+          <DropdownMenuItem
+            key={model}
+            onClick={() => onChange(model)}
+            className="flex items-center justify-between text-sm"
+          >
+            <span className="truncate">{model}</span>
+            {model === selected && <Check className="h-4 w-4 shrink-0" />}
+          </DropdownMenuItem>
         ))}
-      </SelectContent>
-    </Select>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 };
