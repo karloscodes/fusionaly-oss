@@ -280,17 +280,24 @@ function VisitorCalendar({
   // that month first appears. We record a label whenever the month changes so
   // no month is ever skipped.
   const monthLabels: { label: string; weekIndex: number }[] = [];
-  let lastMonth = -1;
+  let lastMonth = -1; // last *labeled* month
+  let lastLabelCol = -100; // column of the last label
+  const minLabelGap = 3; // weeks between labels so they don't overlap
   weeks.forEach((week, weekIndex) => {
     const firstValidDay = week.find((d) => d.count >= 0);
     if (firstValidDay) {
       const month = firstValidDay.date.getMonth();
-      if (month !== lastMonth) {
+      // Label the first week of a new month that's far enough from the previous
+      // label. Keeping lastMonth as the last *labeled* month means a month whose
+      // first week is too close still gets labeled a week or two later (never
+      // dropped), while adjacent labels never overlap.
+      if (month !== lastMonth && weekIndex - lastLabelCol >= minLabelGap) {
         monthLabels.push({
           label: firstValidDay.date.toLocaleDateString("en-US", { month: "short" }),
           weekIndex,
         });
         lastMonth = month;
+        lastLabelCol = weekIndex;
       }
     }
   });
