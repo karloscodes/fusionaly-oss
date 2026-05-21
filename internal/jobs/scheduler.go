@@ -28,11 +28,13 @@ type Scheduler struct {
 	eventProcessor   *EventProcessorJob
 	cleanupJob       *CleanupJob
 	geoLiteUpdater   *GeoLiteUpdaterJob
+	feedJob          *FeedJob
 
 	// Tickers for each job type
 	eventTicker   *time.Ticker
 	cleanupTicker *time.Ticker
 	geoLiteTicker *time.Ticker
+	feedTicker    *time.Ticker
 }
 
 func NewScheduler(dbManager *database.DBManager, logger *slog.Logger) (*Scheduler, error) {
@@ -53,6 +55,7 @@ func NewScheduler(dbManager *database.DBManager, logger *slog.Logger) (*Schedule
 	s.eventProcessor = NewEventProcessorJob(dbManager, logger)
 	s.cleanupJob = NewCleanupJob(dbManager, logger, cfg)
 	s.geoLiteUpdater = NewGeoLiteUpdaterJob(dbManager, logger, cfg)
+	s.feedJob = NewFeedJob(dbManager, logger)
 
 	return s, nil
 }
@@ -109,6 +112,9 @@ func (s *Scheduler) Start() error {
 
 	// Start GeoLite updater job
 	s.startGeoLiteUpdaterJob()
+
+	// Start activity feed detection job
+	s.startFeedJob()
 
 	s.logger.Info("Background jobs started",
 		slog.Bool("enabled", s.enabled),
@@ -192,6 +198,30 @@ func (s *Scheduler) startGeoLiteUpdaterJob() {
 	}()
 }
 
+func (s *Scheduler) startFeedJob() {
+	// The feed analyzes yesterday's data, so daily detection is enough.
+	// Matches the cleanup/GeoLite jobs rather than the high-frequency event processor.
+	interval := 24 * time.Hour
+	s.logger.Info("Starting feed detection job", slog.Duration("interval", interval))
+	s.feedTicker = time.NewTicker(interval)
+
+	go func() {
+		// Run initial detection on startup
+		s.logger.Info("Running initial feed detection...")
+		s.executeJobSafely("feed", s.feedJob.Run)
+
+		for {
+			select {
+			case <-s.feedTicker.C:
+				s.executeJobSafely("feed", s.feedJob.Run)
+			case <-s.ctx.Done():
+				s.logger.Info("Feed detection job stopped")
+				return
+			}
+		}
+	}()
+}
+
 // Stop halts all background jobs.
 // Implements cartridge.BackgroundWorker interface.
 func (s *Scheduler) Stop() {
@@ -206,6 +236,9 @@ func (s *Scheduler) Stop() {
 	}
 	if s.geoLiteTicker != nil {
 		s.geoLiteTicker.Stop()
+	}
+	if s.feedTicker != nil {
+		s.feedTicker.Stop()
 	}
 
 	s.cancel()

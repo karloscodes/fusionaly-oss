@@ -10,6 +10,7 @@ import (
 	"fusionaly/internal/annotations"
 	"fusionaly/internal/config"
 	"fusionaly/internal/events"
+	"fusionaly/internal/feed"
 	"fusionaly/internal/onboarding"
 	"github.com/karloscodes/cartridge/cache"
 	"fusionaly/internal/settings"
@@ -76,6 +77,8 @@ func (dm *DBManager) MigrateDatabase() error {
 			&analytics.FlowTransitionStat{},
 			&onboarding.OnboardingSession{},
 			&annotations.Annotation{},
+			&feed.FeedItem{},
+			&feed.FeedBaseline{},
 		)
 	})
 	if err != nil {
