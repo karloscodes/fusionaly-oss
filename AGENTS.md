@@ -14,6 +14,8 @@ This is the **canonical source** for all AI coding assistants (Claude, Copilot, 
 
 > **When in doubt, choose the simplest path that works — and that you can maintain alone.**
 
+**Tech & conventions reference:** the `fusionaly-tech` skill (`.claude/skills/fusionaly-tech/SKILL.md`) covers how this codebase uses cartridge (the framework does the heavy lifting), matcha (the manager), Phoenix Contexts, lifecycle/shutdown, and the test conventions. Read it before adding routes, contexts, jobs, or tests.
+
 ---
 
 ## Architecture: Phoenix Contexts Pattern
