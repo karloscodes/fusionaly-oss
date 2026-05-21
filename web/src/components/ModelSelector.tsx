@@ -1,4 +1,11 @@
 import React from "react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // Static fallback list of OpenRouter model ids. The live catalog is fetched on
 // the server (internal/ai) and threaded in via the `models` prop, so this only
@@ -30,8 +37,8 @@ interface ModelSelectorProps {
 }
 
 // Use the live OpenRouter catalog when provided, otherwise the static fallback.
-// An input + <datalist> means the list is always current AND the user can type
-// any exact id OpenRouter offers (e.g. a specific kimi/claude version).
+// Renders the project's standard shadcn Select so the picker is consistent with
+// the rest of the app's dropdowns.
 export const ModelSelector: React.FC<ModelSelectorProps> = ({
   value,
   onChange,
@@ -39,26 +46,20 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   models,
 }) => {
   const options = models && models.length > 0 ? models : [...AI_MODELS];
-  const listId = React.useId();
+  const selected = value || DEFAULT_MODEL;
 
   return (
-    <>
-      <input
-        type="text"
-        list={listId}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={disabled}
-        placeholder={DEFAULT_MODEL}
-        spellCheck={false}
-        autoComplete="off"
-        className="h-8 w-[220px] text-xs border border-black/20 focus:border-black focus:ring-1 focus:ring-black focus:outline-none rounded-md px-2 bg-white disabled:bg-black/5 disabled:cursor-not-allowed"
-      />
-      <datalist id={listId}>
+    <Select value={selected} onValueChange={onChange} disabled={disabled}>
+      <SelectTrigger className="h-8 w-[220px] text-sm border-black/20 focus:border-black">
+        <SelectValue placeholder={DEFAULT_MODEL} />
+      </SelectTrigger>
+      <SelectContent className="border-black">
         {options.map((model) => (
-          <option key={model} value={model} />
+          <SelectItem key={model} value={model} className="text-sm">
+            {model}
+          </SelectItem>
         ))}
-      </datalist>
-    </>
+      </SelectContent>
+    </Select>
   );
 };
