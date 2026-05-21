@@ -186,23 +186,6 @@ func TestOpenAIKeySetting(t *testing.T) {
 }
 
 func TestAIProviderSettings(t *testing.T) {
-	t.Run("base URL defaults and saves", func(t *testing.T) {
-		dbManager, _ := testsupport.SetupTestDBManager(t)
-		db := dbManager.GetConnection()
-		settings.SetupDefaultSettings(db)
-
-		assert.Equal(t, "https://openrouter.ai/api/v1", settings.GetAIBaseURL(db),
-			"GetAIBaseURL returns the OpenRouter default when set up")
-
-		require.NoError(t, settings.SaveAIBaseURL(db, "  https://api.openai.com/v1  "))
-		assert.Equal(t, "https://api.openai.com/v1", settings.GetAIBaseURL(db),
-			"SaveAIBaseURL trims and stores the value")
-
-		require.NoError(t, settings.SaveAIBaseURL(db, "   "))
-		assert.Equal(t, "https://openrouter.ai/api/v1", settings.GetAIBaseURL(db),
-			"saving an empty base URL falls back to the OpenRouter default")
-	})
-
 	t.Run("model defaults and saves", func(t *testing.T) {
 		dbManager, _ := testsupport.SetupTestDBManager(t)
 		db := dbManager.GetConnection()

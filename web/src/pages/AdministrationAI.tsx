@@ -3,6 +3,7 @@ import { AdministrationLayout } from "@/components/administration-layout"
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { FlashMessageDisplay } from "@/components/ui/flash-message"
 import { Key, ExternalLink, CheckCircle2 } from "lucide-react"
 import type { FlashMessage } from "@/types"
@@ -14,22 +15,21 @@ interface Setting {
 
 interface AdministrationAIProps {
   settings?: Setting[]
+  available_models?: string[]
   flash?: FlashMessage
   error?: string
 }
 
-export function AdministrationAI({ settings, flash, error }: AdministrationAIProps) {
+export function AdministrationAI({ settings, available_models, flash, error }: AdministrationAIProps) {
   const openaiSetting = settings?.find((s) => s.key === "openai_api_key")
   const initialApiKey = openaiSetting?.value || ""
   const hasApiKey = initialApiKey.trim().startsWith("sk-") || initialApiKey.startsWith("*")
 
-  const initialBaseURL =
-    settings?.find((s) => s.key === "ai_base_url")?.value || ""
+  const models = available_models ?? []
   const initialModel = settings?.find((s) => s.key === "ai_model")?.value || ""
 
   const settingsForm = useForm({
     openai_api_key: initialApiKey,
-    ai_base_url: initialBaseURL,
     ai_model: initialModel,
   })
 
@@ -126,42 +126,31 @@ export function AdministrationAI({ settings, flash, error }: AdministrationAIPro
               </div>
               <div>
                 <label
-                  htmlFor="ai_base_url"
-                  className="block text-sm font-medium mb-1.5"
-                >
-                  AI base URL
-                </label>
-                <Input
-                  id="ai_base_url"
-                  name="ai_base_url"
-                  type="text"
-                  placeholder="https://openrouter.ai/api/v1"
-                  value={settingsForm.data.ai_base_url}
-                  onChange={(e) => settingsForm.setData("ai_base_url", e.target.value)}
-                  disabled={settingsForm.processing}
-                  className="w-full border-black/20 focus:border-black focus:ring-black rounded-md"
-                />
-                <p className="text-xs text-black/50 mt-1.5">
-                  OpenRouter by default. Any OpenAI-compatible endpoint also works.
-                </p>
-              </div>
-              <div>
-                <label
                   htmlFor="ai_model"
                   className="block text-sm font-medium mb-1.5"
                 >
                   Model
                 </label>
-                <Input
-                  id="ai_model"
-                  name="ai_model"
-                  type="text"
-                  placeholder="openai/gpt-4o-mini"
+                <Select
                   value={settingsForm.data.ai_model}
-                  onChange={(e) => settingsForm.setData("ai_model", e.target.value)}
+                  onValueChange={(value) => settingsForm.setData("ai_model", value)}
                   disabled={settingsForm.processing}
-                  className="w-full border-black/20 focus:border-black focus:ring-black rounded-md"
-                />
+                >
+                  <SelectTrigger
+                    id="ai_model"
+                    name="ai_model"
+                    className="w-full border-black/20 focus:border-black focus:ring-black rounded-md"
+                  >
+                    <SelectValue placeholder="openai/gpt-4o-mini" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {models.map((model) => (
+                      <SelectItem key={model} value={model}>
+                        {model}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </CardContent>
             <CardFooter className="flex justify-end border-t pt-4">

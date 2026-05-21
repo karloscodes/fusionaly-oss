@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -19,6 +20,11 @@ import (
 
 	"fusionaly/internal/settings"
 )
+
+// OpenRouterBaseURL is the AI provider base URL. It is intentionally a code
+// constant and not user-configurable. OpenRouter is OpenAI-API-compatible and
+// exposes all models (including OpenAI's) via a single key.
+const OpenRouterBaseURL = "https://openrouter.ai/api/v1"
 
 // OpenAIRequest represents the request structure for OpenAI API
 type OpenAIRequest struct {
@@ -143,10 +149,16 @@ var AvailableModels = []string{"openai/gpt-4o-mini", "openai/gpt-4o", "anthropic
 // DefaultModel is the default model for Ask AI
 const DefaultModel = "openai/gpt-4o-mini"
 
-// chatCompletionsURL builds the chat completions endpoint from the configured
-// AI base URL. Works with OpenAI or any OpenAI-compatible API (e.g. OpenRouter).
-func chatCompletionsURL(db *gorm.DB) string {
-	return strings.TrimRight(settings.GetAIBaseURL(db), "/") + "/chat/completions"
+// chatCompletionsURL builds the chat completions endpoint from the hardcoded
+// OpenRouter base URL. The FUSIONALY_AI_BASE_URL env var is a test-only hook
+// (e.g. to point at a local mock server) and is intentionally not exposed in
+// the UI or stored in the database.
+func chatCompletionsURL() string {
+	base := os.Getenv("FUSIONALY_AI_BASE_URL")
+	if base == "" {
+		base = OpenRouterBaseURL
+	}
+	return strings.TrimRight(base, "/") + "/chat/completions"
 }
 
 // generateCacheKey creates a unique key for a question + website + model combination
@@ -338,7 +350,7 @@ func GetInvestigationFromOpenAI(ctx context.Context, db *gorm.DB, question, open
 	}
 
 	client := &http.Client{Timeout: 90 * time.Second}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, chatCompletionsURL(db), bytes.NewBuffer(requestBody))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, chatCompletionsURL(), bytes.NewBuffer(requestBody))
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to create HTTP request: %w", err)
 	}
@@ -585,7 +597,7 @@ func callOpenAIForQuery(ctx context.Context, db *gorm.DB, openAIApiKey, model st
 	}
 
 	client := &http.Client{Timeout: 60 * time.Second}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, chatCompletionsURL(db), bytes.NewBuffer(requestBody))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, chatCompletionsURL(), bytes.NewBuffer(requestBody))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create HTTP request: %w", err)
 	}
@@ -1114,7 +1126,7 @@ Rules:
 	}
 
 	client := &http.Client{Timeout: 30 * time.Second}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, chatCompletionsURL(db), bytes.NewBuffer(requestBody))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, chatCompletionsURL(), bytes.NewBuffer(requestBody))
 	if err != nil {
 		return "", fmt.Errorf("failed to create HTTP request: %w", err)
 	}

@@ -8,6 +8,7 @@ import (
 	"github.com/karloscodes/cartridge/flash"
 	"github.com/karloscodes/cartridge/inertia"
 
+	"fusionaly/internal/ai"
 	"fusionaly/internal/settings"
 )
 
@@ -29,17 +30,14 @@ func AISettingsPageAction(ctx *cartridge.Context) error {
 			"value": maskedKey,
 		},
 		{
-			"key":   "ai_base_url",
-			"value": settings.GetAIBaseURL(db),
-		},
-		{
 			"key":   "ai_model",
 			"value": settings.GetAIModel(db),
 		},
 	}
 
 	return inertia.RenderPage(ctx.Ctx, "AdministrationAI", inertia.Props{
-		"settings": settingsData,
+		"settings":         settingsData,
+		"available_models": ai.AvailableModels,
 	})
 }
 
@@ -51,28 +49,19 @@ func AISettingsFormAction(ctx *cartridge.Context) error {
 	// which sends a JSON body that FormValue can't read. Try form-encoded first,
 	// then fall back to the Inertia JSON body (same as the geolite form).
 	openAIKey := strings.TrimSpace(ctx.FormValue("openai_api_key"))
-	aiBaseURL := strings.TrimSpace(ctx.FormValue("ai_base_url"))
 	aiModel := strings.TrimSpace(ctx.FormValue("ai_model"))
-	if openAIKey == "" && aiBaseURL == "" && aiModel == "" {
+	if openAIKey == "" && aiModel == "" {
 		var body struct {
 			OpenAIKey string `json:"openai_api_key"`
-			AIBaseURL string `json:"ai_base_url"`
 			AIModel   string `json:"ai_model"`
 		}
 		if err := ctx.BodyParser(&body); err == nil {
 			openAIKey = strings.TrimSpace(body.OpenAIKey)
-			aiBaseURL = strings.TrimSpace(body.AIBaseURL)
 			aiModel = strings.TrimSpace(body.AIModel)
 		}
 	}
 
-	// Persist provider settings (base URL + model). SaveAIBaseURL stores the
-	// default when blank; SaveAIModel trims and stores as-is.
-	if err := settings.SaveAIBaseURL(db, aiBaseURL); err != nil {
-		ctx.Logger.Error("Failed to save AI base URL")
-		flash.SetFlash(ctx.Ctx, "error", "Failed to save AI settings")
-		return ctx.Redirect("/admin/administration/ai", fiber.StatusFound)
-	}
+	// Persist the selected model. SaveAIModel trims and stores as-is.
 	if err := settings.SaveAIModel(db, aiModel); err != nil {
 		ctx.Logger.Error("Failed to save AI model")
 		flash.SetFlash(ctx.Ctx, "error", "Failed to save AI settings")
