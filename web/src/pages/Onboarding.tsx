@@ -196,6 +196,13 @@ export default function Onboarding() {
       </p>
 
       <p className="text-xs text-gray-500">
+        Ask AI is optional and uses your own key. It never sends your visitors'
+        data &mdash; only your database schema and the questions you type are sent
+        to the AI provider (OpenAI, or any OpenAI-compatible endpoint like
+        OpenRouter).
+      </p>
+
+      <p className="text-xs text-gray-500">
         This step is optional. You can configure AI later in Administration &rarr; AI.
       </p>
 

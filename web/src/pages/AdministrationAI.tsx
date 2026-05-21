@@ -23,8 +23,14 @@ export function AdministrationAI({ settings, flash, error }: AdministrationAIPro
   const initialApiKey = openaiSetting?.value || ""
   const hasApiKey = initialApiKey.trim().startsWith("sk-") || initialApiKey.startsWith("*")
 
+  const initialBaseURL =
+    settings?.find((s) => s.key === "ai_base_url")?.value || ""
+  const initialModel = settings?.find((s) => s.key === "ai_model")?.value || ""
+
   const settingsForm = useForm({
     openai_api_key: initialApiKey,
+    ai_base_url: initialBaseURL,
+    ai_model: initialModel,
   })
 
   const currentHasApiKey = settingsForm.data.openai_api_key.trim().startsWith("sk-") ||
@@ -111,6 +117,52 @@ export function AdministrationAI({ settings, flash, error }: AdministrationAIPro
                 <p className="text-xs text-black/50 mt-1.5">
                   Your API key is stored securely and only used for AI features.
                 </p>
+                <p className="text-xs text-black/50 mt-1.5">
+                  Ask AI is optional and uses your own key. It never sends your
+                  visitors' data — only your database schema and the questions
+                  you type are sent to the AI provider (OpenAI, or any
+                  OpenAI-compatible endpoint like OpenRouter).
+                </p>
+              </div>
+              <div>
+                <label
+                  htmlFor="ai_base_url"
+                  className="block text-sm font-medium mb-1.5"
+                >
+                  AI base URL
+                </label>
+                <Input
+                  id="ai_base_url"
+                  name="ai_base_url"
+                  type="text"
+                  placeholder="https://api.openai.com/v1"
+                  value={settingsForm.data.ai_base_url}
+                  onChange={(e) => settingsForm.setData("ai_base_url", e.target.value)}
+                  disabled={settingsForm.processing}
+                  className="w-full border-black/20 focus:border-black focus:ring-black rounded-md"
+                />
+                <p className="text-xs text-black/50 mt-1.5">
+                  OpenAI by default. Point this at any OpenAI-compatible API,
+                  e.g. OpenRouter (https://openrouter.ai/api/v1).
+                </p>
+              </div>
+              <div>
+                <label
+                  htmlFor="ai_model"
+                  className="block text-sm font-medium mb-1.5"
+                >
+                  Model
+                </label>
+                <Input
+                  id="ai_model"
+                  name="ai_model"
+                  type="text"
+                  placeholder="gpt-4o-mini"
+                  value={settingsForm.data.ai_model}
+                  onChange={(e) => settingsForm.setData("ai_model", e.target.value)}
+                  disabled={settingsForm.processing}
+                  className="w-full border-black/20 focus:border-black focus:ring-black rounded-md"
+                />
               </div>
             </CardContent>
             <CardFooter className="flex justify-end border-t pt-4">

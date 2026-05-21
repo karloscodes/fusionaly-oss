@@ -574,7 +574,7 @@ export const Lens: React.FC = () => {
 								Add your key in AI settings to enable it.
 							</CardDescription>
 						</CardHeader>
-						<CardContent className="pb-8 flex justify-center">
+						<CardContent className="pb-8 flex flex-col items-center gap-4">
 							<Button
 								asChild
 								className="bg-black hover:bg-black/80 text-white gap-2"
@@ -584,6 +584,12 @@ export const Lens: React.FC = () => {
 									Add your OpenAI key
 								</Link>
 							</Button>
+							<p className="text-xs text-black/50 text-center max-w-md">
+								Ask AI is optional and uses your own key. It never sends your
+								visitors' data — only your database schema and the questions you
+								type are sent to the AI provider (OpenAI, or any
+								OpenAI-compatible endpoint like OpenRouter).
+							</p>
 						</CardContent>
 					</Card>
 				) : (
