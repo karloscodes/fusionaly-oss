@@ -277,12 +277,47 @@ func fetchOpenRouterModels(ctx context.Context) ([]string, error) {
 
 	ids := make([]string, 0, len(payload.Data))
 	for _, m := range payload.Data {
-		if m.ID != "" {
+		if m.ID != "" && !isNoisyModelID(m.ID) {
 			ids = append(ids, m.ID)
 		}
 	}
 	sort.Strings(ids)
 	return ids, nil
+}
+
+// datedSnapshotRe matches dated snapshot suffixes like "-2024-07-18" so the
+// picker shows the clean base id (e.g. "gpt-4o-mini") instead of every dated
+// pin OpenRouter exposes.
+var datedSnapshotRe = regexp.MustCompile(`-\d{4}-\d{2}-\d{2}`)
+
+// noisyModelSubstrings are id fragments that mark preview/experimental or
+// OpenRouter-specific variants we don't want cluttering the picker.
+var noisyModelSubstrings = []string{
+	"-preview",
+	"-beta",
+	"-alpha",
+	"-exp",
+	"-online",
+	"-search",
+}
+
+// isNoisyModelID reports whether an OpenRouter model id is a noisy variant that
+// should be hidden from the picker: dated snapshots, preview/beta/alpha/exp/
+// online/search variants, or anything carrying an OpenRouter variant suffix
+// (":free", ":nitro", ":extended", …).
+func isNoisyModelID(id string) bool {
+	if strings.Contains(id, ":") {
+		return true
+	}
+	if datedSnapshotRe.MatchString(id) {
+		return true
+	}
+	for _, frag := range noisyModelSubstrings {
+		if strings.Contains(id, frag) {
+			return true
+		}
+	}
+	return false
 }
 
 // staticModels returns a sorted copy of the hardcoded fallback list so callers
