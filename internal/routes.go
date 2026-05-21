@@ -251,4 +251,15 @@ func MountAppRoutesWithoutSession(srv *cartridge.Server) {
 	// === AGENT API KEY MANAGEMENT ===
 	srv.Get("/admin/api/agent-api-key", http.SystemAgentAPIKeyAction, adminAPIConfig)
 	srv.Post("/admin/system/agent-api-key/regenerate", http.SystemAgentAPIKeyRegenerateAction, adminConfig)
+
+	// === AI LENS API ROUTES (gated on OpenAI key, NOT a license) ===
+	// Handlers degrade gracefully when no key is configured (status reports
+	// configured:false, ask returns a 400 "not configured" message — never a 500).
+	srv.Post("/admin/api/ai/ask", http.AIAskQuestionAction, adminAPIConfig)
+	srv.Post("/admin/api/ai/save", http.AISaveQueryAction, adminAPIConfig)
+	srv.Get("/admin/api/ai/saved/:websiteId", http.AIGetSavedQueriesAction, adminAPIConfig)
+	srv.Delete("/admin/api/ai/saved/:id", http.AIDeleteSavedQueryAction, adminAPIConfig)
+	srv.Get("/admin/api/ai/status", http.AIGetStatusAction, adminAPIConfig)
+	// TODO(Phase 5): AI settings page (Inertia "AdministrationAI") + the GET/POST
+	// /admin/administration/ai routes are wired with the frontend in Phase 5.
 }
