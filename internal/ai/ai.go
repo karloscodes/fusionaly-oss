@@ -343,7 +343,7 @@ func GetInvestigationFromOpenAI(ctx context.Context, db *gorm.DB, question, open
 	if err != nil {
 		return "", nil, fmt.Errorf("HTTP request to OpenAI failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		var errResponse OpenAIResponse
@@ -590,7 +590,7 @@ func callOpenAIForQuery(ctx context.Context, openAIApiKey, model string, message
 	if err != nil {
 		return nil, fmt.Errorf("HTTP request to OpenAI failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Parse rate limit headers
 	rateLimit := &RateLimit{}
@@ -753,7 +753,7 @@ func getDatabaseSchema(db *gorm.DB) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		var schema string
@@ -841,7 +841,7 @@ func executeScalarQuery(db *gorm.DB, query string) ([]map[string]interface{}, er
 	if err != nil {
 		return nil, fmt.Errorf("scalar query execution failed: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	columns, err := rows.Columns()
 	if err != nil {
@@ -888,7 +888,7 @@ func executeStandardQuery(db *gorm.DB, query string) ([]map[string]interface{}, 
 	if err != nil {
 		return nil, fmt.Errorf("query execution failed: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	columns, err := rows.Columns()
 	if err != nil {
@@ -1099,7 +1099,7 @@ Rules:
 	if err != nil {
 		return "", fmt.Errorf("HTTP request to OpenAI failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("OpenAI API returned non-200 status: %d", resp.StatusCode)
