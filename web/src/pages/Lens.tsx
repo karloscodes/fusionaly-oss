@@ -10,7 +10,7 @@ import { WebsiteLayout } from "@/components/website-layout";
 import { formatNumber, cn } from "@/lib/utils";
 import { VegaChart } from "@/components/VegaChart";
 import { AskAIChat } from "@/components/AskAIChat";
-import { ModelSelector } from "@/components/ModelSelector";
+import { ModelSelector, DEFAULT_MODEL } from "@/components/ModelSelector";
 import { Trash2, Edit3, Copy, RefreshCw, Loader2, Key } from "lucide-react";
 import type { FlashMessage } from "@/types";
 import {
@@ -148,7 +148,7 @@ export const Lens: React.FC = () => {
 	const editForm = useForm({
 		id: 0,
 		title: "",
-		model: "gpt-5.2",
+		model: DEFAULT_MODEL as string,
 		website_id: websiteId > 0 ? websiteId : null as number | null,
 	});
 
@@ -170,7 +170,7 @@ export const Lens: React.FC = () => {
 	// Auto-submit state for URL-based questions
 	const [shouldAutoSubmit, setShouldAutoSubmit] = useState(false);
 	// Model selection state
-	const [selectedModel, setSelectedModel] = useState("gpt-5.2");
+	const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_MODEL);
 
 	// Read question from URL parameter on mount (for Insights → Lens flow)
 	useEffect(() => {
@@ -206,7 +206,7 @@ export const Lens: React.FC = () => {
 		editForm.setData({
 			id: query.id,
 			title: query.title,
-			model: query.model || "gpt-5.2",
+			model: query.model || DEFAULT_MODEL,
 			website_id: websiteId > 0 ? websiteId : null,
 		});
 		setTimeout(() => editInputRef.current?.focus(), 0);
@@ -708,7 +708,7 @@ export const Lens: React.FC = () => {
 													{query.title}
 												</h3>
 												<div className="flex items-center gap-3 text-xs text-black/60">
-													<span>{query.model === "gpt-4.1" ? "Fast" : query.model === "gpt-5.2-thinking" ? "Deep" : "Smart"}</span>
+													<span>{query.model || DEFAULT_MODEL}</span>
 													<span>•</span>
 													<span>{new Date(query.created_at).toLocaleDateString()}</span>
 													{query.vega_spec && (

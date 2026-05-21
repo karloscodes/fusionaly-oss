@@ -1,15 +1,31 @@
 import React from "react";
-import { Sparkles, Zap, Brain } from "lucide-react";
-import { cn } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-// Available AI models (Jan 2026)
+// Available AI models for Ask (Lens). These are OpenRouter model ids and must
+// match internal/ai/ai.go AvailableModels. They change over time — verify
+// against https://openrouter.ai/models.
 export const AI_MODELS = [
-  { id: "gpt-4.1", label: "Fast", icon: Zap },
-  { id: "gpt-5.2", label: "Smart", icon: Sparkles },
-  { id: "gpt-5.2-thinking", label: "Deep", icon: Brain },
+  "openai/gpt-4o-mini",
+  "openai/gpt-4.1-mini",
+  "openai/gpt-4o",
+  "anthropic/claude-3.5-haiku",
+  "anthropic/claude-3.7-sonnet",
+  "anthropic/claude-sonnet-4",
+  "deepseek/deepseek-chat",
+  "deepseek/deepseek-r1",
+  "moonshotai/kimi-k2",
+  "minimax/minimax-01",
 ] as const;
 
-export type ModelId = typeof AI_MODELS[number]["id"];
+export type ModelId = (typeof AI_MODELS)[number];
+
+export const DEFAULT_MODEL: ModelId = "openai/gpt-4o-mini";
 
 interface ModelSelectorProps {
   value: string;
@@ -23,29 +39,21 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   disabled = false,
 }) => {
   return (
-    <div className="flex items-center gap-1 p-0.5 bg-black/5 rounded-lg w-fit">
-      {AI_MODELS.map((m) => {
-        const Icon = m.icon;
-        const isSelected = value === m.id;
-        return (
-          <button
-            key={m.id}
-            type="button"
-            onClick={() => onChange(m.id)}
-            disabled={disabled}
-            className={cn(
-              "flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md transition-all",
-              isSelected
-                ? "bg-white text-black shadow-sm"
-                : "text-black/60 hover:text-black",
-              disabled && "opacity-50 cursor-not-allowed"
-            )}
-          >
-            <Icon className="h-3 w-3" />
-            <span>{m.label}</span>
-          </button>
-        );
-      })}
-    </div>
+    <Select
+      value={value}
+      onValueChange={(v) => onChange(v as ModelId)}
+      disabled={disabled}
+    >
+      <SelectTrigger className="h-8 w-[220px] text-xs border-black/20 focus:border-black focus:ring-black rounded-md">
+        <SelectValue placeholder={DEFAULT_MODEL} />
+      </SelectTrigger>
+      <SelectContent>
+        {AI_MODELS.map((model) => (
+          <SelectItem key={model} value={model} className="text-xs">
+            {model}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 };

@@ -2,7 +2,7 @@ import React, { useState, FormEvent, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Send, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ModelSelector, ModelId } from "./ModelSelector";
+import { ModelSelector, ModelId, DEFAULT_MODEL } from "./ModelSelector";
 
 interface AskAIChatProps {
   onSubmit: (question: string, websiteId: number, model: string) => void | Promise<void>;
@@ -64,7 +64,7 @@ export const AskAIChat: React.FC<AskAIChatProps> = ({
   onSubmit,
   isLoading,
   websiteId,
-  selectedModel = "gpt-5.2",
+  selectedModel = DEFAULT_MODEL,
   onModelChange,
   aiResult,
   onSaveResult,
