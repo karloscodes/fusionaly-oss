@@ -18,19 +18,21 @@ interface OnboardingProps {
   [key: string]: unknown;
 }
 
-type Step = 'user_account' | 'password' | 'geolite' | 'completed';
+type Step = 'user_account' | 'password' | 'geolite' | 'openai' | 'completed';
 
 const stepNames: Record<Step, string> = {
   user_account: 'User Account',
   password: 'Password Setup',
   geolite: 'Location Data',
+  openai: 'AI Configuration',
   completed: 'Complete'
 };
 
 const stepProgress: Record<Step, number> = {
-  user_account: 25,
-  password: 50,
-  geolite: 75,
+  user_account: 20,
+  password: 40,
+  geolite: 60,
+  openai: 80,
   completed: 100
 };
 
@@ -167,6 +169,47 @@ export default function Onboarding() {
     </form>
   );
 
+  const renderOpenAIStep = () => (
+    <form action="/setup/openai" method="POST" className="space-y-4">
+      <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+        <h4 className="font-medium text-purple-900 mb-2">AI-Powered Analytics (Optional)</h4>
+        <p className="text-sm text-purple-800">
+          Add an OpenAI API key to ask questions about your analytics data in natural language.
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="openai_key">OpenAI API Key</Label>
+        <Input
+          id="openai_key"
+          type="password"
+          name="openai_key"
+          placeholder="sk-..."
+        />
+      </div>
+
+      <p className="text-sm text-gray-600">
+        Get an API key at{' '}
+        <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+          platform.openai.com
+        </a>
+      </p>
+
+      <p className="text-xs text-gray-500">
+        This step is optional. You can configure AI later in Administration &rarr; AI.
+      </p>
+
+      <div className="flex gap-2">
+        <Button type="submit" name="action" value="skip" variant="outline" className="flex-1">
+          Skip for Now
+        </Button>
+        <Button type="submit" name="action" value="save" className="flex-1">
+          Save & Continue
+        </Button>
+      </div>
+    </form>
+  );
+
   const renderCompletedStep = () => (
     <div className="text-center space-y-4">
       <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
@@ -193,6 +236,8 @@ export default function Onboarding() {
         return renderPasswordStep();
       case 'geolite':
         return renderGeoLiteStep();
+      case 'openai':
+        return renderOpenAIStep();
       case 'completed':
         return renderCompletedStep();
       default:
@@ -201,7 +246,7 @@ export default function Onboarding() {
   };
 
   const getStepNumber = () => {
-    const steps: Step[] = ['user_account', 'password', 'geolite', 'completed'];
+    const steps: Step[] = ['user_account', 'password', 'geolite', 'openai', 'completed'];
     return steps.indexOf(currentStep) + 1;
   };
 
@@ -219,7 +264,7 @@ export default function Onboarding() {
               <div>
                 <CardTitle className="text-lg">{stepNames[currentStep]}</CardTitle>
                 <CardDescription>
-                  Step {getStepNumber()} of 4
+                  Step {getStepNumber()} of 5
                 </CardDescription>
               </div>
               <div className="text-right text-sm text-gray-500">
