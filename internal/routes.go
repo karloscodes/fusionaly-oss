@@ -205,7 +205,10 @@ func MountAppRoutesWithoutSession(srv *cartridge.Server) {
 	srv.Post("/logout", http.LogoutAction)
 
 	// === PROTECTED ADMIN ROUTES ===
-	srv.Get("/admin", http.WebsitesIndexAction, adminConfig)
+	// Home is the activity feed (your sites + what's new). The bare websites
+	// list remains reachable at /admin/websites.
+	srv.Get("/admin", http.HomeFeedAction, adminConfig)
+	srv.Get("/admin/websites", http.WebsitesIndexAction, adminConfig)
 
 	srv.Get("/admin/websites/new", http.WebsiteNewPageAction, adminConfig)
 	srv.Post("/admin/websites", http.WebsiteCreateAction, adminConfig)
