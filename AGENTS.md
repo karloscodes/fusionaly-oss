@@ -167,11 +167,10 @@ All pages MUST use Inertia.js patterns. No exceptions. No fetch() API calls for 
    - React components use `usePage()` to access props
    - Consistent component library (shadcn/ui)
 
-2. **FORMS**: PRG Pattern (POST → Redirect → GET)
-   - All forms use HTML `<form action="..." method="POST">`
-   - Server validates, sets flash message, redirects
-   - Flash messages displayed via `props.flash`
-   - NO fetch() or JSON API calls for form submissions
+2. **FORMS**: vanilla Inertia protocol + PRG (POST → Redirect → GET)
+   - The frontend uses Inertia endpoints and the **vanilla Inertia protocol**: submit with `useForm().post()` / `router.post()`, NOT raw `fetch()`
+   - Inertia sends the body as **JSON**. Go handlers MUST read it with `ctx.BodyParser(&struct{...})`. Fiber's `ctx.FormValue` does **not** read a JSON body — relying on it alone silently drops the data (the handler may still "succeed" with empty values). Accept both if a plain HTML form also posts to the route (FormValue first, BodyParser fallback — see `SystemGeoLiteFormAction`).
+   - Server validates, sets a flash message, then redirects (PRG); flash shown via `props.flash`
    - Examples: Settings, Websites, Account, Login, Onboarding
 
 3. **DATA FLOW**:
@@ -180,7 +179,7 @@ All pages MUST use Inertia.js patterns. No exceptions. No fetch() API calls for 
    - React receives via `usePage<Props>()`
    - NO client-side data fetching on page load
 
-4. **NAVIGATION**: Inertia Link or HTML forms
+4. **NAVIGATION**: Inertia `<Link>` / `router.visit()`
    - Use Inertia's `<Link>` for navigation
    - Full page transitions handled by Inertia
    - Progress bar shown automatically
@@ -188,20 +187,13 @@ All pages MUST use Inertia.js patterns. No exceptions. No fetch() API calls for 
 ### What NOT to do
 
 ```tsx
-// ❌ BAD: Using fetch() for data
-const handleSubmit = async () => {
-  const response = await fetch('/api/some-endpoint', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  });
-  const result = await response.json();
-};
+// ❌ BAD: raw fetch + JSON.parse — bypasses the Inertia protocol
+const res = await fetch('/api/some-endpoint', { method: 'POST', body: JSON.stringify(data) });
+const result = await res.json();
 
-// ✅ GOOD: Using HTML form with PRG pattern
-<form action="/setup/user" method="POST">
-  <input name="email" type="email" />
-  <Button type="submit">Continue</Button>
-</form>
+// ✅ GOOD: vanilla Inertia protocol (sends a JSON body, gets an Inertia response)
+const form = useForm({ email: "" });
+form.post("/setup/user");   // Go handler reads it via ctx.BodyParser, then redirects (PRG)
 ```
 
 ### Server Handler Pattern

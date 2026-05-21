@@ -432,10 +432,6 @@ func GetAllSettingsForDisplay(db *gorm.DB) ([]SettingResponse, error) {
 		// Include only general settings (not per-website, except website_goals)
 		if !strings.HasPrefix(setting.Key, "website_") || setting.Key == "website_goals" {
 			value := setting.Value
-			// Mask sensitive keys for display
-			if setting.Key == "license_key" && value != "" {
-				value = strings.Repeat("*", len(value))
-			}
 			result = append(result, SettingResponse{
 				Key:   setting.Key,
 				Value: value,
