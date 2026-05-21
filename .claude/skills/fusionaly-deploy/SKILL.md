@@ -1,13 +1,17 @@
 ---
 name: fusionaly-deploy
-description: Use ONLY when explicitly invoked. Deploys Fusionaly to a new Hetzner server or an existing server, with optional hardening and Cloudflare DNS.
+description: Use ONLY when explicitly invoked. Installs Fusionaly on a server you can reach over SSH with a key. Optionally provisions a new Hetzner server or sets up Cloudflare DNS.
 ---
 
 # Deploy Fusionaly
 
-Deploy Fusionaly to a new Hetzner server or an existing server you already have. Optionally harden the server and configure Cloudflare DNS.
+Install Fusionaly on a Linux server you can reach over **SSH with a key**. The standard path: connect to a box you already have, run the installer, point your domain. Provisioning a new Hetzner server and configuring Cloudflare DNS are **optional extras** — offer them, don't assume them.
 
-**Principle:** Scan first, report status, ask before every invasive action.
+**Principles:**
+- **Key-based SSH only.** Connect with the user's existing SSH key / `ssh-agent`. Never ask for, type, or store a password — that's both the secure default and what lets the agent operate on the box cleanly. If a server only allows password auth, help set up a key first (`ssh-copy-id`); do not proceed over a password.
+- **Existing server is the default.** Any box reachable by SSH key works (Hetzner, DigitalOcean, Linode, EC2, a home server). Hetzner provisioning and Cloudflare DNS are opt-in conveniences, not the path.
+- **Avoid "analytics" in the domain.** Ad/privacy blockers (uBlock Origin, EasyPrivacy) block hostnames containing `analytics`, `tracking`, `stats`, `telemetry` — visitors' requests get dropped before they ever reach the server. When asking for the domain, steer the user to a neutral subdomain (e.g. `data.example.com` or a brandable name), never `analytics.example.com`.
+- **Scan first, report status, ask before every invasive action.**
 
 ## Flow
 
@@ -98,10 +102,12 @@ ssh-keygen -t ed25519
 
 ### Step 3b — Choose Mode
 
+Default to the existing-server path. Only offer provisioning if they don't have a box.
+
 ```
-Do you want to:
-  1. Create a new server on Hetzner
-  2. Use an existing server (any provider)
+Do you already have a server you can SSH into with a key?
+  • Yes → use it (any provider). [default]
+  • No  → I can provision one on Hetzner for you (optional).
 ```
 
 ## Phase 2: Gather Choices

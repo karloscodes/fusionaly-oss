@@ -158,6 +158,13 @@ run_installer() {
 
     # Run the installer interactively
     echo -e "${GREEN}Running Fusionaly installer...${NC}"
+    echo ""
+    echo "  Note: avoid 'analytics' in your domain (also 'tracking', 'stats',"
+    echo "  'telemetry'). Ad/privacy blockers like uBlock Origin block those"
+    echo "  hostnames, so visitor requests get dropped before reaching your server."
+    echo "  A neutral subdomain such as data.example.com is safer than"
+    echo "  analytics.example.com."
+    echo ""
     if "$BINARY_PATH" install; then
         echo -e "${GREEN}Installation complete!${NC}"
     else
