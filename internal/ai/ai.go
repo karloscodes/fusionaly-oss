@@ -105,7 +105,7 @@ type SavedQuery struct {
 	GeneratedSQL string    `json:"generated_sql" gorm:"type:text;not null"`
 	QueryType    string    `json:"query_type" gorm:"size:50;default:TABLE"`
 	VegaSpec     string    `json:"vega_spec,omitempty" gorm:"type:text"`
-	Model        string    `json:"model" gorm:"size:50;default:'gpt-4o-mini'"`
+	Model        string    `json:"model" gorm:"size:50;default:'openai/gpt-4o-mini'"`
 	Order        int       `json:"order" gorm:"default:0"`
 	CreatedAt    time.Time `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt    time.Time `json:"updated_at" gorm:"autoUpdateTime"`
@@ -128,7 +128,7 @@ type AIQueryCache struct {
 	CacheKey  string    `json:"cache_key" gorm:"uniqueIndex;size:64;not null"`
 	WebsiteID int       `json:"website_id" gorm:"index;not null"`
 	Question  string    `json:"question" gorm:"type:text;not null"`
-	Model     string    `json:"model" gorm:"size:50;default:'gpt-4o-mini'"`
+	Model     string    `json:"model" gorm:"size:50;default:'openai/gpt-4o-mini'"`
 	SQL       string    `json:"sql" gorm:"type:text;not null"`
 	QueryType string    `json:"query_type" gorm:"size:50;not null"`
 	VegaSpec  string    `json:"vega_spec,omitempty" gorm:"type:text"`
@@ -137,11 +137,11 @@ type AIQueryCache struct {
 	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
 }
 
-// Available AI models for Ask AI
-var AvailableModels = []string{"gpt-4o-mini", "gpt-4o", "gpt-4.1"}
+// Available AI models for Ask AI. OpenRouter uses provider-prefixed model ids.
+var AvailableModels = []string{"openai/gpt-4o-mini", "openai/gpt-4o", "anthropic/claude-3.5-sonnet"}
 
 // DefaultModel is the default model for Ask AI
-const DefaultModel = "gpt-4o-mini"
+const DefaultModel = "openai/gpt-4o-mini"
 
 // chatCompletionsURL builds the chat completions endpoint from the configured
 // AI base URL. Works with OpenAI or any OpenAI-compatible API (e.g. OpenRouter).

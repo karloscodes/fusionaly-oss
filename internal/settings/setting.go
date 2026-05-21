@@ -36,8 +36,8 @@ func SetupDefaultSettings(dbConn *gorm.DB) error {
 		{Key: "subdomain_tracking", Value: "{}"},
 		{Key: "website_goals", Value: "{\"goals\":{}}"},
 		{Key: KeyOpenAIKey, Value: ""},
-		{Key: KeyAIBaseURL, Value: "https://api.openai.com/v1"},
-		{Key: KeyAIModel, Value: "gpt-4o-mini"},
+		{Key: KeyAIBaseURL, Value: "https://openrouter.ai/api/v1"},
+		{Key: KeyAIModel, Value: "openai/gpt-4o-mini"},
 	}
 	err := sqlite.PerformWrite(slog.Default(), dbConn, func(tx *gorm.DB) error {
 		for _, setting := range settings {
@@ -187,10 +187,11 @@ const (
 	KeyAIModel   = "ai_model"
 )
 
-// Default AI provider values
+// Default AI provider values. OpenRouter is the default provider: it is
+// OpenAI-API-compatible and exposes all models (including OpenAI's) via one key.
 const (
-	DefaultAIBaseURL = "https://api.openai.com/v1"
-	DefaultAIModel   = "gpt-4o-mini"
+	DefaultAIBaseURL = "https://openrouter.ai/api/v1"
+	DefaultAIModel   = "openai/gpt-4o-mini"
 )
 
 // SaveOpenAIKey stores the OpenAI API key, trimming surrounding whitespace
@@ -204,7 +205,7 @@ func GetOpenAIKey(db *gorm.DB) (string, error) {
 }
 
 // GetAIBaseURL returns the configured AI base URL, falling back to the default
-// when unset or empty. Any OpenAI-compatible endpoint (e.g. OpenRouter) works.
+// (OpenRouter) when unset or empty. Any OpenAI-compatible endpoint works.
 func GetAIBaseURL(db *gorm.DB) string {
 	value, _ := GetSetting(db, KeyAIBaseURL)
 	value = strings.TrimSpace(value)

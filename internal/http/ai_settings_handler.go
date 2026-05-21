@@ -86,15 +86,9 @@ func AISettingsFormAction(ctx *cartridge.Context) error {
 	}
 
 	if openAIKey != "" {
-		// Only enforce OpenAI's "sk-" key format when pointed at OpenAI itself.
-		// Other OpenAI-compatible providers (OpenRouter, local mocks) use their
-		// own key formats.
-		usingOpenAI := strings.Contains(settings.GetAIBaseURL(db), "api.openai.com")
-		if usingOpenAI && !strings.HasPrefix(openAIKey, "sk-") {
-			flash.SetFlash(ctx.Ctx, "error", "Invalid OpenAI API key format. Key should start with 'sk-'")
-			return ctx.Redirect("/admin/administration/ai", fiber.StatusFound)
-		}
-
+		// No provider-specific key-format check: OpenRouter (the default) and
+		// other OpenAI-compatible providers use their own key formats. We only
+		// require a non-empty key, which is already guaranteed here.
 		if err := settings.SaveOpenAIKey(db, openAIKey); err != nil {
 			ctx.Logger.Error("Failed to save OpenAI API key")
 			flash.SetFlash(ctx.Ctx, "error", "Failed to save AI settings")
