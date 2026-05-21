@@ -89,6 +89,14 @@ func (dm *DBManager) MigrateDatabase() error {
 		return err
 	}
 
+	// One-time migration for installs upgrading from Fusionaly Pro: copy the
+	// OpenAI API key out of the legacy pro_settings table into OSS settings.
+	// Idempotent and a no-op on fresh installs.
+	if err := MigrateProSettings(db); err != nil {
+		dm.logger.Error("Failed to migrate Pro settings", slog.Any("error", err))
+		return err
+	}
+
 	if err := dm.CheckpointWAL("FULL"); err != nil {
 		dm.logger.Warn("Failed to checkpoint WAL after migration", slog.Any("error", err))
 	}
