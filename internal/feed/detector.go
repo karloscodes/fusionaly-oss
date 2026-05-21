@@ -109,7 +109,7 @@ func (d *Detector) detectTrafficChanges(websiteID uint, yesterday time.Time) {
 			return
 		}
 		mean = float64(weekVisitors) / 7
-		stddev = mean * 0.25 // Assume 25% variance during cold start
+		stddev = mean * ColdStartVariance // Wide cold-start variance to avoid flagging normal daily swings
 	}
 
 	// Calculate z-score and percent change for display
@@ -119,8 +119,10 @@ func (d *Detector) detectTrafficChanges(websiteID uint, yesterday time.Time) {
 		percentChange = (float64(yesterdayVisitors) - mean) / mean * 100
 	}
 
-	// Traffic spike: z-score >= 2 (statistically significant increase)
-	if isSpike, _ := SPCIsSpike(float64(yesterdayVisitors), mean, stddev); isSpike {
+	// Traffic spike: z-score >= 2 AND meaningful absolute volume.
+	// The volume floor keeps low-traffic sites quiet: a jump from 2 to 6
+	// visitors is statistically a "spike" but is not worth a feed item.
+	if isSpike, _ := SPCIsSpike(float64(yesterdayVisitors), mean, stddev); isSpike && yesterdayVisitors >= MinSpikeVisitors {
 		desc := formatChange(yesterdayVisitors, int64(mean), "visitors")
 		item := &FeedItem{
 			WebsiteID:   websiteID,
@@ -142,8 +144,9 @@ func (d *Detector) detectTrafficChanges(websiteID uint, yesterday time.Time) {
 		}
 	}
 
-	// Traffic drop: z-score <= -2 (statistically significant decrease)
-	if isDrop, _ := SPCIsDrop(float64(yesterdayVisitors), mean, stddev); isDrop {
+	// Traffic drop: z-score <= -2 AND the site normally has meaningful traffic.
+	// A site that averages a handful of visitors has nothing real to "drop".
+	if isDrop, _ := SPCIsDrop(float64(yesterdayVisitors), mean, stddev); isDrop && mean >= MinDropVisitors {
 		item := &FeedItem{
 			WebsiteID:   websiteID,
 			ItemType:    ItemTypeTrafficDrop,
@@ -178,7 +181,7 @@ func (d *Detector) detectNewReferrers(websiteID uint, yesterday time.Time) {
 		Select("hostname, SUM(visitors_count) as visitors").
 		Where("website_id = ? AND DATE(hour) = DATE(?) AND hostname != '' AND hostname != '(direct)' AND hostname != '__direct_or_unknown__'", websiteID, yesterday).
 		Group("hostname").
-		Having("visitors >= 2").
+		Having("visitors >= ?", MinReferrerVisitors).
 		Order("visitors DESC").
 		Limit(5).
 		Scan(&yesterdayRefs)
@@ -236,7 +239,7 @@ func (d *Detector) detectGoalSpikes(websiteID uint, yesterday time.Time) {
 		Select("event_name, SUM(visitors_count) as count").
 		Where("website_id = ? AND DATE(hour) = DATE(?) AND event_name IN ?", websiteID, yesterday, configuredGoals).
 		Group("event_name").
-		Having("count >= 1").
+		Having("count >= ?", MinGoalConversions).
 		Scan(&yesterdayGoals)
 
 	hourOfWeek := HourOfWeek(yesterday.Add(12 * time.Hour))
@@ -359,7 +362,7 @@ func (d *Detector) detectTrendingContent(websiteID uint, yesterday time.Time) {
 		Select("pathname, SUM(visitors_count) as visitors").
 		Where("website_id = ? AND DATE(hour) = DATE(?) AND pathname != '/'", websiteID, yesterday).
 		Group("pathname").
-		Having("visitors >= 2"). // Minimum threshold
+		Having("visitors >= ?", MinTrendingVisitors). // Absolute floor: ignore low-volume pages
 		Order("visitors DESC").
 		Limit(10).
 		Scan(&yesterdayPages)
@@ -665,7 +668,7 @@ func (d *Detector) detectDroppingPages(websiteID uint) {
 		Select("pathname, SUM(visitors_count) as prev_visitors").
 		Where("website_id = ? AND hour >= ? AND hour < ?", websiteID, firstOfTwoMonthsAgo, firstOfLastMonth).
 		Group("pathname").
-		Having("prev_visitors >= 5").
+		Having("prev_visitors >= ?", MinDroppingPageVisitors).
 		Scan(&prevMonthPages)
 
 	if len(prevMonthPages) == 0 {

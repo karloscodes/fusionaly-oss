@@ -19,6 +19,46 @@ const (
 	// Control Chart thresholds (z-scores)
 	WarningSigma  = 2.0 // 95% confidence - spike/drop detection
 	CriticalSigma = 3.0 // 99.7% confidence - severe anomaly
+
+	// ColdStartVariance is the assumed coefficient of variation (stddev/mean)
+	// before a learned baseline exists. Day-to-day analytics traffic routinely
+	// swings ±40-50% just from sampling noise. At the old 0.25 a z=2 alert
+	// fired on an ordinary +50% day — pure noise. At 0.45, a day must be about
+	// +90% (nearly double) before it counts as a spike, and about -90% before
+	// it counts as a drop. Combined with the absolute volume floors below, this
+	// keeps quiet sites quiet while still catching genuine surges.
+	ColdStartVariance = 0.45
+
+	// --- Absolute noise floors (the "stay quiet on small sites" guarantee) ---
+	// SPC is scale-free: on a 2-visitor/day site a jump to 5 is a 2.5-sigma
+	// "spike" even though nothing real happened. These floors require a minimum
+	// absolute volume before a detector is allowed to emit, independent of any
+	// z-score. They are the primary lever that keeps low-traffic sites silent.
+
+	// MinSpikeVisitors is the minimum visitors a day must have before it can be
+	// reported as a traffic spike. Below this, a "spike" is just a quiet site.
+	MinSpikeVisitors = 30
+
+	// MinDropVisitors is the minimum average a site must normally see before a
+	// quiet day is worth flagging as a drop. A site that averages a handful of
+	// visitors has nothing meaningful to "drop".
+	MinDropVisitors = 30
+
+	// MinGoalConversions is the minimum conversions before a goal spike is
+	// reported. One or two conversions is never a story.
+	MinGoalConversions = 10
+
+	// MinReferrerVisitors is the minimum visitors a brand-new source must send
+	// before it earns a feed item.
+	MinReferrerVisitors = 10
+
+	// MinTrendingVisitors is the minimum visitors a page needs in a day before
+	// it can be flagged as trending or newly popular.
+	MinTrendingVisitors = 20
+
+	// MinDroppingPageVisitors is the minimum prior-month visitors a page needs
+	// before a month-over-month drop is worth surfacing.
+	MinDroppingPageVisitors = 50
 )
 
 // HourOfWeek returns 0-167 for the current hour-of-week.

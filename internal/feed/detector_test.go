@@ -147,10 +147,12 @@ func TestDetector_TrafficDrop(t *testing.T) {
 		`, day.Add(12*time.Hour))
 	}
 
-	// Yesterday: traffic drop (50 visitors - 50% decrease)
+	// Yesterday: a genuine crash (10 visitors - 90% decrease). Under the wider
+	// cold-start variance, an ordinary -50% day is treated as normal noise; a
+	// drop has to be severe (and on a site with real traffic) to surface.
 	db.Exec(`
 		INSERT INTO site_stats (website_id, visitors, hour)
-		VALUES (1, 50, ?)
+		VALUES (1, 10, ?)
 	`, yesterday.Add(12*time.Hour))
 
 	detector := feed.NewDetector(db, testLogger())
@@ -162,7 +164,7 @@ func TestDetector_TrafficDrop(t *testing.T) {
 
 	assert.Len(t, items, 1)
 	assert.Equal(t, "Slow day", items[0].Title)
-	assert.Contains(t, items[0].Description, "50 visitors")
+	assert.Contains(t, items[0].Description, "10 visitors")
 }
 
 func TestDetector_NewReferrer(t *testing.T) {
@@ -301,7 +303,11 @@ func TestDetector_NoDuplicates(t *testing.T) {
 	assert.Equal(t, int64(1), spikeCount)
 }
 
-func TestDetector_LowTrafficSpikeDetection(t *testing.T) {
+// TestDetector_LowTrafficStaysQuiet is the low-noise guarantee: a small site
+// where traffic wobbles a bit day to day must NOT generate feed items. A jump
+// from 3 to 5 visitors is statistically a "spike" but is meaningless, so the
+// absolute volume floor (MinSpikeVisitors) must suppress it.
+func TestDetector_LowTrafficStaysQuiet(t *testing.T) {
 	db := setupTestDB(t)
 
 	db.Exec("INSERT INTO websites (id, domain) VALUES (1, 'test.com')")
@@ -309,22 +315,93 @@ func TestDetector_LowTrafficSpikeDetection(t *testing.T) {
 	now := time.Now().UTC()
 	yesterday := now.AddDate(0, 0, -1).Truncate(24 * time.Hour)
 
-	// Low traffic site: 3 visitors/day baseline
+	// Low traffic site: ~3 visitors/day baseline
 	for i := 8; i >= 2; i-- {
 		day := now.AddDate(0, 0, -i).Truncate(24 * time.Hour)
 		db.Exec(`INSERT INTO site_stats (website_id, visitors, hour) VALUES (1, 3, ?)`, day.Add(12*time.Hour))
 	}
-	// Yesterday: 5 visitors — cold start mean=3, stddev=0.75, z=(5-3)/0.75=2.67 → spike
+	// Yesterday: 5 visitors. z-score clears 2 but absolute volume (5) is below
+	// the floor — this is noise, not signal.
 	db.Exec(`INSERT INTO site_stats (website_id, visitors, hour) VALUES (1, 5, ?)`, yesterday.Add(12*time.Hour))
 
 	detector := feed.NewDetector(db, testLogger())
 	err := detector.DetectForWebsite(1)
 	require.NoError(t, err)
 
-	// Small sites now get spikes when z-score warrants it
-	var spikeCount int64
+	// No spike and no drop on a quiet site.
+	var spikeCount, dropCount int64
 	db.Model(&feed.FeedItem{}).Where("website_id = ? AND item_type = ?", 1, feed.ItemTypeTrafficSpike).Count(&spikeCount)
-	assert.Equal(t, int64(1), spikeCount)
+	db.Model(&feed.FeedItem{}).Where("website_id = ? AND item_type = ?", 1, feed.ItemTypeTrafficDrop).Count(&dropCount)
+	assert.Equal(t, int64(0), spikeCount, "low-volume spike should be suppressed by the absolute floor")
+	assert.Equal(t, int64(0), dropCount, "low-volume drop should be suppressed by the absolute floor")
+}
+
+// TestDetector_BelowThresholdActivityGeneratesNothing is the broad low-noise
+// guarantee across every detector: a genuinely small site with a handful of
+// visitors, a couple of conversions, a new low-volume referrer, and a tiny page
+// must produce ZERO feed items. The whole point is to stay silent until
+// something real happens.
+func TestDetector_BelowThresholdActivityGeneratesNothing(t *testing.T) {
+	db := setupTestDB(t)
+
+	// page_stats needed for trending detection
+	err := db.Exec(`
+		CREATE TABLE page_stats (
+			id INTEGER PRIMARY KEY,
+			website_id INTEGER NOT NULL,
+			hostname TEXT,
+			pathname TEXT,
+			page_views_count INTEGER,
+			visitors_count INTEGER,
+			entrances INTEGER,
+			exits INTEGER,
+			hour DATETIME,
+			created_at DATETIME
+		)
+	`).Error
+	require.NoError(t, err)
+
+	db.Exec("INSERT INTO websites (id, domain) VALUES (1, 'tinysite.com')")
+	db.Exec(`INSERT INTO settings (key, value) VALUES ('website_goals', '{"goals":{"1":["signup"]}}')`)
+
+	now := time.Now().UTC()
+	yesterday := now.AddDate(0, 0, -1).Truncate(24 * time.Hour)
+
+	// A week of low, slightly-varying traffic (3-6 visitors/day).
+	dailyVisitors := []int{4, 6, 3, 5, 4, 6, 5}
+	for i, v := range dailyVisitors {
+		day := now.AddDate(0, 0, -(8 - i)).Truncate(24 * time.Hour)
+		db.Exec(`INSERT INTO site_stats (website_id, visitors, hour) VALUES (1, ?, ?)`, v, day.Add(12*time.Hour))
+	}
+	// Yesterday: 8 visitors — up, but tiny in absolute terms.
+	db.Exec(`INSERT INTO site_stats (website_id, visitors, hour) VALUES (1, 8, ?)`, yesterday.Add(12*time.Hour))
+
+	// A couple of conversions yesterday (below MinGoalConversions).
+	db.Exec(`INSERT INTO event_stats (website_id, event_name, visitors_count, hour) VALUES (1, 'signup', 2, ?)`, yesterday.Add(13*time.Hour))
+
+	// A new, low-volume referrer (below MinReferrerVisitors).
+	db.Exec(`INSERT INTO ref_stats (website_id, hostname, visitors_count, hour) VALUES (1, 'news.ycombinator.com', 4, ?)`, yesterday.Add(14*time.Hour))
+
+	// A small page (below MinTrendingVisitors).
+	db.Exec(`INSERT INTO page_stats (website_id, pathname, visitors_count, hour) VALUES (1, '/blog/quiet-post', 6, ?)`, yesterday.Add(12*time.Hour))
+
+	detector := feed.NewDetector(db, testLogger())
+	err = detector.DetectForWebsite(1)
+	require.NoError(t, err)
+
+	// Nothing daily should have fired. (Monthly recaps live on different
+	// periods and aren't part of the daily-noise concern.)
+	var count int64
+	db.Model(&feed.FeedItem{}).
+		Where("website_id = ? AND item_type IN ?", 1, []feed.ItemType{
+			feed.ItemTypeTrafficSpike,
+			feed.ItemTypeTrafficDrop,
+			feed.ItemTypeGoalHit,
+			feed.ItemTypeNewReferrer,
+			feed.ItemTypeTrendingContent,
+		}).
+		Count(&count)
+	assert.Equal(t, int64(0), count, "below-threshold activity must not generate any feed items")
 }
 
 func TestDetector_ZeroTrafficNoSpike(t *testing.T) {
