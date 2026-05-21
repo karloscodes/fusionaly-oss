@@ -88,15 +88,15 @@ test.describe("Website Management Flow", () => {
 		await createWebsite(testDomain);
 		helpers.log("Test website created for list display");
 
-		// Navigate to websites list (now at /admin)
-		await helpers.navigateTo("/admin", {
+		// Navigate to the websites list (moved to /admin/websites; /admin is now the feed home)
+		await helpers.navigateTo("/admin/websites", {
 			timeout: 30000
 		});
 
 		const currentUrl = page.url();
 
 		// With websites existing, we should see the list, not be redirected to /new
-		expect(currentUrl).toContain("/admin");
+		expect(currentUrl).toContain("/admin/websites");
 		expect(currentUrl).not.toContain("/new");
 		helpers.log("Websites list page loaded correctly");
 
@@ -116,15 +116,15 @@ test.describe("Website Management Flow", () => {
 		await createWebsite(testDomain);
 		helpers.log("Test website created");
 
-		// Navigate to websites list (now at /admin)
-		await helpers.navigateTo("/admin", {
+		// Navigate to the websites list (moved to /admin/websites; /admin is now the feed home)
+		await helpers.navigateTo("/admin/websites", {
 			timeout: 30000
 		});
 
 		const currentUrl = page.url();
 
 		// With a website created, we MUST see the list, not be redirected to /new
-		expect(currentUrl).toContain("/admin");
+		expect(currentUrl).toContain("/admin/websites");
 		expect(currentUrl).not.toContain("/new");
 		helpers.log("Websites list displayed");
 
@@ -206,12 +206,11 @@ test.describe("Website Management Flow", () => {
 
 		const navigationTests = [
 			{
-				path: "/admin",
+				path: "/admin/websites",
 				name: "Websites List",
 				validation: async () => {
 					const url = helpers.page.url();
-					// Either we see the list or we're redirected to create new
-					return url.includes("/admin");
+					return url.includes("/admin/websites");
 				}
 			},
 			{
@@ -254,13 +253,13 @@ test.describe("Website Management Flow", () => {
 		expect(result.success).toBe(true);
 		helpers.log("✅ Step 1: Website created successfully");
 
-		// Step 2: Verify we can access the websites list (now at /admin)
-		await helpers.navigateTo("/admin", { timeout: 20000 });
+		// Step 2: Verify we can access the websites list at /admin/websites
+		await helpers.navigateTo("/admin/websites", { timeout: 20000 });
 		const websitesUrl = helpers.page.url();
-		expect(websitesUrl.includes("/admin")).toBe(true);
+		expect(websitesUrl.includes("/admin/websites")).toBe(true);
 		helpers.log("✅ Step 2: Websites list accessible");
 
-		// Step 3: Verify we can access the websites list again
+		// Step 3: Verify we can access the admin feed home
 		await helpers.navigateTo("/admin", { timeout: 20000 });
 		const adminUrl = helpers.page.url();
 		// With a website created, we should see the admin page

@@ -67,10 +67,21 @@ test.describe("Onboarding Flow - MUST RUN FIRST", () => {
 		helpers.log("GeoLite step loaded");
 
 		// Skip GeoLite configuration for now (click Skip for Now button)
-		const skipButton = page.locator('button:has-text("Skip for Now")');
-		await skipButton.waitFor({ state: 'visible', timeout: 10000 });
-		await skipButton.click();
+		const geoliteSkip = page.locator('form[action="/setup/geolite"] button:has-text("Skip for Now")');
+		await geoliteSkip.waitFor({ state: 'visible', timeout: 10000 });
+		await geoliteSkip.click();
+		await page.waitForLoadState('networkidle');
 		helpers.log("GeoLite step skipped");
+
+		// Step 1.5: OpenAI configuration step (optional - skip it for testing)
+		await page.waitForSelector('form[action="/setup/openai"]', { timeout: 10000 });
+		helpers.log("OpenAI step loaded");
+
+		// Skip OpenAI configuration for now (click Skip for Now button)
+		const openaiSkip = page.locator('form[action="/setup/openai"] button:has-text("Skip for Now")');
+		await openaiSkip.waitFor({ state: 'visible', timeout: 10000 });
+		await openaiSkip.click();
+		helpers.log("OpenAI step skipped");
 
 		// Final redirect check - should be logged in
 		await page.waitForURL(/\/admin\/websites\/new/, { timeout: 15000 });

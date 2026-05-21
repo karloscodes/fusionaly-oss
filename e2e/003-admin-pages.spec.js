@@ -130,14 +130,14 @@ test.describe.serial("Admin Pages Accessibility Tests", () => {
 	test("should access websites management page", async ({ page }) => {
 		helpers.log("Testing websites management page accessibility");
 
-		// Navigate to websites (now at /admin)
-		await helpers.navigateTo("/admin", {
+		// Navigate to the websites management page (moved to /admin/websites)
+		await helpers.navigateTo("/admin/websites", {
 			timeout: 30000
 		});
 
 		// We MUST be able to access the websites page
 		const currentUrl = helpers.page.url();
-		expect(currentUrl).toContain("/admin");
+		expect(currentUrl).toContain("/admin/websites");
 
 		// Since we created a website, we should see the list, not be redirected to create new
 		expect(currentUrl).not.toContain("/new");

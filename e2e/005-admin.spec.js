@@ -39,12 +39,14 @@ test.describe.serial("Administration Pages Tests", () => {
 		const sidebar = await page.locator('aside:has-text("Administration")');
 		await expect(sidebar).toBeVisible();
 
-		// Verify all navigation links are present in the administration sidebar (OSS version)
+		// Verify all navigation links are present in the administration sidebar
 		const ingestionLink = await page.locator('aside:has-text("Administration") a:has-text("Ingestion")');
+		const aiLink = await page.locator('aside:has-text("Administration") a:has-text("AI")');
 		const accountLink = await page.locator('aside:has-text("Administration") a:has-text("Account")');
 		const systemLink = await page.locator('aside:has-text("Administration") a:has-text("System")');
 
 		await expect(ingestionLink).toBeVisible();
+		await expect(aiLink).toBeVisible();
 		await expect(accountLink).toBeVisible();
 		await expect(systemLink).toBeVisible();
 
@@ -86,8 +88,23 @@ test.describe.serial("Administration Pages Tests", () => {
 		helpers.log("Ingestion settings updated successfully");
 	});
 
-	// Note: AI page test removed - AI features only exist in Pro version
-	// Note: License key input test is removed - License management is a Pro feature
+	test("should display AI settings page", async ({ page }) => {
+		helpers.log("Testing AI settings page");
+
+		// Navigate to the AI settings page
+		await helpers.navigateTo("/admin/administration/ai", {
+			waitForSelector: "h1",
+			timeout: 30000
+		});
+
+		// We should land on the AI settings page (no license gate)
+		const currentUrl = helpers.page.url();
+		expect(currentUrl).toContain("/admin/administration/ai");
+
+		// The OpenAI API key field should be present so a user can configure it
+		await page.waitForSelector('input[name="openai_api_key"]', { state: "visible", timeout: 10000 });
+		helpers.log("AI settings page displays the OpenAI API key field");
+	});
 
 	test("should display password change form in Account page", async ({ page }) => {
 		helpers.log("Testing password change form display");
