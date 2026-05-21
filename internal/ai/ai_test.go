@@ -1,6 +1,8 @@
 package ai_test
 
 import (
+	"context"
+	"sort"
 	"testing"
 	"time"
 
@@ -10,6 +12,31 @@ import (
 	"fusionaly/internal/ai"
 	"fusionaly/internal/testsupport"
 )
+
+// TestListModels verifies the Lens model list. In test mode it must skip the
+// network entirely and return the static fallback list, sorted.
+func TestListModels(t *testing.T) {
+	t.Run("returns the static list (sorted) without hitting the network", func(t *testing.T) {
+		// Point the AI base URL at an unroutable address: if ListModels tried to
+		// fetch, it would hang/error — proving test mode skips the network.
+		t.Setenv("FUSIONALY_AI_BASE_URL", "http://127.0.0.1:0")
+
+		models := ai.ListModels(context.Background(), nil)
+
+		require.NotEmpty(t, models)
+		assert.True(t, sort.StringsAreSorted(models), "models must be sorted")
+
+		want := append([]string(nil), ai.AvailableModels...)
+		sort.Strings(want)
+		assert.Equal(t, want, models, "test mode returns the static fallback list")
+	})
+
+	t.Run("includes the default model", func(t *testing.T) {
+		models := ai.ListModels(context.Background(), nil)
+
+		assert.Contains(t, models, ai.DefaultModel)
+	})
+}
 
 // TestValidateReadOnlyQuery exercises the real ai.ValidateReadOnlyQuery validator.
 func TestValidateReadOnlyQuery(t *testing.T) {

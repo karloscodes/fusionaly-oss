@@ -12,8 +12,11 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
+	"sync"
+	"testing"
 	"time"
 
 	"gorm.io/gorm"
@@ -143,9 +146,11 @@ type AIQueryCache struct {
 	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
 }
 
-// AvailableModels are the AI models offered in the Ask (Lens) per-question
-// selector. OpenRouter uses provider-prefixed model ids. These ids change over
-// time — verify against https://openrouter.ai/models.
+// AvailableModels is the static fallback list of AI models offered in the Ask
+// (Lens) per-question selector. It is only used when the live OpenRouter
+// catalog can't be fetched (network error/timeout) or in test mode. OpenRouter
+// uses provider-prefixed model ids; these go stale over time, which is exactly
+// why ListModels() prefers the live catalog — see https://openrouter.ai/models.
 var AvailableModels = []string{
 	"openai/gpt-4o-mini",
 	"openai/gpt-4.1-mini",
@@ -161,6 +166,133 @@ var AvailableModels = []string{
 
 // DefaultModel is the default model for Ask AI
 const DefaultModel = "openai/gpt-4o-mini"
+
+// modelsCacheTTL is how long a fetched OpenRouter catalog stays fresh in memory
+// before ListModels re-fetches it. Long enough to avoid hitting OpenRouter on
+// every page load, short enough that new models show up the same day.
+const modelsCacheTTL = 6 * time.Hour
+
+// modelsFetchTimeout caps how long we wait on OpenRouter's models endpoint
+// before falling back to the static list. The list is best-effort UI sugar, so
+// it must never block a page load for long.
+const modelsFetchTimeout = 5 * time.Second
+
+// modelsURL is the OpenRouter public model-catalog endpoint. Listing models
+// needs no auth. Like chatCompletionsURL, the FUSIONALY_AI_BASE_URL env var is a
+// test-only hook to point at a local mock and is not exposed in the UI.
+func modelsURL() string {
+	base := os.Getenv("FUSIONALY_AI_BASE_URL")
+	if base == "" {
+		base = OpenRouterBaseURL
+	}
+	return strings.TrimRight(base, "/") + "/models"
+}
+
+// modelsCache holds the in-memory, TTL'd OpenRouter catalog shared across
+// requests. A package-level cache is enough — the list is global, not per-user.
+var modelsCache struct {
+	mu        sync.Mutex
+	ids       []string
+	fetchedAt time.Time
+}
+
+// isTestMode reports whether we're running under `go test` or with
+// FUSIONALY_ENV=test. ListModels uses this to skip the network entirely so
+// tests never depend on (or hit) OpenRouter.
+func isTestMode() bool {
+	return testing.Testing() || os.Getenv("FUSIONALY_ENV") == "test"
+}
+
+// ListModels returns the list of selectable model ids for the Lens picker.
+//
+// It prefers OpenRouter's live catalog (cached in memory for modelsCacheTTL) so
+// the picker reflects whatever OpenRouter currently offers instead of a stale
+// hardcoded array. Behavior:
+//   - Test mode: skip the network and return the static AvailableModels.
+//   - Cache fresh: return the cached ids.
+//   - Otherwise: fetch with a short timeout. On success, cache and return the
+//     sorted live ids. On any error/timeout, fall back to AvailableModels.
+//
+// The result is always non-empty and sorted.
+func ListModels(ctx context.Context, logger *slog.Logger) []string {
+	if isTestMode() {
+		return staticModels()
+	}
+
+	modelsCache.mu.Lock()
+	if len(modelsCache.ids) > 0 && time.Since(modelsCache.fetchedAt) < modelsCacheTTL {
+		ids := modelsCache.ids
+		modelsCache.mu.Unlock()
+		return ids
+	}
+	modelsCache.mu.Unlock()
+
+	ids, err := fetchOpenRouterModels(ctx)
+	if err != nil || len(ids) == 0 {
+		if logger != nil {
+			logger.Warn("Falling back to static AI model list", slog.Any("error", err))
+		}
+		return staticModels()
+	}
+
+	modelsCache.mu.Lock()
+	modelsCache.ids = ids
+	modelsCache.fetchedAt = time.Now()
+	modelsCache.mu.Unlock()
+
+	return ids
+}
+
+// fetchOpenRouterModels GETs the public OpenRouter model catalog and returns the
+// sorted list of model ids. It uses a short timeout so a slow/unreachable
+// OpenRouter never stalls a page load.
+func fetchOpenRouterModels(ctx context.Context) ([]string, error) {
+	reqCtx, cancel := context.WithTimeout(ctx, modelsFetchTimeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, modelsURL(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create models request: %w", err)
+	}
+
+	client := &http.Client{Timeout: modelsFetchTimeout}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("models request failed: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("models endpoint returned status %d", resp.StatusCode)
+	}
+
+	var payload struct {
+		Data []struct {
+			ID string `json:"id"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		return nil, fmt.Errorf("failed to decode models response: %w", err)
+	}
+
+	ids := make([]string, 0, len(payload.Data))
+	for _, m := range payload.Data {
+		if m.ID != "" {
+			ids = append(ids, m.ID)
+		}
+	}
+	sort.Strings(ids)
+	return ids, nil
+}
+
+// staticModels returns a sorted copy of the hardcoded fallback list so callers
+// can't mutate the shared AvailableModels slice.
+func staticModels() []string {
+	ids := make([]string, len(AvailableModels))
+	copy(ids, AvailableModels)
+	sort.Strings(ids)
+	return ids
+}
 
 // chatCompletionsURL builds the chat completions endpoint from the hardcoded
 // OpenRouter base URL. The FUSIONALY_AI_BASE_URL env var is a test-only hook

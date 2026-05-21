@@ -10,6 +10,8 @@ interface AskAIChatProps {
   websiteId: number;
   selectedModel?: string;
   onModelChange?: (model: string) => void;
+  /** Live OpenRouter model ids from the server, passed through to the picker. */
+  models?: string[];
   aiResult?: {
     question: string;
     query: string;
@@ -66,6 +68,7 @@ export const AskAIChat: React.FC<AskAIChatProps> = ({
   websiteId,
   selectedModel = DEFAULT_MODEL,
   onModelChange,
+  models,
   aiResult,
   onSaveResult,
   isSavingResult,
@@ -166,6 +169,7 @@ export const AskAIChat: React.FC<AskAIChatProps> = ({
               value={model}
               onChange={handleModelChange}
               disabled={isLoading}
+              models={models}
             />
 
             <Button

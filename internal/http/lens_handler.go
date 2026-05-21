@@ -106,6 +106,7 @@ func WebsiteLensAction(ctx *cartridge.Context) error {
 		"saved_queries":      savedQueries,
 		"initial_results":    initialResults,
 		"ai_configured":      openAIKey != "",
+		"models":             ai.ListModels(context.Background(), ctx.Logger),
 	}
 
 	return inertia.RenderPage(ctx.Ctx, "Lens", props)
@@ -171,6 +172,7 @@ func WebsiteLensAskAIAction(ctx *cartridge.Context) error {
 		"saved_queries":      savedQueries,
 		"initial_results":    initialResults,
 		"ai_configured":      true,
+		"models":             ai.ListModels(context.Background(), ctx.Logger),
 		"ai_result": AIResultProp{
 			Question:  question,
 			Query:     aiResult.SQL,

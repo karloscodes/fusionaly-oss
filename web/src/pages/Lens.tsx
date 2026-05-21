@@ -39,6 +39,8 @@ interface LensPageProps {
 	websites?: Website[];
 	initial_results?: InitialResult[];
 	ai_configured?: boolean;
+	// Live OpenRouter model ids fetched server-side (falls back to static list)
+	models?: string[];
 	flash?: FlashMessage | null;
 	error?: string;
 	// AI result passed back from server after Ask AI submission
@@ -115,6 +117,8 @@ export const Lens: React.FC = () => {
 	// Data comes from server props (Inertia SSR)
 	const savedQueries = props.saved_queries || [];
 	const websites = props.websites || [];
+	// Live OpenRouter model ids; empty falls back to the static list in the picker
+	const models = props.models || [];
 
 	// Build query results map from initial_results prop
 	const queryResults = useMemo(() => {
@@ -601,6 +605,7 @@ export const Lens: React.FC = () => {
 					websiteId={websiteId}
 					selectedModel={selectedModel}
 					onModelChange={setSelectedModel}
+					models={models}
 					aiResult={aiResult}
 					onSaveResult={handleSaveAIResult}
 					isSavingResult={isSaving}
@@ -836,6 +841,7 @@ export const Lens: React.FC = () => {
 															value={editForm.data.model}
 															onChange={(m) => editForm.setData('model', m)}
 															disabled={editForm.processing}
+															models={models}
 														/>
 													</div>
 													<p className="text-xs text-black/60">
