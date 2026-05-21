@@ -240,8 +240,9 @@ func OnboardingPasswordFormAction(ctx *cartridge.Context) error {
 func completeOnboarding(db *gorm.DB, logger *slog.Logger, c *fiber.Ctx, sessionMgr *cartridge.SessionManager, session *onboarding.OnboardingSession) error {
 	// Prepare completion data
 	completionData := onboarding.CompletionData{
-		Email:    session.Data.Email,
-		Password: session.Data.Password,
+		Email:     session.Data.Email,
+		Password:  session.Data.Password,
+		OpenAIKey: session.Data.OpenAIKey,
 	}
 
 	// Use onboarding context function to complete
@@ -319,7 +320,50 @@ func OnboardingGeoLiteFormAction(ctx *cartridge.Context) error {
 		}
 	}
 
-	// Complete the onboarding by creating the user
+	// Move to the optional OpenAI step (instead of completing here)
+	err = onboarding.UpdateOnboardingSession(db, sessionID, onboarding.StepOpenAI, session.Data)
+	if err != nil {
+		ctx.Logger.Error("Failed to update onboarding session", slog.Any("error", err))
+		flash.SetFlash(ctx.Ctx, "error", "Failed to save progress")
+		return ctx.Redirect("/setup", fiber.StatusFound)
+	}
+
+	return ctx.Redirect("/setup", fiber.StatusFound)
+}
+
+// OnboardingOpenAIFormAction handles the optional OpenAI key form submission (PRG pattern)
+func OnboardingOpenAIFormAction(ctx *cartridge.Context) error {
+	// Get session ID from cookie
+	sessionID := ctx.Cookies(onboardingSessionCookieName)
+	if sessionID == "" {
+		flash.SetFlash(ctx.Ctx, "error", "No active onboarding session")
+		return ctx.Redirect("/setup", fiber.StatusFound)
+	}
+
+	db := ctx.DB()
+
+	// Get onboarding session
+	session, err := onboarding.GetOnboardingSession(db, sessionID)
+	if err != nil {
+		ctx.Logger.Error("Failed to get onboarding session", slog.Any("error", err))
+		flash.SetFlash(ctx.Ctx, "error", "Invalid or expired onboarding session")
+		return ctx.Redirect("/setup", fiber.StatusFound)
+	}
+
+	// Validate current step
+	if session.Step != onboarding.StepOpenAI {
+		flash.SetFlash(ctx.Ctx, "error", "Invalid step")
+		return ctx.Redirect("/setup", fiber.StatusFound)
+	}
+
+	// OpenAI key is optional - save it only if the user provided one and did not skip
+	action := ctx.FormValue("action")
+	openAIKey := strings.TrimSpace(ctx.FormValue("openai_key"))
+	if action != "skip" && openAIKey != "" {
+		session.Data.OpenAIKey = openAIKey
+	}
+
+	// Complete the onboarding by creating the user (saves the key if present)
 	err = completeOnboarding(db, ctx.Logger, ctx.Ctx, ctx.Session, session)
 	if err != nil {
 		ctx.Logger.Error("Failed to complete onboarding", slog.Any("error", err))
