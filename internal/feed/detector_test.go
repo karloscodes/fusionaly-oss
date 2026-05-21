@@ -380,7 +380,7 @@ func TestDetector_BelowThresholdActivityGeneratesNothing(t *testing.T) {
 	db.Exec(`INSERT INTO event_stats (website_id, event_name, visitors_count, hour) VALUES (1, 'signup', 2, ?)`, yesterday.Add(13*time.Hour))
 
 	// A new, low-volume referrer (below MinReferrerVisitors).
-	db.Exec(`INSERT INTO ref_stats (website_id, hostname, visitors_count, hour) VALUES (1, 'news.ycombinator.com', 4, ?)`, yesterday.Add(14*time.Hour))
+	db.Exec(`INSERT INTO ref_stats (website_id, hostname, visitors_count, hour) VALUES (1, 'news.ycombinator.com', 2, ?)`, yesterday.Add(14*time.Hour))
 
 	// A small page (below MinTrendingVisitors).
 	db.Exec(`INSERT INTO page_stats (website_id, pathname, visitors_count, hour) VALUES (1, '/blog/quiet-post', 6, ?)`, yesterday.Add(12*time.Hour))

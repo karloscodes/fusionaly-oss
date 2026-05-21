@@ -35,30 +35,35 @@ const (
 	// absolute volume before a detector is allowed to emit, independent of any
 	// z-score. They are the primary lever that keeps low-traffic sites silent.
 
+	// Floors are calibrated for small sites (solo devs, indie hackers): a tiny
+	// site getting a handful of signups or a new referrer IS news. They are set
+	// just high enough to kill pure noise (a 2→5 visitor "spike"), not to mute
+	// the moments the feed exists to surface.
+
 	// MinSpikeVisitors is the minimum visitors a day must have before it can be
 	// reported as a traffic spike. Below this, a "spike" is just a quiet site.
-	MinSpikeVisitors = 30
+	MinSpikeVisitors = 10
 
 	// MinDropVisitors is the minimum average a site must normally see before a
 	// quiet day is worth flagging as a drop. A site that averages a handful of
 	// visitors has nothing meaningful to "drop".
-	MinDropVisitors = 30
+	MinDropVisitors = 10
 
 	// MinGoalConversions is the minimum conversions before a goal spike is
-	// reported. One or two conversions is never a story.
-	MinGoalConversions = 10
+	// reported. One or two conversions is never a story; three on a small site is.
+	MinGoalConversions = 3
 
 	// MinReferrerVisitors is the minimum visitors a brand-new source must send
 	// before it earns a feed item.
-	MinReferrerVisitors = 10
+	MinReferrerVisitors = 3
 
 	// MinTrendingVisitors is the minimum visitors a page needs in a day before
 	// it can be flagged as trending or newly popular.
-	MinTrendingVisitors = 20
+	MinTrendingVisitors = 8
 
 	// MinDroppingPageVisitors is the minimum prior-month visitors a page needs
 	// before a month-over-month drop is worth surfacing.
-	MinDroppingPageVisitors = 50
+	MinDroppingPageVisitors = 20
 )
 
 // HourOfWeek returns 0-167 for the current hour-of-week.
