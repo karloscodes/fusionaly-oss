@@ -1,10 +1,13 @@
 package onboarding_test
 
 import (
+	"io"
+	"log/slog"
 	"testing"
 	"time"
 
 	"fusionaly/internal/onboarding"
+	"fusionaly/internal/settings"
 	"fusionaly/internal/users"
 
 	"github.com/stretchr/testify/assert"
@@ -20,7 +23,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 	}
 
 	// Migrate necessary schemas
-	err = db.AutoMigrate(&onboarding.OnboardingSession{}, &users.User{})
+	err = db.AutoMigrate(&onboarding.OnboardingSession{}, &users.User{}, &settings.Setting{})
 	if err != nil {
 		t.Fatalf("Failed to migrate test database: %v", err)
 	}
@@ -203,4 +206,69 @@ func TestIsOnboardingRequired(t *testing.T) {
 	required, err = onboarding.IsOnboardingRequired(db)
 	assert.NoError(t, err)
 	assert.False(t, required)
+}
+
+func TestGeoLiteAdvancesToOpenAIStep(t *testing.T) {
+	db := setupTestDB(t)
+	sessionID := "test-session-id"
+
+	_, err := onboarding.CreateOnboardingSession(db, sessionID)
+	assert.NoError(t, err)
+
+	// Simulate progress through user_account and password into geolite
+	err = onboarding.UpdateOnboardingSession(db, sessionID, onboarding.StepGeoLite, onboarding.OnboardingData{
+		Email:    "admin@example.com",
+		Password: "password123",
+	})
+	assert.NoError(t, err)
+
+	// After geolite, the flow advances to the optional OpenAI step (not directly completed)
+	session, err := onboarding.GetOnboardingSession(db, sessionID)
+	assert.NoError(t, err)
+	err = onboarding.UpdateOnboardingSession(db, sessionID, onboarding.StepOpenAI, session.Data)
+	assert.NoError(t, err)
+
+	session, err = onboarding.GetOnboardingSession(db, sessionID)
+	assert.NoError(t, err)
+	assert.Equal(t, onboarding.StepOpenAI, session.Step)
+	assert.NotEqual(t, onboarding.StepCompleted, session.Step)
+}
+
+func TestCompleteOnboardingWithOpenAIKey(t *testing.T) {
+	db := setupTestDB(t)
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	result, err := onboarding.CompleteOnboarding(db, logger, onboarding.CompletionData{
+		Email:     "admin@example.com",
+		Password:  "password123",
+		OpenAIKey: "sk-test-key-123",
+	})
+	assert.NoError(t, err)
+	assert.NotZero(t, result.UserID)
+
+	// Key should be saved via settings
+	key, err := settings.GetOpenAIKey(db)
+	assert.NoError(t, err)
+	assert.Equal(t, "sk-test-key-123", key)
+}
+
+func TestCompleteOnboardingWithoutOpenAIKey(t *testing.T) {
+	db := setupTestDB(t)
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	result, err := onboarding.CompleteOnboarding(db, logger, onboarding.CompletionData{
+		Email:    "admin@example.com",
+		Password: "password123",
+		// OpenAIKey intentionally empty (skipped step)
+	})
+	assert.NoError(t, err)
+	assert.NotZero(t, result.UserID)
+
+	// No key should be saved when skipped/empty
+	key, err := settings.GetOpenAIKey(db)
+	if err == nil {
+		assert.Empty(t, key)
+	} else {
+		assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
+	}
 }

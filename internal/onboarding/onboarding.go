@@ -17,13 +17,15 @@ const (
 	StepUserAccount OnboardingStep = "user_account"
 	StepPassword    OnboardingStep = "password"
 	StepGeoLite     OnboardingStep = "geolite"
+	StepOpenAI      OnboardingStep = "openai"
 	StepCompleted   OnboardingStep = "completed"
 )
 
 // OnboardingData holds the collected onboarding information
 type OnboardingData struct {
-	Email    string `json:"email,omitempty"`
-	Password string `json:"password,omitempty"`
+	Email     string `json:"email,omitempty"`
+	Password  string `json:"password,omitempty"`
+	OpenAIKey string `json:"openai_key,omitempty"`
 }
 
 // Scan implements sql.Scanner interface for OnboardingData

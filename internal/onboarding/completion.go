@@ -2,17 +2,20 @@ package onboarding
 
 import (
 	"fmt"
+	"strings"
 
 	"log/slog"
 	"gorm.io/gorm"
 
+	"fusionaly/internal/settings"
 	"fusionaly/internal/users"
 )
 
 // CompletionData holds all the data needed to complete onboarding
 type CompletionData struct {
-	Email    string
-	Password string
+	Email     string
+	Password  string
+	OpenAIKey string
 }
 
 // CompletionResult contains the results of completing onboarding
@@ -45,11 +48,18 @@ func CompleteOnboarding(db *gorm.DB, logger *slog.Logger, data CompletionData) (
 		return nil, fmt.Errorf("failed to find created user: %w", err)
 	}
 
+	// Save the OpenAI API key if provided (optional onboarding step)
+	if strings.TrimSpace(data.OpenAIKey) != "" {
+		if err := settings.SaveOpenAIKey(db, data.OpenAIKey); err != nil {
+			logger.Error("Failed to save OpenAI API key during onboarding", "error", err)
+			// Don't fail onboarding for this - user can configure it later
+		} else {
+			logger.Info("OpenAI API key saved during onboarding")
+		}
+	}
+
 	return &CompletionResult{
 		UserID:    user.ID,
 		UserEmail: data.Email,
 	}, nil
 }
-
-// Note: License validation, OpenAI configuration, and Gumroad integration are available
-// in Fusionaly Pro. See https://fusionaly.com/#pricing
