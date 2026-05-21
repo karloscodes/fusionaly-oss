@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Settings, Database, User, Server, Bot } from "lucide-react";
+import { Settings, Database, Brain, User, Server, Bot } from "lucide-react";
 import { Link } from "@inertiajs/react";
 import { AdminLayout } from "@/components/admin-layout";
 
@@ -21,6 +21,12 @@ const navItems: NavItem[] = [
 		label: "Ingestion",
 		href: "/admin/administration/ingestion",
 		icon: Database,
+	},
+	{
+		id: "ai",
+		label: "AI",
+		href: "/admin/administration/ai",
+		icon: Brain,
 	},
 	{
 		id: "agents",
