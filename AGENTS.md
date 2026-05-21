@@ -1,6 +1,6 @@
 # Developer Agent Guidelines
 
-This is the **canonical source** for all AI coding assistants (Claude, Copilot, Codex) working on Fusionaly OSS.
+This is the **canonical source** for all AI coding assistants (Claude, Copilot, Codex) working on Fusionaly.
 
 ---
 

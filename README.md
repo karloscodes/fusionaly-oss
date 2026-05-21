@@ -9,7 +9,7 @@ Privacy-first, self-hosted web analytics. No cookies, no fingerprinting, no pers
 
 **One script tag. One attribute. You own everything.**
 
-[Website](https://fusionaly.com) · [Documentation](https://fusionaly.com/docs) · [Installation](https://fusionaly.com/docs/installation/) · [Free vs Pro](https://fusionaly.com/docs/editions/)
+[Website](https://fusionaly.com) · [Documentation](https://fusionaly.com/docs) · [Installation](https://fusionaly.com/docs/installation/)
 
 ---
 
@@ -56,6 +56,8 @@ The SDK does the right thing based on element type — click, submit, sendBeacon
 - **Custom events** — JavaScript API for dynamic data
 - **Goal conversions** — track signups, purchases, any event as a goal
 - **User flows** — see how visitors navigate entry to exit
+- **Activity feed** — your home page: all your sites at a glance and what's new across them
+- **AI Lens** — ask questions in plain English, get charts and SQL back. Bring your own OpenAI key
 - **Annotations** — mark deployments, campaigns, incidents on your timeline
 - **Shareable dashboards** — public links to your analytics
 - **Bot filtering & spam protection** — clean data by default
