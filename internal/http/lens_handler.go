@@ -123,10 +123,8 @@ func WebsiteLensAskAIAction(ctx *cartridge.Context) error {
 	}
 
 	question := ctx.FormValue("query")
+	// Empty model lets GetQueryFromOpenAI fall back to the configured AI model.
 	model := ctx.FormValue("model")
-	if model == "" {
-		model = ai.DefaultModel
-	}
 	if question == "" {
 		flash.SetFlash(ctx.Ctx, "error", "Please enter a question")
 		return ctx.Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
@@ -241,10 +239,8 @@ func WebsiteLensUpdateAction(ctx *cartridge.Context) error {
 
 	queryID, _ := strconv.Atoi(ctx.FormValue("id"))
 	newTitle := ctx.FormValue("title")
+	// Empty model lets GetQueryFromOpenAI fall back to the configured AI model.
 	model := ctx.FormValue("model")
-	if model == "" {
-		model = ai.DefaultModel
-	}
 
 	if queryID <= 0 || newTitle == "" {
 		flash.SetFlash(ctx.Ctx, "error", "Invalid query ID or title")
