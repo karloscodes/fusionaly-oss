@@ -1,5 +1,5 @@
 ---
-name: fusionaly-tech
+name: tech
 description: Use when writing or reviewing Go code in fusionaly-oss — adding routes, handlers, domain contexts, background jobs, the manager CLI, wiring the app, or writing tests. Covers the cartridge framework, matcha for the manager, Phoenix Contexts, lifecycle/shutdown, and the test conventions.
 ---
 
@@ -23,6 +23,8 @@ This is a deliberate, pragmatic stance: Go favors explicit, no-magic code, but h
 | Frontend | React 19 + Inertia | `web/src` |
 
 ## cartridge: configure, don't reinvent
+
+cartridge is our own framework — repo **https://github.com/karloscodes/cartridge** (Go module `github.com/karloscodes/cartridge`). When something feels like boilerplate, check there before writing it.
 
 The whole app boots by handing cartridge a config struct. `internal/app.go` is the one place that wires it, and it's ~120 lines:
 
@@ -66,7 +68,7 @@ Rules: contexts never import `internal/http`; handlers never hold business logic
 
 ## matcha: the manager owns ops
 
-`cmd/manager` is a thin wrapper over `matcha` — install, update, deploy, backup, image swap are library calls, not bespoke shell:
+matcha is our own deploy/update tool — repo **https://github.com/karloscodes/matcha** (Go module `github.com/karloscodes/matcha`). `cmd/manager` is a thin wrapper over `matcha` — install, update, deploy, backup, image swap are library calls, not bespoke shell:
 
 ```go
 m := matcha.New(matcha.Config{Name: "fusionaly", AppImage: "karloscodes/fusionaly:latest",

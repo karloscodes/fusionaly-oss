@@ -1,5 +1,5 @@
 ---
-name: fusionaly-design
+name: design
 description: Use when styling Fusionaly UI components, pages, or charts - applies the Fusionaly design system with black/white palette and brand accents
 ---
 

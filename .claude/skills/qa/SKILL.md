@@ -1,5 +1,5 @@
 ---
-name: fusionaly-qa
+name: qa
 description: Use after code changes, before releases, or when testing features - runs the right level of QA based on what changed
 ---
 

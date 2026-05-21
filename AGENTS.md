@@ -14,7 +14,16 @@ This is the **canonical source** for all AI coding assistants (Claude, Copilot, 
 
 > **When in doubt, choose the simplest path that works — and that you can maintain alone.**
 
-**Tech & conventions reference:** the `fusionaly-tech` skill (`.claude/skills/fusionaly-tech/SKILL.md`) covers how this codebase uses cartridge (the framework does the heavy lifting), matcha (the manager), Phoenix Contexts, lifecycle/shutdown, and the test conventions. Read it before adding routes, contexts, jobs, or tests.
+**Tech & conventions reference:** the `tech` skill (`.claude/skills/tech/SKILL.md`) covers how this codebase uses cartridge (the framework does the heavy lifting), matcha (the manager), Phoenix Contexts, lifecycle/shutdown, and the test conventions. Read it before adding routes, contexts, jobs, or tests.
+
+## Dependencies — strict policy
+
+**Default to NO. Reducing the dependency count is a feature; growing it is a liability.**
+
+- Do **not** add a dependency unless it is strictly necessary and there is no reasonable way to do it with the standard library, cartridge, or a few lines of our own code.
+- Before adding one, justify it: what specific problem does it solve, why can't we solve it ourselves, is it actively maintained, and what does it cost to remove later?
+- Prefer deleting a dependency over adding one. When you touch an area, look for deps that can be dropped.
+- A small amount of duplicated, readable code beats a new dependency.
 
 ---
 
