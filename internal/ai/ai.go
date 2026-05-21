@@ -111,7 +111,7 @@ type SavedQuery struct {
 	GeneratedSQL string    `json:"generated_sql" gorm:"type:text;not null"`
 	QueryType    string    `json:"query_type" gorm:"size:50;default:TABLE"`
 	VegaSpec     string    `json:"vega_spec,omitempty" gorm:"type:text"`
-	Model        string    `json:"model" gorm:"size:50;default:'openai/gpt-4o-mini'"`
+	Model        string    `json:"model" gorm:"size:50;default:'openai/gpt-5.4-mini'"`
 	Order        int       `json:"order" gorm:"default:0"`
 	CreatedAt    time.Time `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt    time.Time `json:"updated_at" gorm:"autoUpdateTime"`
@@ -134,7 +134,7 @@ type AIQueryCache struct {
 	CacheKey  string    `json:"cache_key" gorm:"uniqueIndex;size:64;not null"`
 	WebsiteID int       `json:"website_id" gorm:"index;not null"`
 	Question  string    `json:"question" gorm:"type:text;not null"`
-	Model     string    `json:"model" gorm:"size:50;default:'openai/gpt-4o-mini'"`
+	Model     string    `json:"model" gorm:"size:50;default:'openai/gpt-5.4-mini'"`
 	SQL       string    `json:"sql" gorm:"type:text;not null"`
 	QueryType string    `json:"query_type" gorm:"size:50;not null"`
 	VegaSpec  string    `json:"vega_spec,omitempty" gorm:"type:text"`
