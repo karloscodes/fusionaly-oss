@@ -1,7 +1,6 @@
 package http
 
 import (
-	"encoding/json"
 	"log/slog"
 	"time"
 
@@ -14,7 +13,7 @@ import (
 )
 
 // HomeFeedAction renders the admin home page: your sites + the "what's new"
-// activity feed + a conversion calendar. This is the product's front door.
+// activity feed + a visitor calendar. This is the product's front door.
 func HomeFeedAction(ctx *cartridge.Context) error {
 	db := ctx.DB()
 
@@ -79,52 +78,23 @@ func HomeFeedAction(ctx *cartridge.Context) error {
 		})
 	}
 
-	// Conversion calendar (last 365 days, all websites combined).
-	// Only counts events configured as goals.
-	calendarData, totalConversions, hasGoals := buildConversionCalendar(db, websiteIDs)
+	// Visitor calendar (last 365 days, all websites combined).
+	calendarData, totalVisitors := buildVisitorCalendar(db, websiteIDs)
 
 	return inertia.RenderPage(ctx.Ctx, "Home", inertia.Props{
-		"feedItems":        enrichedItems,
-		"websites":         websites,
-		"calendarData":     calendarData,
-		"totalConversions": totalConversions,
-		"hasGoals":         hasGoals,
+		"feedItems":     enrichedItems,
+		"websites":      websites,
+		"calendarData":  calendarData,
+		"totalVisitors": totalVisitors,
 	})
 }
 
-// buildConversionCalendar returns per-day goal conversion counts for the last
-// 365 days across the given websites, the total, and whether any goals exist.
-func buildConversionCalendar(db *gorm.DB, websiteIDs []uint) ([]map[string]any, int64, bool) {
+// buildVisitorCalendar returns per-day visitor counts for the last 365 days
+// across the given websites, plus the total. Visitors come from the daily
+// site_stats rollup (the `visitors` column, grouped by day).
+func buildVisitorCalendar(db *gorm.DB, websiteIDs []uint) ([]map[string]any, int64) {
 	if len(websiteIDs) == 0 {
-		return nil, 0, false
-	}
-
-	// Load website_goals setting to get goal event names
-	var goalsJSON string
-	db.Table("settings").Where("key = ?", "website_goals").Pluck("value", &goalsJSON)
-
-	// Parse goals JSON: {"goals": {"1": ["signup", "purchase"], "2": ["download"]}}
-	var allGoalNames []string
-	if goalsJSON != "" {
-		var parsed struct {
-			Goals map[string][]string `json:"goals"`
-		}
-		if err := json.Unmarshal([]byte(goalsJSON), &parsed); err == nil {
-			seen := make(map[string]bool)
-			for _, goals := range parsed.Goals {
-				for _, goal := range goals {
-					if !seen[goal] {
-						seen[goal] = true
-						allGoalNames = append(allGoalNames, goal)
-					}
-				}
-			}
-		}
-	}
-
-	hasGoals := len(allGoalNames) > 0
-	if !hasGoals {
-		return nil, 0, false
+		return []map[string]any{}, 0
 	}
 
 	yearAgo := time.Now().AddDate(-1, 0, 0).Truncate(24 * time.Hour)
@@ -134,22 +104,22 @@ func buildConversionCalendar(db *gorm.DB, websiteIDs []uint) ([]map[string]any, 
 		Count int64
 	}
 	var dayCounts []dayCount
-	db.Table("event_stats").
-		Select("DATE(hour) as date, SUM(visitors_count) as count").
-		Where("website_id IN ? AND hour >= ? AND event_name IN ?", websiteIDs, yearAgo, allGoalNames).
+	db.Table("site_stats").
+		Select("DATE(hour) as date, SUM(visitors) as count").
+		Where("website_id IN ? AND hour >= ?", websiteIDs, yearAgo).
 		Group("DATE(hour)").
 		Order("date ASC").
 		Scan(&dayCounts)
 
 	calendarData := make([]map[string]any, len(dayCounts))
-	var totalConversions int64
+	var totalVisitors int64
 	for i, dc := range dayCounts {
 		calendarData[i] = map[string]any{
 			"date":  dc.Date,
 			"count": dc.Count,
 		}
-		totalConversions += dc.Count
+		totalVisitors += dc.Count
 	}
 
-	return calendarData, totalConversions, true
+	return calendarData, totalVisitors
 }

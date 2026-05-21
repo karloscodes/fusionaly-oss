@@ -69,8 +69,7 @@ interface HomeProps {
   feedItems: FeedItem[];
   websites: Website[];
   calendarData: CalendarDay[];
-  totalConversions: number;
-  hasGoals: boolean;
+  totalVisitors: number;
   [key: string]: any;
 }
 
@@ -234,7 +233,7 @@ function SiteCard({ site, onShowScript, onDelete }: SiteCardProps) {
   );
 }
 
-function ConversionCalendar({
+function VisitorCalendar({
   data,
   total,
 }: {
@@ -277,22 +276,20 @@ function ConversionCalendar({
     weeks.push(currentWeek);
   }
 
-  // Month labels - only show if there's enough space from the previous label
+  // Month labels - label every month the window spans, at the column where
+  // that month first appears. We record a label whenever the month changes so
+  // no month is ever skipped.
   const monthLabels: { label: string; weekIndex: number }[] = [];
   let lastMonth = -1;
-  let lastLabelWeek = -10;
   weeks.forEach((week, weekIndex) => {
     const firstValidDay = week.find((d) => d.count >= 0);
     if (firstValidDay) {
       const month = firstValidDay.date.getMonth();
-      if (month !== lastMonth && weekIndex - lastLabelWeek >= 3) {
+      if (month !== lastMonth) {
         monthLabels.push({
           label: firstValidDay.date.toLocaleDateString("en-US", { month: "short" }),
           weekIndex,
         });
-        lastMonth = month;
-        lastLabelWeek = weekIndex;
-      } else if (month !== lastMonth) {
         lastMonth = month;
       }
     }
@@ -323,7 +320,7 @@ function ConversionCalendar({
     <div className="bg-white border border-black rounded-lg p-4 w-fit">
       <div className="flex items-center gap-8 mb-2">
         <h3 className="text-sm font-medium text-gray-900">
-          {total.toLocaleString()} conversions in the last year
+          {total.toLocaleString()} visitors in the last year
         </h3>
         <div className="flex items-center gap-1 text-xs text-gray-500">
           <span>Less</span>
@@ -378,7 +375,7 @@ function ConversionCalendar({
           className="fixed z-50 bg-black text-white text-xs px-2 py-1 rounded shadow-lg pointer-events-none whitespace-nowrap"
           style={{ left: hoveredDay.x - 40, top: hoveredDay.y - 32 }}
         >
-          {hoveredDay.count} conversion{hoveredDay.count !== 1 ? "s" : ""} on{" "}
+          {hoveredDay.count} visitor{hoveredDay.count !== 1 ? "s" : ""} on{" "}
           {hoveredDay.date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
         </div>
       )}
@@ -392,8 +389,7 @@ export const Home = () => {
   const feedItems = props.feedItems || [];
   const websites = props.websites || [];
   const calendarData = props.calendarData || [];
-  const totalConversions = props.totalConversions || 0;
-  const hasGoals = props.hasGoals ?? false;
+  const totalVisitors = props.totalVisitors || 0;
 
   const [websiteToDelete, setWebsiteToDelete] = useState<Website | null>(null);
   const [showIntegrationHelp, setShowIntegrationHelp] = useState(false);
@@ -471,12 +467,10 @@ export const Home = () => {
           )}
         </section>
 
-        {/* Conversion Calendar (only when goals are configured and have data) */}
-        {hasGoals && totalConversions > 0 && (
-          <section className="mb-10">
-            <ConversionCalendar data={calendarData} total={totalConversions} />
-          </section>
-        )}
+        {/* Visitor Calendar (always shown — every site has visitors) */}
+        <section className="mb-10">
+          <VisitorCalendar data={calendarData} total={totalVisitors} />
+        </section>
 
         {/* What's New Section */}
         <section>
