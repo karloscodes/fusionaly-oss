@@ -35,6 +35,7 @@ func SetupDefaultSettings(dbConn *gorm.DB) error {
 		{Key: "excluded_ips", Value: ""},
 		{Key: "subdomain_tracking", Value: "{}"},
 		{Key: "website_goals", Value: "{\"goals\":{}}"},
+		{Key: KeyOpenAIKey, Value: ""},
 	}
 	err := sqlite.PerformWrite(slog.Default(), dbConn, func(tx *gorm.DB) error {
 		for _, setting := range settings {
@@ -175,7 +176,18 @@ func CreateOrUpdateSetting(dbConn *gorm.DB, key string, value string) error {
 	}
 }
 
-// Note: GetOpenAiApiKey is available in Fusionaly Pro
+// OpenAI settings keys
+const KeyOpenAIKey = "openai_api_key"
+
+// SaveOpenAIKey stores the OpenAI API key, trimming surrounding whitespace
+func SaveOpenAIKey(db *gorm.DB, key string) error {
+	return CreateOrUpdateSetting(db, KeyOpenAIKey, strings.TrimSpace(key))
+}
+
+// GetOpenAIKey retrieves the OpenAI API key
+func GetOpenAIKey(db *gorm.DB) (string, error) {
+	return GetSetting(db, KeyOpenAIKey)
+}
 
 // Setup initializes the models package with the database and logger.
 func loadCache(dbConn *gorm.DB, logger *slog.Logger) {
