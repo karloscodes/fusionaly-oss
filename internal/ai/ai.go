@@ -768,22 +768,42 @@ func getDatabaseSchema(db *gorm.DB) (string, error) {
 	return strings.Join(schemas, ";\n") + ";", nil
 }
 
-// ValidateReadOnlyQuery checks if the SQL query contains write operations
-func ValidateReadOnlyQuery(sqlQuery string) error {
-	query := sqlQuery
-	query = regexp.MustCompile(`--.*?\n`).ReplaceAllString(query, "\n")
-	query = regexp.MustCompile(`/\*.*?\*/`).ReplaceAllString(query, "")
-	query = strings.ToLower(query)
+// dangerousSQLKeywords matches write/DDL statements and the load_extension
+// function on word boundaries, so tab/newline-separated bypasses (e.g.
+// "delete\tfrom") are caught, not just space-separated ones.
+var dangerousSQLKeywords = regexp.MustCompile(`\b(insert|update|delete|drop|alter|create|truncate|replace|grant|revoke|exec|execute|call|pragma|attach|detach|vacuum|reindex|load_extension)\b`)
 
-	dangerousKeywords := []string{
-		"update ", "delete ", "insert ", "alter ", "drop ", "create ", "truncate ",
-		"grant ", "revoke ", "exec ", "execute ", "call ", "pragma ", "attach ",
+// ValidateReadOnlyQuery rejects anything that isn't a single read-only SELECT.
+// The SQLite driver will happily run a multi-statement string, and AI-generated
+// SQL is not trusted, so this is the security boundary for query execution.
+//
+// Strategy: strip comments, forbid multiple statements, require the query to
+// begin with SELECT or a WITH (CTE), and — as defense in depth — reject
+// write/DDL keywords found OUTSIDE of string literals (so a legitimate
+// "WHERE pathname LIKE '%/delete%'" is allowed).
+func ValidateReadOnlyQuery(sqlQuery string) error {
+	// Strip block (incl. multi-line) and line comments.
+	query := regexp.MustCompile(`(?s)/\*.*?\*/`).ReplaceAllString(sqlQuery, " ")
+	query = regexp.MustCompile(`--[^\n]*`).ReplaceAllString(query, " ")
+
+	// Only a single statement is allowed: at most one trailing semicolon.
+	if strings.Contains(strings.TrimRight(query, " \t\r\n;"), ";") {
+		return fmt.Errorf("multiple statements are not allowed")
 	}
 
-	for _, keyword := range dangerousKeywords {
-		if strings.Contains(query, keyword) {
-			return fmt.Errorf("dangerous operation detected: %s", strings.TrimSpace(keyword))
-		}
+	// Remove string literals before keyword scanning so data containing a
+	// keyword (e.g. a "/create" URL path) doesn't trip the denylist.
+	stripped := regexp.MustCompile(`'(?:[^']|'')*'`).ReplaceAllString(query, " ")
+	stripped = regexp.MustCompile(`"(?:[^"]|"")*"`).ReplaceAllString(stripped, " ")
+	lower := strings.ToLower(strings.TrimSpace(stripped))
+
+	// A read-only query must begin with SELECT or a WITH (CTE).
+	if !strings.HasPrefix(lower, "select") && !strings.HasPrefix(lower, "with") {
+		return fmt.Errorf("only SELECT queries are allowed")
+	}
+
+	if m := dangerousSQLKeywords.FindString(lower); m != "" {
+		return fmt.Errorf("dangerous operation detected: %s", m)
 	}
 
 	return nil

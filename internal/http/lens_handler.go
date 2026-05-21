@@ -210,6 +210,13 @@ func WebsiteLensSaveAction(ctx *cartridge.Context) error {
 		return ctx.Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
 	}
 
+	// A saved query re-executes on every Lens load, so validate it as read-only
+	// before persisting — not just at execution time.
+	if err := ai.ValidateReadOnlyQuery(generatedSQL); err != nil {
+		flash.SetFlash(ctx.Ctx, "error", "Only read-only SELECT queries can be saved")
+		return ctx.Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
+	}
+
 	websiteIDUint := uint(websiteID)
 	if _, err := ai.CreateSavedQueryWithVega(db, title, generatedSQL, vegaSpec, &websiteIDUint, queryType, model); err != nil {
 		ctx.Logger.Error("Failed to save query", slog.Any("error", err))

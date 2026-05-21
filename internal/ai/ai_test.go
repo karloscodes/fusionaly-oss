@@ -62,6 +62,37 @@ func TestValidateReadOnlyQuery(t *testing.T) {
 
 		assert.Error(t, err)
 	})
+
+	t.Run("rejects a tab-separated write keyword (whitespace bypass)", func(t *testing.T) {
+		err := ai.ValidateReadOnlyQuery("SELECT 1\nDELETE\tFROM site_stats")
+
+		assert.Error(t, err)
+	})
+
+	t.Run("rejects a multi-statement write that tabs around the keyword", func(t *testing.T) {
+		// The confirmed exploit: the SQLite driver runs both statements.
+		err := ai.ValidateReadOnlyQuery("SELECT id FROM site_stats;\nDELETE\tFROM site_stats")
+
+		assert.Error(t, err)
+	})
+
+	t.Run("rejects load_extension", func(t *testing.T) {
+		err := ai.ValidateReadOnlyQuery("SELECT load_extension('evil.so')")
+
+		assert.Error(t, err)
+	})
+
+	t.Run("rejects a statement that does not start with SELECT or WITH", func(t *testing.T) {
+		err := ai.ValidateReadOnlyQuery("VACUUM")
+
+		assert.Error(t, err)
+	})
+
+	t.Run("allows a write keyword inside a string literal (no false positive)", func(t *testing.T) {
+		err := ai.ValidateReadOnlyQuery("SELECT count(*) FROM page_stats WHERE pathname LIKE '%/delete%'")
+
+		assert.NoError(t, err)
+	})
 }
 
 // TestQueryCache exercises the real cache read/write/expiry functions.
