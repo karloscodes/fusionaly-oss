@@ -84,8 +84,6 @@ export interface DashboardComponentProps extends Partial<AnalyticsData> {
 	user_flow?: UserFlowLink[];
 	/** Share token for public dashboard URL (null if not shared) */
 	share_token?: string | null;
-	/** Optional slot for rendering content between header and hero metrics (used by Pro for insights) */
-	insightsSlot?: React.ReactNode;
 }
 
 export const Dashboard = (props: DashboardComponentProps) => {
@@ -752,9 +750,6 @@ export const Dashboard = (props: DashboardComponentProps) => {
 						/>
 					)}
 				</div>
-
-				{/* Optional insights slot (used by Pro) */}
-				{props.insightsSlot}
 
 				{/* Hero Metrics Bar */}
 				<Deferred

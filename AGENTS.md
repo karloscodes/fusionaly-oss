@@ -289,42 +289,6 @@ JSON APIs (`ctx.JSON()`) are ONLY allowed for:
 
 ---
 
-## Pro Extension Points
-
-OSS provides extension points for Pro in **two files**. Keep extensions minimal and centralized.
-
-### Go Backend: `app/extensions.go`
-
-Single entry point for all Go exports:
-
-| Export | Purpose |
-|--------|---------|
-| `HandleDashboard(ctx, component)` | Render dashboard with custom component |
-| `HandleDashboardWithExtension(ctx, component, extender)` | Render dashboard with props extender |
-| `HandleLens(ctx, component)` | Render lens with custom component |
-| `DashboardPropsExtender` | Type for dashboard props extension function |
-| Onboarding functions | Session management exports |
-| Settings functions | GeoLite credentials, etc. |
-
-### React Frontend: `web/src/extensions.ts`
-
-Single entry point for all React exports:
-
-| Export | Purpose |
-|--------|---------|
-| `AdministrationAccountContent` | Account page content (wrap with Pro layout) |
-| `AdministrationSystemContent` | System page content (wrap with Pro layout) |
-| `AdministrationIngestionContent` | Ingestion page content (wrap with Pro layout) |
-| `Dashboard` | Dashboard with `insightsSlot` prop for Pro injection |
-
-**Rules for adding extension points:**
-1. Go exports go in `app/extensions.go` only
-2. React exports go in `web/src/extensions.ts` only
-3. Document new exports in this section
-4. Keep extension surface minimal - resist feature creep
-
----
-
 ## QA
 
 Use the `/qa` skill (`skills/qa/SKILL.md`) for all testing — it covers unit tests, E2E, visual QA with agent-browser, and VM install testing. The skill has a decision tree to pick the right level based on what changed.
