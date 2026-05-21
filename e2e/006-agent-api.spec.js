@@ -266,7 +266,11 @@ test.describe.serial("Agent API Tests", () => {
 
 		const regenerateButton = page.locator('button:has-text("Regenerate")');
 		await regenerateButton.click();
-		await page.waitForLoadState("networkidle", { timeout: 10000 });
+
+		// Wait for the success flash to actually render before asserting.
+		// A bare networkidle-then-check raced and intermittently missed the
+		// flash under full-suite browser load; this waits on the condition.
+		await expect(page.getByText(/regenerated/i).first()).toBeVisible({ timeout: 15000 });
 
 		// Check for success message
 		const successMessages = await helpers.checkForMessages("success");
