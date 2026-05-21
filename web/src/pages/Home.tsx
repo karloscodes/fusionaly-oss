@@ -181,7 +181,7 @@ function SiteCard({ site, onShowScript, onDelete }: SiteCardProps) {
   const isActive = eventCount > 0;
 
   return (
-    <div className="group relative bg-white border border-gray-200 rounded-xl hover:border-black hover:shadow-sm transition-all">
+    <div className="group relative bg-white border border-black rounded-lg hover:shadow-md transition-all">
       <Link href={`/admin/websites/${site.id}/dashboard`} className="block p-4">
         <div className="flex items-start gap-3">
           <img
@@ -204,7 +204,7 @@ function SiteCard({ site, onShowScript, onDelete }: SiteCardProps) {
       </Link>
 
       <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-        <DropdownMenu>
+        <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
@@ -320,7 +320,7 @@ function ConversionCalendar({
   const weekWidth = cellSize + cellGap;
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-4 w-fit">
+    <div className="bg-white border border-black rounded-lg p-4 w-fit">
       <div className="flex items-center gap-8 mb-2">
         <h3 className="text-sm font-medium text-gray-900">
           {total.toLocaleString()} conversions in the last year
@@ -444,7 +444,7 @@ export const Home = () => {
           </div>
 
           {websites.length === 0 ? (
-            <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
+            <div className="text-center py-12 bg-white rounded-lg border border-black">
               <Globe className="w-10 h-10 text-gray-400 mx-auto mb-3" />
               <p className="text-sm text-gray-600 mb-4">No websites yet</p>
               <Link
@@ -503,7 +503,7 @@ export const Home = () => {
               </TooltipProvider>
             </div>
             {websites.length > 1 && feedItems.length > 0 && (
-              <DropdownMenu>
+              <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <button className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1">
                     {filterSiteId

@@ -561,23 +561,22 @@ export const Lens: React.FC = () => {
 
 				{!aiConfigured ? (
 					/* No-key empty state: prompt to add an OpenAI key */
-					<Card className="border-black shadow-sm">
-						<CardHeader className="text-center pb-2">
-							<div className="mx-auto mb-4 w-16 h-16 bg-black rounded-2xl flex items-center justify-center">
-								<Key className="w-8 h-8 text-white" />
+					<Card className="border-black mt-6">
+						<CardHeader className="text-center pb-2 pt-8">
+							<div className="mx-auto mb-3 w-11 h-11 bg-black rounded-xl flex items-center justify-center">
+								<Key className="w-5 h-5 text-white" />
 							</div>
-							<CardTitle className="text-2xl">
+							<CardTitle className="text-lg">
 								Add your OpenAI key to get started
 							</CardTitle>
-							<CardDescription className="text-base">
+							<CardDescription className="text-sm">
 								Ask connects to OpenAI to turn your questions into answers.
-								Add your API key in AI settings to enable it.
+								Add your key in AI settings to enable it.
 							</CardDescription>
 						</CardHeader>
-						<CardContent className="pt-4 flex flex-col items-center gap-3">
+						<CardContent className="pb-8 flex justify-center">
 							<Button
 								asChild
-								size="lg"
 								className="bg-black hover:bg-black/80 text-white gap-2"
 							>
 								<Link href="/admin/administration/ai">
