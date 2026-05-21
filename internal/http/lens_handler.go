@@ -70,12 +70,6 @@ func lensWebsiteDomain(db *gorm.DB, websiteID int) string {
 
 // WebsiteLensAction renders the Lens page (uses the "Lens" Inertia component)
 func WebsiteLensAction(ctx *cartridge.Context) error {
-	return WebsiteLensActionWithComponent(ctx, "Lens")
-}
-
-// WebsiteLensActionWithComponent renders the Lens page with a custom component name.
-// Pro uses this via app.HandleLens to render its own component.
-func WebsiteLensActionWithComponent(ctx *cartridge.Context, component string) error {
 	db := ctx.DB()
 
 	websiteID, err := strconv.Atoi(ctx.Params("id"))
@@ -114,7 +108,7 @@ func WebsiteLensActionWithComponent(ctx *cartridge.Context, component string) er
 		"ai_configured":      openAIKey != "",
 	}
 
-	return inertia.RenderPage(ctx.Ctx, component, props)
+	return inertia.RenderPage(ctx.Ctx, "Lens", props)
 }
 
 // WebsiteLensAskAIAction handles AI question submission (POST -> Inertia render)

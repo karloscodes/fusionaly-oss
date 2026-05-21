@@ -19,18 +19,8 @@ import (
 	"gorm.io/gorm"
 )
 
-// DashboardPropsExtender is a function that can modify dashboard props before rendering.
-// Used by Pro to inject additional props like insights.
-type DashboardPropsExtender func(ctx *cartridge.Context, websiteID int, props map[string]interface{})
-
 // WebsiteDashboardAction handles the dashboard for a specific website at /admin/websites/:id
 func WebsiteDashboardAction(ctx *cartridge.Context) error {
-	return WebsiteDashboardActionWithExtension(ctx, "Dashboard", nil)
-}
-
-// WebsiteDashboardActionWithExtension renders the dashboard with optional props extender.
-// Pro uses this to render custom components and inject additional props like insights.
-func WebsiteDashboardActionWithExtension(ctx *cartridge.Context, component string, extender DashboardPropsExtender) error {
 	websiteId, err := ctx.ParamsInt("id")
 	if err != nil {
 		ctx.Logger.Error("Invalid website ID in URL", slog.Any("error", err))
@@ -115,7 +105,6 @@ func WebsiteDashboardActionWithExtension(ctx *cartridge.Context, component strin
 	props["websites"] = websitesData
 	props["annotations"] = annotationsList
 	props["share_token"] = website.ShareToken
-	props["insights"] = []interface{}{}
 
 	props["comparison"] = inertia.Defer(func() interface{} {
 		return analytics.FetchComparisonMetrics(db, timeFrame, websiteId, metrics, ctx.Logger)
@@ -131,9 +120,5 @@ func WebsiteDashboardActionWithExtension(ctx *cartridge.Context, component strin
 		return flowData
 	})
 
-	if extender != nil {
-		extender(ctx, websiteId, props)
-	}
-
-	return inertia.RenderPage(ctx.Ctx, component, props)
+	return inertia.RenderPage(ctx.Ctx, "Dashboard", props)
 }
