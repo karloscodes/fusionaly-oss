@@ -1,7 +1,7 @@
 # Fusionaly
 
 [![Latest Release](https://img.shields.io/github/v/release/karloscodes/fusionaly-oss)](https://github.com/karloscodes/fusionaly-oss/releases/latest)
-[![License: AGPL-3.0](https://img.shields.io/github/license/karloscodes/fusionaly-oss)](./LICENSE)
+[![License: MIT](https://img.shields.io/github/license/karloscodes/fusionaly-oss)](./LICENSE)
 [![CI](https://github.com/karloscodes/fusionaly-oss/actions/workflows/pr.yml/badge.svg)](https://github.com/karloscodes/fusionaly-oss/actions)
 [![Docker](https://img.shields.io/docker/pulls/karloscodes/fusionaly)](https://hub.docker.com/r/karloscodes/fusionaly)
 
@@ -122,7 +122,7 @@ See [Installation Guide](https://fusionaly.com/docs/installation/) for Docker se
 
 ## License
 
-[AGPL-3.0](./LICENSE)
+[MIT](./LICENSE)
 
 ---
 
