@@ -185,6 +185,42 @@ func TestOpenAIKeySetting(t *testing.T) {
 	assert.Equal(t, "sk-test123", key, "GetOpenAIKey should return the trimmed key")
 }
 
+func TestAIProviderSettings(t *testing.T) {
+	t.Run("base URL defaults and saves", func(t *testing.T) {
+		dbManager, _ := testsupport.SetupTestDBManager(t)
+		db := dbManager.GetConnection()
+		settings.SetupDefaultSettings(db)
+
+		assert.Equal(t, "https://api.openai.com/v1", settings.GetAIBaseURL(db),
+			"GetAIBaseURL returns the default when set up")
+
+		require.NoError(t, settings.SaveAIBaseURL(db, "  https://openrouter.ai/api/v1  "))
+		assert.Equal(t, "https://openrouter.ai/api/v1", settings.GetAIBaseURL(db),
+			"SaveAIBaseURL trims and stores the value")
+
+		require.NoError(t, settings.SaveAIBaseURL(db, "   "))
+		assert.Equal(t, "https://api.openai.com/v1", settings.GetAIBaseURL(db),
+			"saving an empty base URL falls back to the default")
+	})
+
+	t.Run("model defaults and saves", func(t *testing.T) {
+		dbManager, _ := testsupport.SetupTestDBManager(t)
+		db := dbManager.GetConnection()
+		settings.SetupDefaultSettings(db)
+
+		assert.Equal(t, "gpt-4o-mini", settings.GetAIModel(db),
+			"GetAIModel returns the default when set up")
+
+		require.NoError(t, settings.SaveAIModel(db, "  gpt-4o  "))
+		assert.Equal(t, "gpt-4o", settings.GetAIModel(db),
+			"SaveAIModel trims and stores the value")
+
+		require.NoError(t, settings.SaveAIModel(db, "   "))
+		assert.Equal(t, "gpt-4o-mini", settings.GetAIModel(db),
+			"an empty model falls back to the default")
+	})
+}
+
 func TestAgentAPIKey(t *testing.T) {
 	t.Run("generates new API key", func(t *testing.T) {
 		dbManager, _ := testsupport.SetupTestDBManager(t)

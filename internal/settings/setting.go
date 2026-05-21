@@ -36,6 +36,8 @@ func SetupDefaultSettings(dbConn *gorm.DB) error {
 		{Key: "subdomain_tracking", Value: "{}"},
 		{Key: "website_goals", Value: "{\"goals\":{}}"},
 		{Key: KeyOpenAIKey, Value: ""},
+		{Key: KeyAIBaseURL, Value: "https://api.openai.com/v1"},
+		{Key: KeyAIModel, Value: "gpt-4o-mini"},
 	}
 	err := sqlite.PerformWrite(slog.Default(), dbConn, func(tx *gorm.DB) error {
 		for _, setting := range settings {
@@ -179,6 +181,18 @@ func CreateOrUpdateSetting(dbConn *gorm.DB, key string, value string) error {
 // OpenAI settings keys
 const KeyOpenAIKey = "openai_api_key"
 
+// AI provider settings keys
+const (
+	KeyAIBaseURL = "ai_base_url"
+	KeyAIModel   = "ai_model"
+)
+
+// Default AI provider values
+const (
+	DefaultAIBaseURL = "https://api.openai.com/v1"
+	DefaultAIModel   = "gpt-4o-mini"
+)
+
 // SaveOpenAIKey stores the OpenAI API key, trimming surrounding whitespace
 func SaveOpenAIKey(db *gorm.DB, key string) error {
 	return CreateOrUpdateSetting(db, KeyOpenAIKey, strings.TrimSpace(key))
@@ -187,6 +201,43 @@ func SaveOpenAIKey(db *gorm.DB, key string) error {
 // GetOpenAIKey retrieves the OpenAI API key
 func GetOpenAIKey(db *gorm.DB) (string, error) {
 	return GetSetting(db, KeyOpenAIKey)
+}
+
+// GetAIBaseURL returns the configured AI base URL, falling back to the default
+// when unset or empty. Any OpenAI-compatible endpoint (e.g. OpenRouter) works.
+func GetAIBaseURL(db *gorm.DB) string {
+	value, _ := GetSetting(db, KeyAIBaseURL)
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return DefaultAIBaseURL
+	}
+	return value
+}
+
+// SaveAIBaseURL stores the AI base URL, trimming whitespace. An empty value
+// stores the default so the setting is never left blank.
+func SaveAIBaseURL(db *gorm.DB, v string) error {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		v = DefaultAIBaseURL
+	}
+	return CreateOrUpdateSetting(db, KeyAIBaseURL, v)
+}
+
+// GetAIModel returns the configured AI model, falling back to the default
+// when unset or empty.
+func GetAIModel(db *gorm.DB) string {
+	value, _ := GetSetting(db, KeyAIModel)
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return DefaultAIModel
+	}
+	return value
+}
+
+// SaveAIModel stores the AI model, trimming whitespace.
+func SaveAIModel(db *gorm.DB, v string) error {
+	return CreateOrUpdateSetting(db, KeyAIModel, strings.TrimSpace(v))
 }
 
 // Setup initializes the models package with the database and logger.
