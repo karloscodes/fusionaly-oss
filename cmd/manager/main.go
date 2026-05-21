@@ -17,7 +17,7 @@ import (
 
 var currentManagerVersion string = "dev"
 
-const proImage = "karloscodes/fusionaly-pro:latest"
+const ossImage = "karloscodes/fusionaly:latest"
 
 func main() {
 	if len(os.Args) < 2 {
@@ -58,8 +58,8 @@ func main() {
 		if err := matcha.Check(); err != nil {
 			os.Exit(1)
 		}
-	case "upgrade":
-		runUpgrade(m)
+	case "migrate-to-oss":
+		runMigrateToOSS(m)
 	case "version", "--version", "-v":
 		fmt.Println(currentManagerVersion)
 	case "help", "--help", "-h":
@@ -135,18 +135,22 @@ func runAdminPasswordChange(m *matcha.Matcha) error {
 	return nil
 }
 
-func runUpgrade(m *matcha.Matcha) {
-	fmt.Println("Upgrade to Fusionaly Pro")
-	fmt.Println("========================")
+func runMigrateToOSS(m *matcha.Matcha) {
+	fmt.Println("Migrate to Fusionaly")
+	fmt.Println("====================")
+	fmt.Println()
+	fmt.Println("This switches your installation from Fusionaly Pro to Fusionaly.")
+	fmt.Println("Your data is preserved. All former Pro features (AI Lens, activity")
+	fmt.Println("feed) remain available.")
 	fmt.Println()
 	fmt.Println("This will:")
 	fmt.Println("  - Back up your current database")
-	fmt.Println("  - Switch to the Pro Docker image")
+	fmt.Println("  - Switch to the Fusionaly Docker image")
 	fmt.Println("  - Restart containers")
 	fmt.Println()
 
 	reader := bufio.NewReader(os.Stdin)
-	fmt.Print("Proceed with upgrade? [Y/n]: ")
+	fmt.Print("Proceed with migration? [Y/n]: ")
 
 	confirm, err := reader.ReadString('\n')
 	if err != nil {
@@ -156,7 +160,7 @@ func runUpgrade(m *matcha.Matcha) {
 
 	confirm = strings.TrimSpace(strings.ToLower(confirm))
 	if confirm != "" && confirm != "yes" && confirm != "y" {
-		fmt.Println("Upgrade cancelled.")
+		fmt.Println("Migration cancelled.")
 		os.Exit(0)
 	}
 
@@ -167,9 +171,9 @@ func runUpgrade(m *matcha.Matcha) {
 		fmt.Println("Proceeding without backup...")
 	}
 
-	// Switch to Pro image and deploy
-	fmt.Println("Switching to Fusionaly Pro...")
-	m.SetImage(proImage)
+	// Switch to OSS image and deploy
+	fmt.Println("Switching to Fusionaly...")
+	m.SetImage(ossImage)
 
 	// Save image to .env BEFORE Deploy (Deploy calls loadConfig which reads .env)
 	if err := m.SaveImage(); err != nil {
@@ -178,14 +182,14 @@ func runUpgrade(m *matcha.Matcha) {
 	}
 
 	if err := m.Deploy(); err != nil {
-		fmt.Printf("Error: upgrade failed: %v\n", err)
+		fmt.Printf("Error: migration failed: %v\n", err)
 		os.Exit(1)
 	}
 
-	fmt.Println("Upgrade completed successfully!")
+	fmt.Println("Migration completed successfully!")
 
 	if domain, err := m.GetDomain(); err == nil && domain != "" {
-		fmt.Printf("Visit https://%s to complete Pro setup\n", domain)
+		fmt.Printf("Visit https://%s to confirm everything works\n", domain)
 	}
 }
 
@@ -232,7 +236,7 @@ func printUsage() {
 	fmt.Println("\nCommands:")
 	fmt.Println("  install                     Install Fusionaly")
 	fmt.Println("  update                      Update an existing installation")
-	fmt.Println("  upgrade                     Upgrade from OSS to Fusionaly Pro")
+	fmt.Println("  migrate-to-oss              Switch a Fusionaly Pro install to Fusionaly")
 	fmt.Println("  reload                      Reload containers with latest .env config")
 	fmt.Println("  restore-db                  Interactively restore database from a backup")
 	fmt.Println("  change-admin-password       Change the admin user password")

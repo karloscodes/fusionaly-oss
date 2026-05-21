@@ -54,6 +54,7 @@ func TestManagerHelp(t *testing.T) {
 	output := stdout.String()
 	assert.Contains(t, output, "install", "Help should mention install command")
 	assert.Contains(t, output, "update", "Help should mention update command")
+	assert.Contains(t, output, "migrate-to-oss", "Help should mention migrate-to-oss command")
 	assert.Contains(t, output, "version", "Help should mention version command")
 	t.Logf("Help output:\n%s", output)
 }
