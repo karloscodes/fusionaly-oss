@@ -25,6 +25,7 @@ import (
 	"gorm.io/gorm/logger"
 
 	"fusionaly/internal"
+	"fusionaly/internal/ai"
 	"fusionaly/internal/analytics"
 	"fusionaly/internal/annotations"
 	"fusionaly/internal/config"
@@ -98,6 +99,8 @@ func allModels() []any {
 		&analytics.FlowTransitionStat{},
 		&onboarding.OnboardingSession{},
 		&annotations.Annotation{},
+		&ai.SavedQuery{},
+		&ai.AIQueryCache{},
 	}
 }
 
