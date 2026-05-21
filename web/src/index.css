@@ -8,6 +8,9 @@
   }
   html {
     overflow-y: scroll;
+    /* Reserve the scrollbar gutter so opening a Radix overlay (which locks
+       body scroll) doesn't shift centered page content sideways. */
+    scrollbar-gutter: stable;
     scrollbar-width: thin;
     scrollbar-color: gray transparent;
   }
