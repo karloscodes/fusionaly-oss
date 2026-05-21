@@ -69,5 +69,6 @@ func AccountChangePasswordFormAction(ctx *cartridge.Context) error {
 	return ctx.Redirect("/admin/administration/account", fiber.StatusFound)
 }
 
-// Note: License-related handlers (AccountUpdateLicenseFormAction, AccountCheckLicenseFormAction)
-// are available in Fusionaly Pro. See https://fusionaly.com/#pricing
+// Note: Fusionaly has no license/seat model. The former Pro license handlers
+// (AccountUpdateLicenseFormAction, AccountCheckLicenseFormAction) are intentionally
+// not present — all features are available in the single Fusionaly product.
