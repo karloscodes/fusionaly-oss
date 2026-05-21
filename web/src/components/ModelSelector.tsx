@@ -7,26 +7,23 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-// Static fallback list of OpenRouter model ids. The live catalog is fetched on
-// the server (internal/ai) and threaded in via the `models` prop, so this only
-// shows up when that fetch fails (or in tests). Keep in sync with
-// internal/ai/ai.go AvailableModels.
+// Curated short list of OpenRouter model ids. The server (internal/ai) threads
+// the same curated list in via the `models` prop; this acts as the fallback.
+// Keep in sync with internal/ai/ai.go AvailableModels.
 export const AI_MODELS = [
-  "openai/gpt-4o-mini",
-  "openai/gpt-4.1-mini",
-  "openai/gpt-4o",
-  "anthropic/claude-3.5-haiku",
-  "anthropic/claude-3.7-sonnet",
-  "anthropic/claude-sonnet-4",
-  "deepseek/deepseek-chat",
-  "deepseek/deepseek-r1",
-  "moonshotai/kimi-k2",
-  "minimax/minimax-01",
+  "openai/gpt-5.4-mini",
+  "openai/gpt-5.5",
+  "anthropic/claude-sonnet-4.6",
+  "anthropic/claude-opus-4.7",
+  "google/gemini-3.5-flash",
+  "deepseek/deepseek-v4-pro",
+  "moonshotai/kimi-k2.6",
+  "minimax/minimax-m2.7",
 ] as const;
 
 export type ModelId = string;
 
-export const DEFAULT_MODEL: ModelId = "openai/gpt-4o-mini";
+export const DEFAULT_MODEL: ModelId = "openai/gpt-5.4-mini";
 
 interface ModelSelectorProps {
   value: string;
