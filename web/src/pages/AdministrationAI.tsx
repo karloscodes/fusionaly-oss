@@ -50,7 +50,7 @@ export function AdministrationAI({ settings, flash, error }: AdministrationAIPro
         <div>
           <h1 className="text-2xl font-bold text-black">AI Settings</h1>
           <p className="text-black/60 mt-1">
-            Configure your OpenAI API key for AI-powered features
+            Connect OpenRouter to enable Ask.
           </p>
         </div>
 
@@ -61,11 +61,11 @@ export function AdministrationAI({ settings, flash, error }: AdministrationAIPro
             <CardHeader className="pb-4">
               <div className="flex justify-between items-center">
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <Key className="h-5 w-5" /> OpenAI API Key
+                  <Key className="h-5 w-5" /> OpenRouter API key
                 </CardTitle>
               </div>
               <CardDescription>
-                Configure your OpenAI API key for Ask and Alerts features.
+                Configure your OpenRouter API key for Ask and Alerts features.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -75,11 +75,11 @@ export function AdministrationAI({ settings, flash, error }: AdministrationAIPro
                 </div>
                 <div className="text-sm text-black/70">
                   <p>
-                    An OpenAI API key is required to use Ask and generate alerts.
-                    Get one from OpenAI.com.
+                    An OpenRouter API key is required to use Ask and generate alerts.
+                    Get one from OpenRouter.
                   </p>
                   <a
-                    href="https://platform.openai.com/api-keys"
+                    href="https://openrouter.ai/keys"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-sm font-medium text-black/70 hover:text-black mt-2"
@@ -94,7 +94,7 @@ export function AdministrationAI({ settings, flash, error }: AdministrationAIPro
                   htmlFor="openai_api_key"
                   className="block text-sm font-medium mb-1.5"
                 >
-                  OpenAI API Key
+                  OpenRouter API key
                   {currentHasApiKey && (
                     <span className="inline-flex items-center ml-2 text-xs text-green-700 bg-green-100 px-1.5 py-0.5 rounded-md font-medium">
                       <CheckCircle2 className="h-3 w-3 mr-1" />
@@ -107,7 +107,7 @@ export function AdministrationAI({ settings, flash, error }: AdministrationAIPro
                     id="openai_api_key"
                     name="openai_api_key"
                     type="password"
-                    placeholder={hasApiKey ? "Enter new key to replace existing" : "sk-..."}
+                    placeholder={hasApiKey ? "Enter new key to replace existing" : "sk-or-..."}
                     value={settingsForm.data.openai_api_key}
                     onChange={(e) => settingsForm.setData("openai_api_key", e.target.value)}
                     disabled={settingsForm.processing}
@@ -118,10 +118,10 @@ export function AdministrationAI({ settings, flash, error }: AdministrationAIPro
                   Your API key is stored securely and only used for AI features.
                 </p>
                 <p className="text-xs text-black/50 mt-1.5">
-                  Ask AI is optional and uses your own key. It never sends your
-                  visitors' data — only your database schema and the questions
-                  you type are sent to the AI provider (OpenAI, or any
-                  OpenAI-compatible endpoint like OpenRouter).
+                  Ask AI is optional and uses your own OpenRouter key. It never
+                  sends your visitors' data — only your database schema and the
+                  questions you type are sent to OpenRouter (and the model
+                  provider you choose there).
                 </p>
               </div>
               <div>
@@ -135,15 +135,14 @@ export function AdministrationAI({ settings, flash, error }: AdministrationAIPro
                   id="ai_base_url"
                   name="ai_base_url"
                   type="text"
-                  placeholder="https://api.openai.com/v1"
+                  placeholder="https://openrouter.ai/api/v1"
                   value={settingsForm.data.ai_base_url}
                   onChange={(e) => settingsForm.setData("ai_base_url", e.target.value)}
                   disabled={settingsForm.processing}
                   className="w-full border-black/20 focus:border-black focus:ring-black rounded-md"
                 />
                 <p className="text-xs text-black/50 mt-1.5">
-                  OpenAI by default. Point this at any OpenAI-compatible API,
-                  e.g. OpenRouter (https://openrouter.ai/api/v1).
+                  OpenRouter by default. Any OpenAI-compatible endpoint also works.
                 </p>
               </div>
               <div>
@@ -157,7 +156,7 @@ export function AdministrationAI({ settings, flash, error }: AdministrationAIPro
                   id="ai_model"
                   name="ai_model"
                   type="text"
-                  placeholder="gpt-4o-mini"
+                  placeholder="openai/gpt-4o-mini"
                   value={settingsForm.data.ai_model}
                   onChange={(e) => settingsForm.setData("ai_model", e.target.value)}
                   disabled={settingsForm.processing}

@@ -560,17 +560,17 @@ export const Lens: React.FC = () => {
 				<p className="text-black">Go beyond the dashboard. Ask questions in plain English.</p>
 
 				{!aiConfigured ? (
-					/* No-key empty state: prompt to add an OpenAI key */
+					/* No-key empty state: prompt to add an OpenRouter key */
 					<Card className="border-black mt-6">
 						<CardHeader className="text-center pb-2 pt-8">
 							<div className="mx-auto mb-3 w-11 h-11 bg-black rounded-xl flex items-center justify-center">
 								<Key className="w-5 h-5 text-white" />
 							</div>
 							<CardTitle className="text-lg">
-								Add your OpenAI key to get started
+								Add your OpenRouter key to get started
 							</CardTitle>
 							<CardDescription className="text-sm">
-								Ask connects to OpenAI to turn your questions into answers.
+								Ask connects to OpenRouter to turn your questions into answers.
 								Add your key in AI settings to enable it.
 							</CardDescription>
 						</CardHeader>
@@ -581,14 +581,14 @@ export const Lens: React.FC = () => {
 							>
 								<Link href="/admin/administration/ai">
 									<Key className="w-4 h-4" />
-									Add your OpenAI key
+									Add your OpenRouter key
 								</Link>
 							</Button>
 							<p className="text-xs text-black/50 text-center max-w-md">
-								Ask AI is optional and uses your own key. It never sends your
-								visitors' data — only your database schema and the questions you
-								type are sent to the AI provider (OpenAI, or any
-								OpenAI-compatible endpoint like OpenRouter).
+								Ask AI is optional and uses your own OpenRouter key. It never
+								sends your visitors' data — only your database schema and the
+								questions you type are sent to OpenRouter (and the model
+								provider you choose there).
 							</p>
 						</CardContent>
 					</Card>

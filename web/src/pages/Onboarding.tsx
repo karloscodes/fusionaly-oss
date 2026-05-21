@@ -174,12 +174,12 @@ export default function Onboarding() {
       <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
         <h4 className="font-medium text-purple-900 mb-2">AI-Powered Analytics (Optional)</h4>
         <p className="text-sm text-purple-800">
-          Add an OpenAI API key to ask questions about your analytics data in natural language.
+          Add an OpenRouter API key to ask questions about your analytics data in natural language.
         </p>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="openai_key">OpenAI API Key</Label>
+        <Label htmlFor="openai_key">OpenRouter API key</Label>
         <Input
           id="openai_key"
           type="password"
@@ -190,16 +190,15 @@ export default function Onboarding() {
 
       <p className="text-sm text-gray-600">
         Get an API key at{' '}
-        <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-          platform.openai.com
+        <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+          openrouter.ai/keys
         </a>
       </p>
 
       <p className="text-xs text-gray-500">
-        Ask AI is optional and uses your own key. It never sends your visitors'
-        data &mdash; only your database schema and the questions you type are sent
-        to the AI provider (OpenAI, or any OpenAI-compatible endpoint like
-        OpenRouter).
+        Ask AI is optional and uses your own OpenRouter key. It never sends your
+        visitors' data &mdash; only your database schema and the questions you type
+        are sent to OpenRouter (and the model provider you choose there).
       </p>
 
       <p className="text-xs text-gray-500">
