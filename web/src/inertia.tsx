@@ -16,6 +16,7 @@ import { Lens } from './pages/Lens'
 import Onboarding from './pages/Onboarding'
 import { AdministrationIngestion } from './pages/AdministrationIngestion'
 import { AdministrationAgents } from './pages/AdministrationAgents'
+import { AdministrationAI } from './pages/AdministrationAI'
 import { AdministrationAccount } from './pages/AdministrationAccount'
 import { AdministrationSystem } from './pages/AdministrationSystem'
 import { NotFound } from './pages/NotFound'
@@ -35,6 +36,7 @@ const pages: Record<string, any> = {
   Onboarding,
   AdministrationIngestion,
   AdministrationAgents,
+  AdministrationAI,
   AdministrationAccount,
   AdministrationSystem,
   NotFound,

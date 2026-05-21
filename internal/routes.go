@@ -217,6 +217,11 @@ func MountAppRoutesWithoutSession(srv *cartridge.Server) {
 	srv.Get("/admin/websites/:id/dashboard", http.WebsiteDashboardAction, adminConfig)
 	srv.Get("/admin/websites/:id/events", http.WebsiteEventsAction, adminConfig)
 	srv.Get("/admin/websites/:id/lens", http.WebsiteLensAction, adminConfig)
+	srv.Post("/admin/websites/:id/lens/ask-ai", http.WebsiteLensAskAIAction, adminConfig)
+	srv.Post("/admin/websites/:id/lens/save", http.WebsiteLensSaveAction, adminConfig)
+	srv.Post("/admin/websites/:id/lens/update", http.WebsiteLensUpdateAction, adminConfig)
+	srv.Post("/admin/websites/:id/lens/delete", http.WebsiteLensDeleteAction, adminConfig)
+	srv.Post("/admin/websites/:id/lens/clone", http.WebsiteLensCloneAction, adminConfig)
 	srv.Get("/admin/websites/:id/edit", http.WebsiteEditPageAction, adminConfig)
 	srv.Post("/admin/websites/:id", http.WebsiteUpdateAction, adminConfig)
 	srv.Delete("/admin/websites/:id", http.WebsiteDeleteAction, adminConfig)
@@ -235,6 +240,8 @@ func MountAppRoutesWithoutSession(srv *cartridge.Server) {
 	srv.Get("/admin/administration/ingestion", http.AdministrationIngestionPageAction, adminConfig)
 	srv.Post("/admin/ingestion/settings", http.IngestionSettingsFormAction, adminConfig)
 	srv.Get("/admin/administration/agents", http.AdministrationAgentsPageAction, adminConfig)
+	srv.Get("/admin/administration/ai", http.AISettingsPageAction, adminConfig)
+	srv.Post("/admin/administration/ai", http.AISettingsFormAction, adminConfig)
 	srv.Get("/admin/administration/account", http.AdministrationAccountPageAction, adminConfig)
 	srv.Get("/admin/administration/system", http.AdministrationSystemPageAction, adminConfig)
 
@@ -260,6 +267,4 @@ func MountAppRoutesWithoutSession(srv *cartridge.Server) {
 	srv.Get("/admin/api/ai/saved/:websiteId", http.AIGetSavedQueriesAction, adminAPIConfig)
 	srv.Delete("/admin/api/ai/saved/:id", http.AIDeleteSavedQueryAction, adminAPIConfig)
 	srv.Get("/admin/api/ai/status", http.AIGetStatusAction, adminAPIConfig)
-	// TODO(Phase 5): AI settings page (Inertia "AdministrationAI") + the GET/POST
-	// /admin/administration/ai routes are wired with the frontend in Phase 5.
 }
