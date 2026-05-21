@@ -123,7 +123,7 @@ func WebsiteLensAskAIAction(ctx *cartridge.Context) error {
 	}
 
 	question := ctx.FormValue("query")
-	// Empty model lets GetQueryFromOpenAI fall back to the configured AI model.
+	// Empty model lets GetQueryFromOpenAI fall back to ai.DefaultModel.
 	model := ctx.FormValue("model")
 	if question == "" {
 		flash.SetFlash(ctx.Ctx, "error", "Please enter a question")
@@ -239,7 +239,7 @@ func WebsiteLensUpdateAction(ctx *cartridge.Context) error {
 
 	queryID, _ := strconv.Atoi(ctx.FormValue("id"))
 	newTitle := ctx.FormValue("title")
-	// Empty model lets GetQueryFromOpenAI fall back to the configured AI model.
+	// Empty model lets GetQueryFromOpenAI fall back to ai.DefaultModel.
 	model := ctx.FormValue("model")
 
 	if queryID <= 0 || newTitle == "" {

@@ -8,7 +8,6 @@ import (
 	"github.com/karloscodes/cartridge/flash"
 	"github.com/karloscodes/cartridge/inertia"
 
-	"fusionaly/internal/ai"
 	"fusionaly/internal/settings"
 )
 
@@ -29,15 +28,10 @@ func AISettingsPageAction(ctx *cartridge.Context) error {
 			"key":   "openai_api_key",
 			"value": maskedKey,
 		},
-		{
-			"key":   "ai_model",
-			"value": settings.GetAIModel(db),
-		},
 	}
 
 	return inertia.RenderPage(ctx.Ctx, "AdministrationAI", inertia.Props{
-		"settings":         settingsData,
-		"available_models": ai.AvailableModels,
+		"settings": settingsData,
 	})
 }
 
@@ -49,23 +43,13 @@ func AISettingsFormAction(ctx *cartridge.Context) error {
 	// which sends a JSON body that FormValue can't read. Try form-encoded first,
 	// then fall back to the Inertia JSON body (same as the geolite form).
 	openAIKey := strings.TrimSpace(ctx.FormValue("openai_api_key"))
-	aiModel := strings.TrimSpace(ctx.FormValue("ai_model"))
-	if openAIKey == "" && aiModel == "" {
+	if openAIKey == "" {
 		var body struct {
 			OpenAIKey string `json:"openai_api_key"`
-			AIModel   string `json:"ai_model"`
 		}
 		if err := ctx.BodyParser(&body); err == nil {
 			openAIKey = strings.TrimSpace(body.OpenAIKey)
-			aiModel = strings.TrimSpace(body.AIModel)
 		}
-	}
-
-	// Persist the selected model. SaveAIModel trims and stores as-is.
-	if err := settings.SaveAIModel(db, aiModel); err != nil {
-		ctx.Logger.Error("Failed to save AI model")
-		flash.SetFlash(ctx.Ctx, "error", "Failed to save AI settings")
-		return ctx.Redirect("/admin/administration/ai", fiber.StatusFound)
 	}
 
 	// Don't save masked keys (user didn't change the existing value)

@@ -143,8 +143,21 @@ type AIQueryCache struct {
 	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
 }
 
-// Available AI models for Ask AI. OpenRouter uses provider-prefixed model ids.
-var AvailableModels = []string{"openai/gpt-4o-mini", "openai/gpt-4o", "anthropic/claude-3.5-sonnet"}
+// AvailableModels are the AI models offered in the Ask (Lens) per-question
+// selector. OpenRouter uses provider-prefixed model ids. These ids change over
+// time — verify against https://openrouter.ai/models.
+var AvailableModels = []string{
+	"openai/gpt-4o-mini",
+	"openai/gpt-4.1-mini",
+	"openai/gpt-4o",
+	"anthropic/claude-3.5-haiku",
+	"anthropic/claude-3.7-sonnet",
+	"anthropic/claude-sonnet-4",
+	"deepseek/deepseek-chat",
+	"deepseek/deepseek-r1",
+	"moonshotai/kimi-k2",
+	"minimax/minimax-01",
+}
 
 // DefaultModel is the default model for Ask AI
 const DefaultModel = "openai/gpt-4o-mini"
@@ -234,9 +247,9 @@ func GetQueryFromOpenAI(ctx context.Context, db *gorm.DB, query, openAIApiKey st
 		return nil, fmt.Errorf("OpenAI API key not configured")
 	}
 
-	// Validate and default model (falls back to a valid configured default)
+	// Validate and default model (falls back to the default when unset)
 	if model == "" {
-		model = settings.GetAIModel(db)
+		model = DefaultModel
 	}
 
 	// Check cache first
@@ -339,7 +352,7 @@ func GetInvestigationFromOpenAI(ctx context.Context, db *gorm.DB, question, open
 
 	// Call OpenAI
 	openAIRequest := OpenAIRequest{
-		Model:          settings.GetAIModel(db),
+		Model:          DefaultModel,
 		Messages:       messages,
 		ResponseFormat: &ResponseFormat{Type: "json_object"},
 	}
@@ -1112,7 +1125,7 @@ Rules:
 	userPrompt := fmt.Sprintf("Question: %s\n\nData:\n%s\n\nSummarize what this data tells us.", question, string(resultsJSON))
 
 	openAIRequest := OpenAIRequest{
-		Model: settings.GetAIModel(db),
+		Model: DefaultModel,
 		Messages: []Message{
 			{Role: "system", Content: systemPrompt},
 			{Role: "user", Content: userPrompt},

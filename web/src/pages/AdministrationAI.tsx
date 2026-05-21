@@ -3,7 +3,6 @@ import { AdministrationLayout } from "@/components/administration-layout"
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { FlashMessageDisplay } from "@/components/ui/flash-message"
 import { Key, ExternalLink, CheckCircle2 } from "lucide-react"
 import type { FlashMessage } from "@/types"
@@ -15,22 +14,17 @@ interface Setting {
 
 interface AdministrationAIProps {
   settings?: Setting[]
-  available_models?: string[]
   flash?: FlashMessage
   error?: string
 }
 
-export function AdministrationAI({ settings, available_models, flash, error }: AdministrationAIProps) {
+export function AdministrationAI({ settings, flash, error }: AdministrationAIProps) {
   const openaiSetting = settings?.find((s) => s.key === "openai_api_key")
   const initialApiKey = openaiSetting?.value || ""
   const hasApiKey = initialApiKey.trim().startsWith("sk-") || initialApiKey.startsWith("*")
 
-  const models = available_models ?? []
-  const initialModel = settings?.find((s) => s.key === "ai_model")?.value || ""
-
   const settingsForm = useForm({
     openai_api_key: initialApiKey,
-    ai_model: initialModel,
   })
 
   const currentHasApiKey = settingsForm.data.openai_api_key.trim().startsWith("sk-") ||
@@ -123,34 +117,6 @@ export function AdministrationAI({ settings, available_models, flash, error }: A
                   questions you type are sent to OpenRouter (and the model
                   provider you choose there).
                 </p>
-              </div>
-              <div>
-                <label
-                  htmlFor="ai_model"
-                  className="block text-sm font-medium mb-1.5"
-                >
-                  Model
-                </label>
-                <Select
-                  value={settingsForm.data.ai_model}
-                  onValueChange={(value) => settingsForm.setData("ai_model", value)}
-                  disabled={settingsForm.processing}
-                >
-                  <SelectTrigger
-                    id="ai_model"
-                    name="ai_model"
-                    className="w-full border-black/20 focus:border-black focus:ring-black rounded-md"
-                  >
-                    <SelectValue placeholder="openai/gpt-4o-mini" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {models.map((model) => (
-                      <SelectItem key={model} value={model}>
-                        {model}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
             </CardContent>
             <CardFooter className="flex justify-end border-t pt-4">
