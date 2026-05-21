@@ -105,7 +105,7 @@ type SavedQuery struct {
 	GeneratedSQL string    `json:"generated_sql" gorm:"type:text;not null"`
 	QueryType    string    `json:"query_type" gorm:"size:50;default:TABLE"`
 	VegaSpec     string    `json:"vega_spec,omitempty" gorm:"type:text"`
-	Model        string    `json:"model" gorm:"size:50;default:'gpt-5.2'"`
+	Model        string    `json:"model" gorm:"size:50;default:'gpt-4o-mini'"`
 	Order        int       `json:"order" gorm:"default:0"`
 	CreatedAt    time.Time `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt    time.Time `json:"updated_at" gorm:"autoUpdateTime"`
@@ -128,7 +128,7 @@ type AIQueryCache struct {
 	CacheKey  string    `json:"cache_key" gorm:"uniqueIndex;size:64;not null"`
 	WebsiteID int       `json:"website_id" gorm:"index;not null"`
 	Question  string    `json:"question" gorm:"type:text;not null"`
-	Model     string    `json:"model" gorm:"size:50;default:'gpt-5.2'"`
+	Model     string    `json:"model" gorm:"size:50;default:'gpt-4o-mini'"`
 	SQL       string    `json:"sql" gorm:"type:text;not null"`
 	QueryType string    `json:"query_type" gorm:"size:50;not null"`
 	VegaSpec  string    `json:"vega_spec,omitempty" gorm:"type:text"`
@@ -138,10 +138,16 @@ type AIQueryCache struct {
 }
 
 // Available AI models for Ask AI
-var AvailableModels = []string{"gpt-4.1", "gpt-5.2", "gpt-5.2-thinking"}
+var AvailableModels = []string{"gpt-4o-mini", "gpt-4o", "gpt-4.1"}
 
 // DefaultModel is the default model for Ask AI
-const DefaultModel = "gpt-5.2"
+const DefaultModel = "gpt-4o-mini"
+
+// chatCompletionsURL builds the chat completions endpoint from the configured
+// AI base URL. Works with OpenAI or any OpenAI-compatible API (e.g. OpenRouter).
+func chatCompletionsURL(db *gorm.DB) string {
+	return strings.TrimRight(settings.GetAIBaseURL(db), "/") + "/chat/completions"
+}
 
 // generateCacheKey creates a unique key for a question + website + model combination
 func generateCacheKey(question string, websiteID int, model string) string {
@@ -216,9 +222,9 @@ func GetQueryFromOpenAI(ctx context.Context, db *gorm.DB, query, openAIApiKey st
 		return nil, fmt.Errorf("OpenAI API key not configured")
 	}
 
-	// Validate and default model
+	// Validate and default model (falls back to a valid configured default)
 	if model == "" {
-		model = DefaultModel
+		model = settings.GetAIModel(db)
 	}
 
 	// Check cache first
@@ -252,7 +258,7 @@ func GetQueryFromOpenAI(ctx context.Context, db *gorm.DB, query, openAIApiKey st
 	var lastError error
 
 	for attempt := 0; attempt <= maxRetries; attempt++ {
-		result, err := callOpenAIForQuery(ctx, openAIApiKey, model, messages)
+		result, err := callOpenAIForQuery(ctx, db, openAIApiKey, model, messages)
 		if err != nil {
 			return nil, err
 		}
@@ -321,7 +327,7 @@ func GetInvestigationFromOpenAI(ctx context.Context, db *gorm.DB, question, open
 
 	// Call OpenAI
 	openAIRequest := OpenAIRequest{
-		Model:          "gpt-5.2",
+		Model:          settings.GetAIModel(db),
 		Messages:       messages,
 		ResponseFormat: &ResponseFormat{Type: "json_object"},
 	}
@@ -332,7 +338,7 @@ func GetInvestigationFromOpenAI(ctx context.Context, db *gorm.DB, question, open
 	}
 
 	client := &http.Client{Timeout: 90 * time.Second}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.openai.com/v1/chat/completions", bytes.NewBuffer(requestBody))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, chatCompletionsURL(db), bytes.NewBuffer(requestBody))
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to create HTTP request: %w", err)
 	}
@@ -565,7 +571,7 @@ Provide a well-rounded view of the current state.`
 }
 
 // callOpenAIForQuery makes a single call to OpenAI to generate SQL
-func callOpenAIForQuery(ctx context.Context, openAIApiKey, model string, messages []Message) (*AIQueryResult, error) {
+func callOpenAIForQuery(ctx context.Context, db *gorm.DB, openAIApiKey, model string, messages []Message) (*AIQueryResult, error) {
 	// Prepare OpenAI request with JSON mode for reliable parsing
 	openAIRequest := OpenAIRequest{
 		Model:          model,
@@ -579,7 +585,7 @@ func callOpenAIForQuery(ctx context.Context, openAIApiKey, model string, message
 	}
 
 	client := &http.Client{Timeout: 60 * time.Second}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.openai.com/v1/chat/completions", bytes.NewBuffer(requestBody))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, chatCompletionsURL(db), bytes.NewBuffer(requestBody))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create HTTP request: %w", err)
 	}
@@ -1060,7 +1066,7 @@ func GetOpenAIApiKey(db *gorm.DB) (string, error) {
 }
 
 // GetSummaryFromOpenAI generates a plain English summary of query results
-func GetSummaryFromOpenAI(ctx context.Context, question string, results []map[string]interface{}, openAIApiKey string) (string, error) {
+func GetSummaryFromOpenAI(ctx context.Context, db *gorm.DB, question string, results []map[string]interface{}, openAIApiKey string) (string, error) {
 	if openAIApiKey == "" {
 		return "", fmt.Errorf("OpenAI API key not configured")
 	}
@@ -1094,7 +1100,7 @@ Rules:
 	userPrompt := fmt.Sprintf("Question: %s\n\nData:\n%s\n\nSummarize what this data tells us.", question, string(resultsJSON))
 
 	openAIRequest := OpenAIRequest{
-		Model: "gpt-4o-mini",
+		Model: settings.GetAIModel(db),
 		Messages: []Message{
 			{Role: "system", Content: systemPrompt},
 			{Role: "user", Content: userPrompt},
@@ -1108,7 +1114,7 @@ Rules:
 	}
 
 	client := &http.Client{Timeout: 30 * time.Second}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.openai.com/v1/chat/completions", bytes.NewBuffer(requestBody))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, chatCompletionsURL(db), bytes.NewBuffer(requestBody))
 	if err != nil {
 		return "", fmt.Errorf("failed to create HTTP request: %w", err)
 	}

@@ -101,24 +101,24 @@ func TestQueryCache(t *testing.T) {
 		dbManager, _ := testsupport.SetupTestDBManager(t)
 		db := dbManager.GetConnection()
 
-		err := ai.SetCachedQuery(db, "Top pages?", 1, "gpt-5.2", "SELECT 1", ai.TypeTable, "", nil)
+		err := ai.SetCachedQuery(db, "Top pages?", 1, "gpt-4o-mini", "SELECT 1", ai.TypeTable, "", nil)
 		require.NoError(t, err)
 
 		// Same inputs (with different whitespace/case) must resolve to the same cached row.
-		got, found := ai.GetCachedQuery(db, "  top   PAGES?  ", 1, "gpt-5.2")
+		got, found := ai.GetCachedQuery(db, "  top   PAGES?  ", 1, "gpt-4o-mini")
 
 		require.True(t, found)
 		assert.Equal(t, "SELECT 1", got.SQL)
 
 		// A write with the normalized-equivalent question must upsert, not duplicate.
-		err = ai.SetCachedQuery(db, "TOP pages?", 1, "gpt-5.2", "SELECT 2", ai.TypeTable, "", nil)
+		err = ai.SetCachedQuery(db, "TOP pages?", 1, "gpt-4o-mini", "SELECT 2", ai.TypeTable, "", nil)
 		require.NoError(t, err)
 
 		var count int64
 		require.NoError(t, db.Model(&ai.AIQueryCache{}).Count(&count).Error)
 		assert.EqualValues(t, 1, count, "normalized-equivalent questions share one cache row")
 
-		got, found = ai.GetCachedQuery(db, "Top pages?", 1, "gpt-5.2")
+		got, found = ai.GetCachedQuery(db, "Top pages?", 1, "gpt-4o-mini")
 		require.True(t, found)
 		assert.Equal(t, "SELECT 2", got.SQL)
 	})
@@ -127,9 +127,9 @@ func TestQueryCache(t *testing.T) {
 		dbManager, _ := testsupport.SetupTestDBManager(t)
 		db := dbManager.GetConnection()
 
-		require.NoError(t, ai.SetCachedQuery(db, "Top pages?", 1, "gpt-5.2", "SELECT 1", ai.TypeTable, "", nil))
+		require.NoError(t, ai.SetCachedQuery(db, "Top pages?", 1, "gpt-4o-mini", "SELECT 1", ai.TypeTable, "", nil))
 
-		_, foundOtherSite := ai.GetCachedQuery(db, "Top pages?", 2, "gpt-5.2")
+		_, foundOtherSite := ai.GetCachedQuery(db, "Top pages?", 2, "gpt-4o-mini")
 		_, foundOtherModel := ai.GetCachedQuery(db, "Top pages?", 1, "gpt-4.1")
 
 		assert.False(t, foundOtherSite, "different website_id must be a cache miss")
@@ -140,14 +140,14 @@ func TestQueryCache(t *testing.T) {
 		dbManager, _ := testsupport.SetupTestDBManager(t)
 		db := dbManager.GetConnection()
 
-		require.NoError(t, ai.SetCachedQuery(db, "Stale?", 1, "gpt-5.2", "SELECT 1", ai.TypeTable, "", nil))
+		require.NoError(t, ai.SetCachedQuery(db, "Stale?", 1, "gpt-4o-mini", "SELECT 1", ai.TypeTable, "", nil))
 
 		// Force the stored row to be expired.
 		require.NoError(t, db.Model(&ai.AIQueryCache{}).
 			Where("1 = 1").
 			Update("expires_at", time.Now().Add(-1*time.Hour)).Error)
 
-		_, found := ai.GetCachedQuery(db, "Stale?", 1, "gpt-5.2")
+		_, found := ai.GetCachedQuery(db, "Stale?", 1, "gpt-4o-mini")
 
 		assert.False(t, found, "an expired entry must be a cache miss")
 	})
@@ -156,8 +156,8 @@ func TestQueryCache(t *testing.T) {
 		dbManager, _ := testsupport.SetupTestDBManager(t)
 		db := dbManager.GetConnection()
 
-		require.NoError(t, ai.SetCachedQuery(db, "Fresh?", 1, "gpt-5.2", "SELECT 1", ai.TypeTable, "", nil))
-		require.NoError(t, ai.SetCachedQuery(db, "Old?", 1, "gpt-5.2", "SELECT 2", ai.TypeTable, "", nil))
+		require.NoError(t, ai.SetCachedQuery(db, "Fresh?", 1, "gpt-4o-mini", "SELECT 1", ai.TypeTable, "", nil))
+		require.NoError(t, ai.SetCachedQuery(db, "Old?", 1, "gpt-4o-mini", "SELECT 2", ai.TypeTable, "", nil))
 		require.NoError(t, db.Model(&ai.AIQueryCache{}).
 			Where("question = ?", "Old?").
 			Update("expires_at", time.Now().Add(-1*time.Hour)).Error)
@@ -168,7 +168,7 @@ func TestQueryCache(t *testing.T) {
 		require.NoError(t, db.Model(&ai.AIQueryCache{}).Count(&remaining).Error)
 		assert.EqualValues(t, 1, remaining)
 
-		_, found := ai.GetCachedQuery(db, "Fresh?", 1, "gpt-5.2")
+		_, found := ai.GetCachedQuery(db, "Fresh?", 1, "gpt-4o-mini")
 		assert.True(t, found, "the non-expired row must survive cleanup")
 	})
 }
@@ -213,9 +213,9 @@ func TestSavedQueryCRUD(t *testing.T) {
 		db := dbManager.GetConnection()
 		websiteID := uint(7)
 
-		_, err := ai.CreateSavedQueryWithVega(db, "First", "SELECT 1", "", &websiteID, ai.TypeTable, "gpt-5.2")
+		_, err := ai.CreateSavedQueryWithVega(db, "First", "SELECT 1", "", &websiteID, ai.TypeTable, "gpt-4o-mini")
 		require.NoError(t, err)
-		_, err = ai.CreateSavedQueryWithVega(db, "Second", "SELECT 2", "", &websiteID, ai.TypeTable, "gpt-5.2")
+		_, err = ai.CreateSavedQueryWithVega(db, "Second", "SELECT 2", "", &websiteID, ai.TypeTable, "gpt-4o-mini")
 		require.NoError(t, err)
 
 		list, err := ai.GetSavedQueriesByWebsiteID(db, websiteID)
@@ -234,7 +234,7 @@ func TestSavedQueryCRUD(t *testing.T) {
 		db := dbManager.GetConnection()
 		websiteID := uint(7)
 
-		original, err := ai.CreateSavedQueryWithVega(db, "Source", "SELECT 1", `{"mark":"bar"}`, &websiteID, ai.TypeDistribution, "gpt-5.2")
+		original, err := ai.CreateSavedQueryWithVega(db, "Source", "SELECT 1", `{"mark":"bar"}`, &websiteID, ai.TypeDistribution, "gpt-4o-mini")
 		require.NoError(t, err)
 
 		clone, err := ai.CloneSavedQuery(db, original.ID)
