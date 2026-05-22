@@ -8,7 +8,7 @@ export type Theme = "light" | "dark" | "terminal";
 export const THEMES: { id: Theme; label: string }[] = [
   { id: "light", label: "Light" },
   { id: "dark", label: "Dark" },
-  { id: "terminal", label: "Terminal" },
+  { id: "terminal", label: "Phosphor" }, // green-CRT vibe; id stays "terminal" (stable across saved prefs)
 ];
 
 const STORAGE_KEY = "fusionaly-theme";
