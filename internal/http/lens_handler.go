@@ -121,17 +121,11 @@ func WebsiteLensAskAIAction(ctx *cartridge.Context) error {
 	}
 
 	// Read the question/model from the request body. The route :id is the
-	// website id (read via ctx.Params above); this struct deliberately omits a
-	// params tag so Bind's ParamsParser can't overlay it.
-	var in struct {
-		Query string `json:"query" form:"query"`
-		Model string `json:"model" form:"model"`
-	}
-	_ = ctx.Bind(&in)
-
-	question := in.Query
+	// website id (read via ctx.Params above); Input("query"/"model") reads only
+	// those keys, so the :id param can't be overlaid here.
+	question := ctx.Input("query")
 	// Empty model lets GetQueryFromOpenAI fall back to ai.DefaultModel.
-	model := in.Model
+	model := ctx.Input("model")
 	if question == "" {
 		return ctx.FlashError("Please enter a question").Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
 	}

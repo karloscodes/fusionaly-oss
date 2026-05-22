@@ -128,11 +128,7 @@ func OnboardingPageAction(ctx *cartridge.Context) error {
 
 // OnboardingUserFormAction handles user account form submission (PRG pattern)
 func OnboardingUserFormAction(ctx *cartridge.Context) error {
-	var in struct {
-		Email string `json:"email" form:"email"`
-	}
-	_ = ctx.Bind(&in)
-	email := strings.TrimSpace(in.Email)
+	email := strings.TrimSpace(ctx.Input("email"))
 
 	// Get session ID from cookie
 	sessionID := ctx.Cookies(onboardingSessionCookieName)
@@ -177,13 +173,8 @@ func OnboardingUserFormAction(ctx *cartridge.Context) error {
 
 // OnboardingPasswordFormAction handles password form submission (PRG pattern)
 func OnboardingPasswordFormAction(ctx *cartridge.Context) error {
-	var in struct {
-		Password        string `json:"password" form:"password"`
-		ConfirmPassword string `json:"confirm_password" form:"confirm_password"`
-	}
-	_ = ctx.Bind(&in)
-	password := in.Password
-	confirmPassword := in.ConfirmPassword
+	password := ctx.Input("password")
+	confirmPassword := ctx.Input("confirm_password")
 
 	// Get session ID from cookie
 	sessionID := ctx.Cookies(onboardingSessionCookieName)

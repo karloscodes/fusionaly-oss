@@ -42,12 +42,8 @@ func validateIPList(ipList string) (bool, string) {
 
 // IngestionSettingsFormAction handles POST form submission for ingestion settings (Inertia)
 func IngestionSettingsFormAction(ctx *cartridge.Context) error {
-	// Bind is content-type aware (form-encoded or Inertia's JSON form.post())
-	var in struct {
-		ExcludedIPs string `json:"excluded_ips" form:"excluded_ips"`
-	}
-	_ = ctx.Bind(&in)
-	excludedIPs := in.ExcludedIPs
+	// Input is content-type aware (form-encoded or Inertia's JSON form.post())
+	excludedIPs := ctx.Input("excluded_ips")
 
 	// Validate IP list
 	if valid, msg := validateIPList(excludedIPs); !valid {

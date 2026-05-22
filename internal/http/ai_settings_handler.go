@@ -39,13 +39,9 @@ func AISettingsFormAction(ctx *cartridge.Context) error {
 	db := ctx.DB()
 
 	// The frontend posts via the vanilla Inertia protocol (useForm/router.post),
-	// which sends a JSON body that FormValue can't read. Bind is content-type
+	// which sends a JSON body that FormValue can't read. Input is content-type
 	// aware: it reads JSON or form-encoded bodies (same as the geolite form).
-	var in struct {
-		OpenAIKey string `json:"openai_api_key" form:"openai_api_key"`
-	}
-	_ = ctx.Bind(&in)
-	openAIKey := strings.TrimSpace(in.OpenAIKey)
+	openAIKey := strings.TrimSpace(ctx.Input("openai_api_key"))
 
 	// Don't save masked keys (user didn't change the existing value)
 	if strings.HasPrefix(openAIKey, "****") {

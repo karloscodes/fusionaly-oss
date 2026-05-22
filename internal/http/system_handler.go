@@ -314,14 +314,9 @@ func SystemPurgeCacheFormAction(ctx *cartridge.Context) error {
 func SystemGeoLiteFormAction(ctx *cartridge.Context) error {
 	db := ctx.DB()
 
-	// Parse form data - Bind is content-type aware (form-encoded or Inertia.js JSON)
-	var in struct {
-		AccountID  string `json:"geolite_account_id" form:"geolite_account_id"`
-		LicenseKey string `json:"geolite_license_key" form:"geolite_license_key"`
-	}
-	_ = ctx.Bind(&in)
-	accountID := in.AccountID
-	licenseKey := in.LicenseKey
+	// Parse form data - Input is content-type aware (form-encoded or Inertia.js JSON)
+	accountID := ctx.Input("geolite_account_id")
+	licenseKey := ctx.Input("geolite_license_key")
 
 	// Save GeoLite credentials
 	if err := settings.SaveGeoLiteCredentials(db, accountID, licenseKey); err != nil {

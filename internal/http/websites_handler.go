@@ -58,12 +58,8 @@ func WebsiteNewPageAction(ctx *cartridge.Context) error {
 
 // WebsiteCreateAction handles creating a new website (form submission)
 func WebsiteCreateAction(ctx *cartridge.Context) error {
-	// Bind is content-type aware (form-encoded or Inertia.js JSON)
-	var in struct {
-		Domain string `json:"domain" form:"domain"`
-	}
-	_ = ctx.Bind(&in)
-	domain := in.Domain
+	// Input is content-type aware (form-encoded or Inertia.js JSON)
+	domain := ctx.Input("domain")
 
 	// Validate domain
 	if domain == "" {
@@ -180,14 +176,9 @@ func WebsiteUpdateAction(ctx *cartridge.Context) error {
 		return ctx.FlashError("Invalid website ID").Redirect("/admin", fiber.StatusFound)
 	}
 
-	// Parse form data - Bind is content-type aware (form-encoded or Inertia.js JSON)
-	var in struct {
-		ConversionGoals          string `json:"conversion_goals" form:"conversion_goals"`
-		SubdomainTrackingEnabled string `json:"subdomain_tracking_enabled" form:"subdomain_tracking_enabled"`
-	}
-	_ = ctx.Bind(&in)
-	conversionGoalsJSON := in.ConversionGoals
-	subdomainTrackingEnabledStr := in.SubdomainTrackingEnabled
+	// Parse form data - Input is content-type aware (form-encoded or Inertia.js JSON)
+	conversionGoalsJSON := ctx.Input("conversion_goals")
+	subdomainTrackingEnabledStr := ctx.Input("subdomain_tracking_enabled")
 
 	subdomainTrackingEnabled := subdomainTrackingEnabledStr == "true"
 
