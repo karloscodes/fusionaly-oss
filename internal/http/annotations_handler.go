@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"log/slog"
 	"gorm.io/gorm"
+	"log/slog"
 
 	"fusionaly/internal/annotations"
 	"github.com/karloscodes/cartridge"
@@ -22,44 +22,24 @@ type annotationFormData struct {
 	Color          string
 }
 
-// parseAnnotationForm extracts annotation data from form values or JSON body
+// parseAnnotationForm extracts annotation data from form values or JSON body.
+// Bind is content-type aware (form-encoded or Inertia.js JSON).
 func parseAnnotationForm(ctx *cartridge.Context) annotationFormData {
-	data := annotationFormData{
-		Title:          ctx.FormValue("title"),
-		Description:    ctx.FormValue("description"),
-		AnnotationType: ctx.FormValue("annotation_type"),
-		AnnotationDate: ctx.FormValue("annotation_date"),
-		Color:          ctx.FormValue("color"),
+	var in struct {
+		Title          string `json:"title" form:"title"`
+		Description    string `json:"description" form:"description"`
+		AnnotationType string `json:"annotation_type" form:"annotation_type"`
+		AnnotationDate string `json:"annotation_date" form:"annotation_date"`
+		Color          string `json:"color" form:"color"`
 	}
-
-	// Try parsing as JSON for Inertia.js requests
-	if data.Title == "" {
-		var jsonBody struct {
-			Title          string `json:"title"`
-			Description    string `json:"description"`
-			AnnotationType string `json:"annotation_type"`
-			AnnotationDate string `json:"annotation_date"`
-			Color          string `json:"color"`
-		}
-		if err := ctx.BodyParser(&jsonBody); err == nil {
-			if jsonBody.Title != "" {
-				data.Title = jsonBody.Title
-			}
-			if jsonBody.Description != "" {
-				data.Description = jsonBody.Description
-			}
-			if jsonBody.AnnotationType != "" {
-				data.AnnotationType = jsonBody.AnnotationType
-			}
-			if jsonBody.AnnotationDate != "" {
-				data.AnnotationDate = jsonBody.AnnotationDate
-			}
-			if jsonBody.Color != "" {
-				data.Color = jsonBody.Color
-			}
-		}
+	_ = ctx.Bind(&in)
+	return annotationFormData{
+		Title:          in.Title,
+		Description:    in.Description,
+		AnnotationType: in.AnnotationType,
+		AnnotationDate: in.AnnotationDate,
+		Color:          in.Color,
 	}
-	return data
 }
 
 // annotationDateFormats defines accepted date formats for annotation dates
@@ -142,8 +122,7 @@ func AnnotationCreateAction(ctx *cartridge.Context) error {
 	websiteID, err := ctx.ParamsInt("id")
 	if err != nil {
 		ctx.Logger.Error("Invalid website ID", slog.Any("error", err))
-		flash.SetFlash(ctx.Ctx, "error", "Invalid website ID")
-		return ctx.Redirect("/admin", fiber.StatusFound)
+		return ctx.FlashError("Invalid website ID").Redirect("/admin", fiber.StatusFound)
 	}
 
 	form := parseAnnotationForm(ctx)
@@ -158,20 +137,17 @@ func AnnotationCreateAction(ctx *cartridge.Context) error {
 
 	// Validate required fields
 	if form.Title == "" {
-		flash.SetFlash(ctx.Ctx, "error", "Title is required")
-		return ctx.Redirect(redirectPath, fiber.StatusFound)
+		return ctx.FlashError("Title is required").Redirect(redirectPath, fiber.StatusFound)
 	}
 
 	if form.AnnotationDate == "" {
-		flash.SetFlash(ctx.Ctx, "error", "Date is required")
-		return ctx.Redirect(redirectPath, fiber.StatusFound)
+		return ctx.FlashError("Date is required").Redirect(redirectPath, fiber.StatusFound)
 	}
 
 	annotationDate, ok := parseAnnotationDate(form.AnnotationDate)
 	if !ok {
 		ctx.Logger.Error("Failed to parse annotation date", slog.String("date", form.AnnotationDate))
-		flash.SetFlash(ctx.Ctx, "error", "Invalid date format")
-		return ctx.Redirect(redirectPath, fiber.StatusFound)
+		return ctx.FlashError("Invalid date format").Redirect(redirectPath, fiber.StatusFound)
 	}
 
 	db := ctx.DB()
@@ -192,8 +168,7 @@ func AnnotationCreateAction(ctx *cartridge.Context) error {
 
 	if err := annotations.CreateAnnotation(db, annotation); err != nil {
 		ctx.Logger.Error("Failed to create annotation", slog.Any("error", err))
-		flash.SetFlash(ctx.Ctx, "error", "Failed to create annotation")
-		return ctx.Redirect(redirectPath, fiber.StatusFound)
+		return ctx.FlashError("Failed to create annotation").Redirect(redirectPath, fiber.StatusFound)
 	}
 
 	ctx.Logger.Info("Annotation created successfully",
@@ -201,8 +176,7 @@ func AnnotationCreateAction(ctx *cartridge.Context) error {
 		slog.Int("websiteID", websiteID),
 	)
 
-	flash.SetFlash(ctx.Ctx, "success", "Annotation created successfully")
-	return ctx.Redirect(redirectPath, fiber.StatusFound)
+	return ctx.FlashSuccess("Annotation created successfully").Redirect(redirectPath, fiber.StatusFound)
 }
 
 // AnnotationUpdateAction updates an existing annotation (form submission)
@@ -210,8 +184,7 @@ func AnnotationUpdateAction(ctx *cartridge.Context) error {
 	websiteID, err := ctx.ParamsInt("id")
 	if err != nil {
 		ctx.Logger.Error("Invalid website ID", slog.Any("error", err))
-		flash.SetFlash(ctx.Ctx, "error", "Invalid website ID")
-		return ctx.Redirect("/admin", fiber.StatusFound)
+		return ctx.FlashError("Invalid website ID").Redirect("/admin", fiber.StatusFound)
 	}
 
 	redirectPath := dashboardPath(websiteID)
@@ -219,8 +192,7 @@ func AnnotationUpdateAction(ctx *cartridge.Context) error {
 	annotationID, err := ctx.ParamsInt("annotationId")
 	if err != nil {
 		ctx.Logger.Error("Invalid annotation ID", slog.Any("error", err))
-		flash.SetFlash(ctx.Ctx, "error", "Invalid annotation ID")
-		return ctx.Redirect(redirectPath, fiber.StatusFound)
+		return ctx.FlashError("Invalid annotation ID").Redirect(redirectPath, fiber.StatusFound)
 	}
 
 	db := ctx.DB()
@@ -239,8 +211,7 @@ func AnnotationUpdateAction(ctx *cartridge.Context) error {
 	form := parseAnnotationForm(ctx)
 
 	if form.Title == "" {
-		flash.SetFlash(ctx.Ctx, "error", "Title is required")
-		return ctx.Redirect(redirectPath, fiber.StatusFound)
+		return ctx.FlashError("Title is required").Redirect(redirectPath, fiber.StatusFound)
 	}
 
 	// Update fields
@@ -260,8 +231,7 @@ func AnnotationUpdateAction(ctx *cartridge.Context) error {
 
 	if err := annotations.UpdateAnnotation(db, existing); err != nil {
 		ctx.Logger.Error("Failed to update annotation", slog.Any("error", err))
-		flash.SetFlash(ctx.Ctx, "error", "Failed to update annotation")
-		return ctx.Redirect(redirectPath, fiber.StatusFound)
+		return ctx.FlashError("Failed to update annotation").Redirect(redirectPath, fiber.StatusFound)
 	}
 
 	ctx.Logger.Info("Annotation updated successfully",
@@ -269,8 +239,7 @@ func AnnotationUpdateAction(ctx *cartridge.Context) error {
 		slog.Int("websiteID", websiteID),
 	)
 
-	flash.SetFlash(ctx.Ctx, "success", "Annotation updated successfully")
-	return ctx.Redirect(redirectPath, fiber.StatusFound)
+	return ctx.FlashSuccess("Annotation updated successfully").Redirect(redirectPath, fiber.StatusFound)
 }
 
 // AnnotationDeleteAction deletes an annotation (form submission)
@@ -278,8 +247,7 @@ func AnnotationDeleteAction(ctx *cartridge.Context) error {
 	websiteID, err := ctx.ParamsInt("id")
 	if err != nil {
 		ctx.Logger.Error("Invalid website ID", slog.Any("error", err))
-		flash.SetFlash(ctx.Ctx, "error", "Invalid website ID")
-		return ctx.Redirect("/admin", fiber.StatusFound)
+		return ctx.FlashError("Invalid website ID").Redirect("/admin", fiber.StatusFound)
 	}
 
 	redirectPath := dashboardPath(websiteID)
@@ -287,8 +255,7 @@ func AnnotationDeleteAction(ctx *cartridge.Context) error {
 	annotationID, err := ctx.ParamsInt("annotationId")
 	if err != nil {
 		ctx.Logger.Error("Invalid annotation ID", slog.Any("error", err))
-		flash.SetFlash(ctx.Ctx, "error", "Invalid annotation ID")
-		return ctx.Redirect(redirectPath, fiber.StatusFound)
+		return ctx.FlashError("Invalid annotation ID").Redirect(redirectPath, fiber.StatusFound)
 	}
 
 	db := ctx.DB()
@@ -308,6 +275,5 @@ func AnnotationDeleteAction(ctx *cartridge.Context) error {
 		slog.Int("websiteID", websiteID),
 	)
 
-	flash.SetFlash(ctx.Ctx, "success", "Annotation deleted successfully")
-	return ctx.Redirect(redirectPath, fiber.StatusFound)
+	return ctx.FlashSuccess("Annotation deleted successfully").Redirect(redirectPath, fiber.StatusFound)
 }

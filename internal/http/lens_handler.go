@@ -7,7 +7,6 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/karloscodes/cartridge"
-	"github.com/karloscodes/cartridge/flash"
 	"github.com/karloscodes/cartridge/inertia"
 	"gorm.io/gorm"
 
@@ -74,8 +73,7 @@ func WebsiteLensAction(ctx *cartridge.Context) error {
 
 	websiteID, err := strconv.Atoi(ctx.Params("id"))
 	if err != nil || websiteID <= 0 {
-		flash.SetFlash(ctx.Ctx, "error", "Invalid website ID")
-		return ctx.Redirect("/admin/websites", fiber.StatusFound)
+		return ctx.FlashError("Invalid website ID").Redirect("/admin/websites", fiber.StatusFound)
 	}
 
 	// Get saved queries for this website
@@ -109,7 +107,7 @@ func WebsiteLensAction(ctx *cartridge.Context) error {
 		"models":             ai.AvailableModels,
 	}
 
-	return inertia.RenderPage(ctx.Ctx, "Lens", props)
+	return ctx.Inertia("Lens", props)
 }
 
 // WebsiteLensAskAIAction handles AI question submission (POST -> Inertia render)
@@ -119,36 +117,34 @@ func WebsiteLensAskAIAction(ctx *cartridge.Context) error {
 	websiteIDStr := ctx.Params("id")
 	websiteID, err := strconv.Atoi(websiteIDStr)
 	if err != nil || websiteID <= 0 {
-		flash.SetFlash(ctx.Ctx, "error", "Invalid website ID")
-		return ctx.Redirect("/admin/websites", fiber.StatusFound)
+		return ctx.FlashError("Invalid website ID").Redirect("/admin/websites", fiber.StatusFound)
 	}
 
-	question := ctx.FormValue("query")
+	// Read the question/model from the request body. The route :id is the
+	// website id (read via ctx.Params above); Input("query"/"model") reads only
+	// those keys, so the :id param can't be overlaid here.
+	question := ctx.Input("query")
 	// Empty model lets GetQueryFromOpenAI fall back to ai.DefaultModel.
-	model := ctx.FormValue("model")
+	model := ctx.Input("model")
 	if question == "" {
-		flash.SetFlash(ctx.Ctx, "error", "Please enter a question")
-		return ctx.Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
+		return ctx.FlashError("Please enter a question").Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
 	}
 
 	openAIKey, err := ai.GetOpenAIApiKey(db)
 	if err != nil || openAIKey == "" {
-		flash.SetFlash(ctx.Ctx, "error", "OpenAI API key is not configured. Please configure it in AI Settings.")
-		return ctx.Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
+		return ctx.FlashError("OpenAI API key is not configured. Please configure it in AI Settings.").Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
 	}
 
 	aiResult, err := ai.GetQueryFromOpenAI(context.Background(), db, question, openAIKey, websiteID, model, ctx.Logger)
 	if err != nil {
 		ctx.Logger.Error("Failed to get query from OpenAI", slog.Any("error", err))
-		flash.SetFlash(ctx.Ctx, "error", "Failed to generate query: "+err.Error())
-		return ctx.Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
+		return ctx.FlashError("Failed to generate query: "+err.Error()).Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
 	}
 
 	results, err := ai.ExecuteQuery(db, aiResult.SQL, aiResult.QueryType)
 	if err != nil {
 		ctx.Logger.Error("Failed to execute AI query", slog.Any("error", err))
-		flash.SetFlash(ctx.Ctx, "error", "Query execution failed: "+err.Error())
-		return ctx.Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
+		return ctx.FlashError("Query execution failed: "+err.Error()).Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
 	}
 
 	// Cache the successful result (best-effort)
@@ -185,7 +181,7 @@ func WebsiteLensAskAIAction(ctx *cartridge.Context) error {
 		},
 	}
 
-	return inertia.RenderPage(ctx.Ctx, "Lens", props)
+	return ctx.Inertia("Lens", props)
 }
 
 // WebsiteLensSaveAction saves an AI-generated query (POST -> Redirect)
@@ -195,37 +191,43 @@ func WebsiteLensSaveAction(ctx *cartridge.Context) error {
 	websiteIDStr := ctx.Params("id")
 	websiteID, err := strconv.Atoi(websiteIDStr)
 	if err != nil || websiteID <= 0 {
-		flash.SetFlash(ctx.Ctx, "error", "Invalid website ID")
-		return ctx.Redirect("/admin/websites", fiber.StatusFound)
+		return ctx.FlashError("Invalid website ID").Redirect("/admin/websites", fiber.StatusFound)
 	}
 
-	title := ctx.FormValue("title")
-	generatedSQL := ctx.FormValue("generated_sql")
-	queryType := ctx.FormValue("query_type")
-	vegaSpec := ctx.FormValue("vega_spec")
-	model := ctx.FormValue("model")
+	// The route :id is the website id (read via ctx.Params above); this struct
+	// deliberately omits a params tag so Bind's ParamsParser can't overlay it.
+	var in struct {
+		Title        string `json:"title" form:"title"`
+		GeneratedSQL string `json:"generated_sql" form:"generated_sql"`
+		QueryType    string `json:"query_type" form:"query_type"`
+		VegaSpec     string `json:"vega_spec" form:"vega_spec"`
+		Model        string `json:"model" form:"model"`
+	}
+	_ = ctx.Bind(&in)
+
+	title := in.Title
+	generatedSQL := in.GeneratedSQL
+	queryType := in.QueryType
+	vegaSpec := in.VegaSpec
+	model := in.Model
 
 	if title == "" || generatedSQL == "" {
-		flash.SetFlash(ctx.Ctx, "error", "Title and SQL are required")
-		return ctx.Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
+		return ctx.FlashError("Title and SQL are required").Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
 	}
 
 	// A saved query re-executes on every Lens load, so validate it as read-only
 	// before persisting — not just at execution time.
 	if err := ai.ValidateReadOnlyQuery(generatedSQL); err != nil {
-		flash.SetFlash(ctx.Ctx, "error", "Only read-only SELECT queries can be saved")
-		return ctx.Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
+		return ctx.FlashError("Only read-only SELECT queries can be saved").Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
 	}
 
 	websiteIDUint := uint(websiteID)
 	if _, err := ai.CreateSavedQueryWithVega(db, title, generatedSQL, vegaSpec, &websiteIDUint, queryType, model); err != nil {
 		ctx.Logger.Error("Failed to save query", slog.Any("error", err))
-		flash.SetFlash(ctx.Ctx, "error", "Failed to save query")
-		return ctx.Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
+		return ctx.FlashError("Failed to save query").Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
 	}
 
-	flash.SetFlash(ctx.Ctx, "success", "Query saved successfully")
-	return ctx.Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
+	return ctx.FlashSuccess("Query saved successfully").Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
 }
 
 // WebsiteLensUpdateAction updates a saved query by regenerating SQL (POST -> Redirect)
@@ -235,47 +237,50 @@ func WebsiteLensUpdateAction(ctx *cartridge.Context) error {
 	websiteIDStr := ctx.Params("id")
 	websiteID, err := strconv.Atoi(websiteIDStr)
 	if err != nil || websiteID <= 0 {
-		flash.SetFlash(ctx.Ctx, "error", "Invalid website ID")
-		return ctx.Redirect("/admin/websites", fiber.StatusFound)
+		return ctx.FlashError("Invalid website ID").Redirect("/admin/websites", fiber.StatusFound)
 	}
 
-	queryID, _ := strconv.Atoi(ctx.FormValue("id"))
-	newTitle := ctx.FormValue("title")
+	// in.ID is the saved-query id from the form/body. The route :id is the
+	// website id (read via ctx.Params above); this struct deliberately omits a
+	// params tag so Bind's ParamsParser can't overlay in.ID with the website id.
+	var in struct {
+		ID    string `json:"id" form:"id"`
+		Title string `json:"title" form:"title"`
+		Model string `json:"model" form:"model"`
+	}
+	_ = ctx.Bind(&in)
+
+	queryID, _ := strconv.Atoi(in.ID)
+	newTitle := in.Title
 	// Empty model lets GetQueryFromOpenAI fall back to ai.DefaultModel.
-	model := ctx.FormValue("model")
+	model := in.Model
 
 	if queryID <= 0 || newTitle == "" {
-		flash.SetFlash(ctx.Ctx, "error", "Invalid query ID or title")
-		return ctx.Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
+		return ctx.FlashError("Invalid query ID or title").Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
 	}
 
 	savedQuery, err := ai.GetSavedQuery(db, uint(queryID))
 	if err != nil {
-		flash.SetFlash(ctx.Ctx, "error", "Query not found")
-		return ctx.Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
+		return ctx.FlashError("Query not found").Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
 	}
 
 	openAIKey, err := ai.GetOpenAIApiKey(db)
 	if err != nil || openAIKey == "" {
-		flash.SetFlash(ctx.Ctx, "error", "OpenAI API key is not configured")
-		return ctx.Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
+		return ctx.FlashError("OpenAI API key is not configured").Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
 	}
 
 	aiResult, err := ai.GetQueryFromOpenAI(context.Background(), db, newTitle, openAIKey, websiteID, model, ctx.Logger)
 	if err != nil {
 		ctx.Logger.Error("Failed to regenerate query", slog.Any("error", err))
-		flash.SetFlash(ctx.Ctx, "error", "Failed to regenerate query: "+err.Error())
-		return ctx.Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
+		return ctx.FlashError("Failed to regenerate query: "+err.Error()).Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
 	}
 
 	if err := ai.UpdateSavedQueryWithWebsiteAndVega(db, uint(queryID), newTitle, aiResult.SQL, aiResult.QueryType, aiResult.VegaSpec, model, savedQuery.WebsiteID); err != nil {
 		ctx.Logger.Error("Failed to update query", slog.Any("error", err))
-		flash.SetFlash(ctx.Ctx, "error", "Failed to update query")
-		return ctx.Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
+		return ctx.FlashError("Failed to update query").Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
 	}
 
-	flash.SetFlash(ctx.Ctx, "success", "Query updated successfully")
-	return ctx.Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
+	return ctx.FlashSuccess("Query updated successfully").Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
 }
 
 // WebsiteLensDeleteAction deletes a saved query (POST -> Redirect)
@@ -283,24 +288,28 @@ func WebsiteLensDeleteAction(ctx *cartridge.Context) error {
 	websiteIDStr := ctx.Params("id")
 	websiteID, err := strconv.Atoi(websiteIDStr)
 	if err != nil || websiteID <= 0 {
-		flash.SetFlash(ctx.Ctx, "error", "Invalid website ID")
-		return ctx.Redirect("/admin/websites", fiber.StatusFound)
+		return ctx.FlashError("Invalid website ID").Redirect("/admin/websites", fiber.StatusFound)
 	}
 
-	queryID, _ := strconv.Atoi(ctx.FormValue("id"))
+	// in.ID is the saved-query id from the form/body. The route :id is the
+	// website id (read via ctx.Params above); this struct deliberately omits a
+	// params tag so Bind's ParamsParser can't overlay in.ID with the website id.
+	var in struct {
+		ID string `json:"id" form:"id"`
+	}
+	_ = ctx.Bind(&in)
+
+	queryID, _ := strconv.Atoi(in.ID)
 	if queryID <= 0 {
-		flash.SetFlash(ctx.Ctx, "error", "Invalid query ID")
-		return ctx.Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
+		return ctx.FlashError("Invalid query ID").Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
 	}
 
 	if err := ai.DeleteSavedQuery(ctx.DB(), uint(queryID)); err != nil {
 		ctx.Logger.Error("Failed to delete query", slog.Any("error", err))
-		flash.SetFlash(ctx.Ctx, "error", "Failed to delete query")
-		return ctx.Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
+		return ctx.FlashError("Failed to delete query").Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
 	}
 
-	flash.SetFlash(ctx.Ctx, "success", "Query deleted successfully")
-	return ctx.Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
+	return ctx.FlashSuccess("Query deleted successfully").Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
 }
 
 // WebsiteLensCloneAction clones a saved query (POST -> Redirect)
@@ -308,22 +317,26 @@ func WebsiteLensCloneAction(ctx *cartridge.Context) error {
 	websiteIDStr := ctx.Params("id")
 	websiteID, err := strconv.Atoi(websiteIDStr)
 	if err != nil || websiteID <= 0 {
-		flash.SetFlash(ctx.Ctx, "error", "Invalid website ID")
-		return ctx.Redirect("/admin/websites", fiber.StatusFound)
+		return ctx.FlashError("Invalid website ID").Redirect("/admin/websites", fiber.StatusFound)
 	}
 
-	queryID, _ := strconv.Atoi(ctx.FormValue("id"))
+	// in.ID is the saved-query id from the form/body. The route :id is the
+	// website id (read via ctx.Params above); this struct deliberately omits a
+	// params tag so Bind's ParamsParser can't overlay in.ID with the website id.
+	var in struct {
+		ID string `json:"id" form:"id"`
+	}
+	_ = ctx.Bind(&in)
+
+	queryID, _ := strconv.Atoi(in.ID)
 	if queryID <= 0 {
-		flash.SetFlash(ctx.Ctx, "error", "Invalid query ID")
-		return ctx.Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
+		return ctx.FlashError("Invalid query ID").Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
 	}
 
 	if _, err := ai.CloneSavedQuery(ctx.DB(), uint(queryID)); err != nil {
 		ctx.Logger.Error("Failed to clone query", slog.Any("error", err))
-		flash.SetFlash(ctx.Ctx, "error", "Failed to clone query")
-		return ctx.Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
+		return ctx.FlashError("Failed to clone query").Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
 	}
 
-	flash.SetFlash(ctx.Ctx, "success", "Query cloned successfully")
-	return ctx.Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
+	return ctx.FlashSuccess("Query cloned successfully").Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
 }

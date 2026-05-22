@@ -5,7 +5,6 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/karloscodes/cartridge"
-	"github.com/karloscodes/cartridge/flash"
 	"github.com/karloscodes/cartridge/inertia"
 
 	"fusionaly/internal/settings"
@@ -30,7 +29,7 @@ func AISettingsPageAction(ctx *cartridge.Context) error {
 		},
 	}
 
-	return inertia.RenderPage(ctx.Ctx, "AdministrationAI", inertia.Props{
+	return ctx.Inertia("AdministrationAI", inertia.Props{
 		"settings": settingsData,
 	})
 }
@@ -40,22 +39,13 @@ func AISettingsFormAction(ctx *cartridge.Context) error {
 	db := ctx.DB()
 
 	// The frontend posts via the vanilla Inertia protocol (useForm/router.post),
-	// which sends a JSON body that FormValue can't read. Try form-encoded first,
-	// then fall back to the Inertia JSON body (same as the geolite form).
-	openAIKey := strings.TrimSpace(ctx.FormValue("openai_api_key"))
-	if openAIKey == "" {
-		var body struct {
-			OpenAIKey string `json:"openai_api_key"`
-		}
-		if err := ctx.BodyParser(&body); err == nil {
-			openAIKey = strings.TrimSpace(body.OpenAIKey)
-		}
-	}
+	// which sends a JSON body that FormValue can't read. Input is content-type
+	// aware: it reads JSON or form-encoded bodies (same as the geolite form).
+	openAIKey := strings.TrimSpace(ctx.Input("openai_api_key"))
 
 	// Don't save masked keys (user didn't change the existing value)
 	if strings.HasPrefix(openAIKey, "****") {
-		flash.SetFlash(ctx.Ctx, "info", "No changes made to AI settings")
-		return ctx.Redirect("/admin/administration/ai", fiber.StatusFound)
+		return ctx.FlashInfo("No changes made to AI settings").Redirect("/admin/administration/ai", fiber.StatusFound)
 	}
 
 	if openAIKey != "" {
@@ -64,11 +54,9 @@ func AISettingsFormAction(ctx *cartridge.Context) error {
 		// require a non-empty key, which is already guaranteed here.
 		if err := settings.SaveOpenAIKey(db, openAIKey); err != nil {
 			ctx.Logger.Error("Failed to save OpenAI API key")
-			flash.SetFlash(ctx.Ctx, "error", "Failed to save AI settings")
-			return ctx.Redirect("/admin/administration/ai", fiber.StatusFound)
+			return ctx.FlashError("Failed to save AI settings").Redirect("/admin/administration/ai", fiber.StatusFound)
 		}
 	}
 
-	flash.SetFlash(ctx.Ctx, "success", "AI settings saved successfully")
-	return ctx.Redirect("/admin/administration/ai", fiber.StatusFound)
+	return ctx.FlashSuccess("AI settings saved successfully").Redirect("/admin/administration/ai", fiber.StatusFound)
 }

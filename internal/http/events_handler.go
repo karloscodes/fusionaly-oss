@@ -5,16 +5,14 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"log/slog"
 	"gorm.io/gorm"
+	"log/slog"
 
 	"fusionaly/internal/events"
-	"github.com/karloscodes/cartridge"
-	"github.com/karloscodes/cartridge/flash"
-	"github.com/karloscodes/cartridge/inertia"
-	"github.com/karloscodes/cartridge/structs"
 	"fusionaly/internal/visitors"
 	"fusionaly/internal/websites"
+	"github.com/karloscodes/cartridge"
+	"github.com/karloscodes/cartridge/structs"
 )
 
 type PaginationData struct {
@@ -56,8 +54,7 @@ func EventsIndexAction(ctx *cartridge.Context) error {
 				return ctx.Redirect("/admin/websites/new", fiber.StatusFound)
 			}
 			ctx.Logger.Error("Failed to get first website", slog.Any("error", err))
-			flash.SetFlash(ctx.Ctx, "error", "Error getting website data")
-			return ctx.Redirect("/admin/websites", fiber.StatusFound)
+			return ctx.FlashError("Error getting website data").Redirect("/admin/websites", fiber.StatusFound)
 		}
 
 		ctx.Logger.Info("Found first website", slog.Uint64("id", uint64(firstWebsite.ID)), slog.String("domain", firstWebsite.Domain))
@@ -95,8 +92,7 @@ func EventsIndexAction(ctx *cartridge.Context) error {
 	})
 	if err != nil {
 		ctx.Logger.Error("Failed to fetch events", slog.Any("error", err))
-		flash.SetFlash(ctx.Ctx, "error", "Failed to fetch events")
-		return ctx.Redirect("/admin/websites", fiber.StatusFound)
+		return ctx.FlashError("Failed to fetch events").Redirect("/admin/websites", fiber.StatusFound)
 	}
 
 	mappedEvents := make([]Event, len(result.Events))
@@ -127,7 +123,7 @@ func EventsIndexAction(ctx *cartridge.Context) error {
 	props := structs.Map(response)
 	props["current_website_id"] = websiteId
 
-	return inertia.RenderPage(ctx.Ctx, "Events", props)
+	return ctx.Inertia("Events", props)
 }
 
 // calculateDateRange calculates from and to dates based on range filter
@@ -186,8 +182,7 @@ func WebsiteEventsAction(ctx *cartridge.Context) error {
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			ctx.Logger.Warn("Website not found", slog.Int("websiteId", websiteId))
-			flash.SetFlash(ctx.Ctx, "error", "Website not found")
-			return ctx.Redirect("/admin/websites", fiber.StatusFound)
+			return ctx.FlashError("Website not found").Redirect("/admin/websites", fiber.StatusFound)
 		}
 		ctx.Logger.Error("Failed to get website", slog.Any("error", err))
 		return ctx.Redirect("/admin/websites", fiber.StatusFound)
@@ -224,8 +219,7 @@ func WebsiteEventsAction(ctx *cartridge.Context) error {
 	})
 	if err != nil {
 		ctx.Logger.Error("Failed to fetch events", slog.Any("error", err))
-		flash.SetFlash(ctx.Ctx, "error", "Failed to fetch events")
-		return ctx.Redirect("/admin/websites", fiber.StatusFound)
+		return ctx.FlashError("Failed to fetch events").Redirect("/admin/websites", fiber.StatusFound)
 	}
 
 	mappedEvents := make([]Event, len(result.Events))
@@ -265,5 +259,5 @@ func WebsiteEventsAction(ctx *cartridge.Context) error {
 	props["website_domain"] = website.Domain
 	props["websites"] = websitesData
 
-	return inertia.RenderPage(ctx.Ctx, "Events", props)
+	return ctx.Inertia("Events", props)
 }

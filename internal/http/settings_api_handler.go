@@ -7,9 +7,8 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"log/slog"
 
-	"github.com/karloscodes/cartridge"
-	"github.com/karloscodes/cartridge/flash"
 	"fusionaly/internal/settings"
+	"github.com/karloscodes/cartridge"
 )
 
 // validateIPList validates a comma-separated list of IP addresses or CIDR ranges
@@ -43,22 +42,13 @@ func validateIPList(ipList string) (bool, string) {
 
 // IngestionSettingsFormAction handles POST form submission for ingestion settings (Inertia)
 func IngestionSettingsFormAction(ctx *cartridge.Context) error {
-	excludedIPs := ctx.FormValue("excluded_ips")
-	if excludedIPs == "" {
-		// Inertia's form.post() sends JSON, not form-encoded
-		var jsonBody struct {
-			ExcludedIPs string `json:"excluded_ips"`
-		}
-		if err := ctx.BodyParser(&jsonBody); err == nil {
-			excludedIPs = jsonBody.ExcludedIPs
-		}
-	}
+	// Input is content-type aware (form-encoded or Inertia's JSON form.post())
+	excludedIPs := ctx.Input("excluded_ips")
 
 	// Validate IP list
 	if valid, msg := validateIPList(excludedIPs); !valid {
 		ctx.Logger.Warn("invalid IP format submitted", slog.String("error", msg))
-		flash.SetFlash(ctx.Ctx, "error", msg)
-		return ctx.Redirect("/admin/administration/ingestion", fiber.StatusFound)
+		return ctx.FlashError(msg).Redirect("/admin/administration/ingestion", fiber.StatusFound)
 	}
 
 	db := ctx.DB()
@@ -66,13 +56,11 @@ func IngestionSettingsFormAction(ctx *cartridge.Context) error {
 	// Update setting
 	if err := settings.UpdateSetting(db, "excluded_ips", excludedIPs); err != nil {
 		ctx.Logger.Error("failed to update excluded_ips setting", slog.Any("error", err))
-		flash.SetFlash(ctx.Ctx, "error", "Failed to update IP filtering settings")
-		return ctx.Redirect("/admin/administration/ingestion", fiber.StatusFound)
+		return ctx.FlashError("Failed to update IP filtering settings").Redirect("/admin/administration/ingestion", fiber.StatusFound)
 	}
 
 	ctx.Logger.Info("excluded IPs updated via form")
-	flash.SetFlash(ctx.Ctx, "success", "Ingestion settings saved successfully!")
-	return ctx.Redirect("/admin/administration/ingestion", fiber.StatusFound)
+	return ctx.FlashSuccess("Ingestion settings saved successfully!").Redirect("/admin/administration/ingestion", fiber.StatusFound)
 }
 
 // Note: AISettingsFormAction is available in Fusionaly Pro
