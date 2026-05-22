@@ -58,30 +58,15 @@ func WebsiteNewPageAction(ctx *cartridge.Context) error {
 
 // WebsiteCreateAction handles creating a new website (form submission)
 func WebsiteCreateAction(ctx *cartridge.Context) error {
-	// Log form submission details for debugging
-	ctx.Logger.Info("Received website creation form submission",
-		slog.String("method", ctx.Method()),
-		slog.String("content_type", ctx.Get("Content-Type")),
-		slog.String("raw_body", string(ctx.Body())),
-		slog.String("csrf_token", ctx.FormValue("_csrf")),
-		slog.String("domain", ctx.FormValue("domain")),
-	)
-
-	// Parse form data - Bind is content-type aware (form-encoded or Inertia.js JSON)
+	// Bind is content-type aware (form-encoded or Inertia.js JSON)
 	var in struct {
 		Domain string `json:"domain" form:"domain"`
 	}
 	_ = ctx.Bind(&in)
 	domain := in.Domain
 
-	// Log form values
-	ctx.Logger.Info("Form values",
-		slog.String("domain", domain),
-	)
-
 	// Validate domain
 	if domain == "" {
-		ctx.Logger.Warn("Domain field is empty")
 		return ctx.FlashError("Domain is required").Redirect("/admin/websites/new", fiber.StatusFound)
 	}
 
@@ -92,8 +77,7 @@ func WebsiteCreateAction(ctx *cartridge.Context) error {
 		Domain: domain,
 	}
 
-	// Log attempt to create website
-	ctx.Logger.Info("Attempting to create website", slog.String("domain", domain))
+	ctx.Logger.Info("Creating website", slog.String("domain", domain))
 
 	if err := websites.CreateWebsite(db, &website); err != nil {
 		ctx.Logger.Error("Failed to create website", slog.Any("error", err), slog.String("domain", domain))
