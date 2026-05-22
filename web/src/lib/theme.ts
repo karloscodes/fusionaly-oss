@@ -3,19 +3,19 @@
 // redefines those channels in index.css. So existing utilities (bg-white,
 // text-gray-900, …) become theme-aware with no component changes.
 
-export type Theme = "light" | "dark" | "terminal";
+export type Theme = "light" | "dark" | "phosphor";
 
 export const THEMES: { id: Theme; label: string }[] = [
   { id: "light", label: "Light" },
   { id: "dark", label: "Dark" },
-  { id: "terminal", label: "Phosphor" }, // green-CRT vibe; id stays "terminal" (stable across saved prefs)
+  { id: "phosphor", label: "Phosphor" }, // green-CRT vibe
 ];
 
 const STORAGE_KEY = "fusionaly-theme";
 const CHANGE_EVENT = "fusionaly-theme-change";
 
 function isTheme(v: string | null): v is Theme {
-  return v === "light" || v === "dark" || v === "terminal";
+  return v === "light" || v === "dark" || v === "phosphor";
 }
 
 export function getTheme(): Theme {

@@ -11,7 +11,7 @@ import { THEMES, Theme, getTheme, applyTheme } from "@/lib/theme";
 const ICONS: Record<Theme, typeof Sun> = {
   light: Sun,
   dark: Moon,
-  terminal: Terminal,
+  phosphor: Terminal,
 };
 
 export function ThemeSwitcher() {
