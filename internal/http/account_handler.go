@@ -13,8 +13,13 @@ import (
 
 // AccountChangePasswordFormAction handles POST form submission for password change (Inertia)
 func AccountChangePasswordFormAction(ctx *cartridge.Context) error {
-	currentPassword := ctx.FormValue("current_password")
-	newPassword := ctx.FormValue("new_password")
+	var in struct {
+		CurrentPassword string `json:"current_password" form:"current_password"`
+		NewPassword     string `json:"new_password" form:"new_password"`
+	}
+	_ = ctx.Bind(&in)
+	currentPassword := in.CurrentPassword
+	newPassword := in.NewPassword
 
 	// Get current user ID from session
 	userID, authenticated := ctx.Session.GetUserID(ctx.Ctx)
