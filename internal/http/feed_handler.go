@@ -81,7 +81,7 @@ func HomeFeedAction(ctx *cartridge.Context) error {
 	// Visitor calendar (last 365 days, all websites combined).
 	calendarData, totalVisitors := buildVisitorCalendar(db, websiteIDs)
 
-	return inertia.RenderPage(ctx.Ctx, "Home", inertia.Props{
+	return ctx.Inertia("Home", inertia.Props{
 		"feedItems":     enrichedItems,
 		"websites":      websites,
 		"calendarData":  calendarData,

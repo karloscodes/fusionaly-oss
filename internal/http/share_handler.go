@@ -78,7 +78,7 @@ func PublicDashboardAction(ctx *cartridge.Context) error {
 		return flowData
 	})
 
-	return inertia.RenderPage(ctx.Ctx, "PublicDashboard", props)
+	return ctx.Inertia("PublicDashboard", props)
 }
 
 // EnableShareAction enables public sharing for a website

@@ -5,15 +5,14 @@ import (
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
-	"log/slog"
 	"gorm.io/gorm"
+	"log/slog"
 
 	"fusionaly/internal/events"
-	"github.com/karloscodes/cartridge"
-	"github.com/karloscodes/cartridge/flash"
-	"github.com/karloscodes/cartridge/inertia"
 	"fusionaly/internal/settings"
 	"fusionaly/internal/websites"
+	"github.com/karloscodes/cartridge"
+	"github.com/karloscodes/cartridge/inertia"
 )
 
 // WebsitesIndexAction handles listing all websites (Inertia)
@@ -24,8 +23,7 @@ func WebsitesIndexAction(ctx *cartridge.Context) error {
 	websitesWithCounts, err := websites.GetWebsitesWithStats(db, 30)
 	if err != nil {
 		ctx.Logger.Error("Failed to get websites with stats", slog.Any("error", err))
-		flash.SetFlash(ctx.Ctx, "error", "Failed to load websites")
-		return ctx.Redirect("/admin", fiber.StatusFound)
+		return ctx.FlashError("Failed to load websites").Redirect("/admin", fiber.StatusFound)
 	}
 
 	// If no websites exist, redirect to the creation page
@@ -34,7 +32,7 @@ func WebsitesIndexAction(ctx *cartridge.Context) error {
 		return ctx.Redirect("/admin/websites/new", fiber.StatusFound)
 	}
 
-	return inertia.RenderPage(ctx.Ctx, "Websites", inertia.Props{
+	return ctx.Inertia("Websites", inertia.Props{
 		"title":    "Websites",
 		"websites": websitesWithCounts,
 	})
@@ -52,7 +50,7 @@ func WebsiteNewPageAction(ctx *cartridge.Context) error {
 		websitesData = []map[string]interface{}{} // Ensure it's an empty slice, not nil
 	}
 
-	return inertia.RenderPage(ctx.Ctx, "WebsiteNew", inertia.Props{
+	return ctx.Inertia("WebsiteNew", inertia.Props{
 		"title":    "New Website",
 		"websites": websitesData,
 	})
@@ -69,17 +67,12 @@ func WebsiteCreateAction(ctx *cartridge.Context) error {
 		slog.String("domain", ctx.FormValue("domain")),
 	)
 
-	// Parse form data - try both form value and JSON body (for Inertia.js)
-	domain := ctx.FormValue("domain")
-	if domain == "" {
-		// Try parsing as JSON for Inertia.js requests
-		var jsonBody struct {
-			Domain string `json:"domain"`
-		}
-		if err := ctx.BodyParser(&jsonBody); err == nil && jsonBody.Domain != "" {
-			domain = jsonBody.Domain
-		}
+	// Parse form data - Bind is content-type aware (form-encoded or Inertia.js JSON)
+	var in struct {
+		Domain string `json:"domain" form:"domain"`
 	}
+	_ = ctx.Bind(&in)
+	domain := in.Domain
 
 	// Log form values
 	ctx.Logger.Info("Form values",
@@ -89,8 +82,7 @@ func WebsiteCreateAction(ctx *cartridge.Context) error {
 	// Validate domain
 	if domain == "" {
 		ctx.Logger.Warn("Domain field is empty")
-		flash.SetFlash(ctx.Ctx, "error", "Domain is required")
-		return ctx.Redirect("/admin/websites/new", fiber.StatusFound)
+		return ctx.FlashError("Domain is required").Redirect("/admin/websites/new", fiber.StatusFound)
 	}
 
 	db := ctx.DB()
@@ -105,8 +97,7 @@ func WebsiteCreateAction(ctx *cartridge.Context) error {
 
 	if err := websites.CreateWebsite(db, &website); err != nil {
 		ctx.Logger.Error("Failed to create website", slog.Any("error", err), slog.String("domain", domain))
-		flash.SetFlash(ctx.Ctx, "error", "Failed to create website: "+err.Error())
-		return ctx.Redirect("/admin/websites/new", fiber.StatusFound)
+		return ctx.FlashError("Failed to create website: "+err.Error()).Redirect("/admin/websites/new", fiber.StatusFound)
 	}
 
 	// Log success
@@ -115,8 +106,7 @@ func WebsiteCreateAction(ctx *cartridge.Context) error {
 		slog.String("domain", website.Domain))
 
 	// Success - redirect to setup page
-	flash.SetFlash(ctx.Ctx, "success", "Website created successfully")
-	return ctx.Redirect("/admin/websites/"+strconv.Itoa(int(website.ID))+"/setup", fiber.StatusFound)
+	return ctx.FlashSuccess("Website created successfully").Redirect("/admin/websites/"+strconv.Itoa(int(website.ID))+"/setup", fiber.StatusFound)
 }
 
 // WebsiteSetupPageAction handles showing the website setup page after creation (Inertia)
@@ -134,14 +124,13 @@ func WebsiteSetupPageAction(ctx *cartridge.Context) error {
 	website, err := websites.GetWebsiteByID(db, uint(id))
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			flash.SetFlash(ctx.Ctx, "error", "Website not found")
-			return ctx.Redirect("/admin", fiber.StatusFound)
+			return ctx.FlashError("Website not found").Redirect("/admin", fiber.StatusFound)
 		}
 		ctx.Logger.Error("Failed to get website", slog.Any("error", err), slog.Int("id", id))
 		return ctx.Redirect("/admin", fiber.StatusFound)
 	}
 
-	return inertia.RenderPage(ctx.Ctx, "WebsiteSetup", inertia.Props{
+	return ctx.Inertia("WebsiteSetup", inertia.Props{
 		"website": inertia.Props{
 			"id":     website.ID,
 			"domain": website.Domain,
@@ -155,8 +144,7 @@ func WebsiteEditPageAction(ctx *cartridge.Context) error {
 	id, err := ctx.ParamsInt("id")
 	if err != nil {
 		ctx.Logger.Error("Invalid website ID", slog.Any("error", err))
-		flash.SetFlash(ctx.Ctx, "error", "Invalid website ID")
-		return ctx.Redirect("/admin", fiber.StatusFound)
+		return ctx.FlashError("Invalid website ID").Redirect("/admin", fiber.StatusFound)
 	}
 
 	db := ctx.DB()
@@ -165,12 +153,10 @@ func WebsiteEditPageAction(ctx *cartridge.Context) error {
 	website, err := websites.GetWebsiteByID(db, uint(id))
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			flash.SetFlash(ctx.Ctx, "error", "Website not found")
-			return ctx.Redirect("/admin", fiber.StatusFound)
+			return ctx.FlashError("Website not found").Redirect("/admin", fiber.StatusFound)
 		}
 		ctx.Logger.Error("Failed to get website", slog.Any("error", err), slog.Int("id", id))
-		flash.SetFlash(ctx.Ctx, "error", "Failed to load website")
-		return ctx.Redirect("/admin", fiber.StatusFound)
+		return ctx.FlashError("Failed to load website").Redirect("/admin", fiber.StatusFound)
 	}
 
 	// Fetch all distinct events for this website
@@ -192,7 +178,7 @@ func WebsiteEditPageAction(ctx *cartridge.Context) error {
 	// Fetch subdomain tracking setting for this website
 	subdomainTrackingEnabled := settings.IsSubdomainTrackingEnabled(db, website.Domain)
 
-	return inertia.RenderPage(ctx.Ctx, "WebsiteEdit", inertia.Props{
+	return ctx.Inertia("WebsiteEdit", inertia.Props{
 		"title":                      "Edit Website",
 		"website":                    website,
 		"all_distinct_events":        allDistinctEvents,
@@ -207,29 +193,17 @@ func WebsiteUpdateAction(ctx *cartridge.Context) error {
 	id, err := ctx.ParamsInt("id")
 	if err != nil {
 		ctx.Logger.Error("Invalid website ID", slog.Any("error", err))
-		flash.SetFlash(ctx.Ctx, "error", "Invalid website ID")
-		return ctx.Redirect("/admin", fiber.StatusFound)
+		return ctx.FlashError("Invalid website ID").Redirect("/admin", fiber.StatusFound)
 	}
 
-	// Parse form data - try both form value and JSON body (for Inertia.js)
-	conversionGoalsJSON := ctx.FormValue("conversion_goals")
-	subdomainTrackingEnabledStr := ctx.FormValue("subdomain_tracking_enabled")
-
-	// Try parsing as JSON for Inertia.js requests
-	if conversionGoalsJSON == "" {
-		var jsonBody struct {
-			ConversionGoals          string `json:"conversion_goals"`
-			SubdomainTrackingEnabled string `json:"subdomain_tracking_enabled"`
-		}
-		if err := ctx.BodyParser(&jsonBody); err == nil {
-			if jsonBody.ConversionGoals != "" {
-				conversionGoalsJSON = jsonBody.ConversionGoals
-			}
-			if jsonBody.SubdomainTrackingEnabled != "" {
-				subdomainTrackingEnabledStr = jsonBody.SubdomainTrackingEnabled
-			}
-		}
+	// Parse form data - Bind is content-type aware (form-encoded or Inertia.js JSON)
+	var in struct {
+		ConversionGoals          string `json:"conversion_goals" form:"conversion_goals"`
+		SubdomainTrackingEnabled string `json:"subdomain_tracking_enabled" form:"subdomain_tracking_enabled"`
 	}
+	_ = ctx.Bind(&in)
+	conversionGoalsJSON := in.ConversionGoals
+	subdomainTrackingEnabledStr := in.SubdomainTrackingEnabled
 
 	subdomainTrackingEnabled := subdomainTrackingEnabledStr == "true"
 
@@ -240,12 +214,10 @@ func WebsiteUpdateAction(ctx *cartridge.Context) error {
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			ctx.Logger.Warn("Website not found", slog.Int("id", id))
-			flash.SetFlash(ctx.Ctx, "error", "Website not found")
-			return ctx.Redirect("/admin", fiber.StatusFound)
+			return ctx.FlashError("Website not found").Redirect("/admin", fiber.StatusFound)
 		}
 		ctx.Logger.Error("Failed to get website", slog.Any("error", err), slog.Int("id", id))
-		flash.SetFlash(ctx.Ctx, "error", "Failed to update website")
-		return ctx.Redirect("/admin", fiber.StatusFound)
+		return ctx.FlashError("Failed to update website").Redirect("/admin", fiber.StatusFound)
 	}
 
 	ctx.Logger.Info("Updating website settings",
@@ -258,8 +230,7 @@ func WebsiteUpdateAction(ctx *cartridge.Context) error {
 		var goals []string
 		if err := json.Unmarshal([]byte(conversionGoalsJSON), &goals); err != nil {
 			ctx.Logger.Error("Failed to parse conversion goals", slog.Any("error", err), slog.String("json", conversionGoalsJSON))
-			flash.SetFlash(ctx.Ctx, "error", "Invalid conversion goals format")
-			return ctx.Redirect("/admin/websites/"+strconv.Itoa(id)+"/edit", fiber.StatusFound)
+			return ctx.FlashError("Invalid conversion goals format").Redirect("/admin/websites/"+strconv.Itoa(id)+"/edit", fiber.StatusFound)
 		}
 
 		ctx.Logger.Info("Parsed goals", slog.Any("goals", goals))
@@ -267,8 +238,7 @@ func WebsiteUpdateAction(ctx *cartridge.Context) error {
 		// Save goals for this website
 		if err := settings.SaveWebsiteGoals(db, uint(id), goals); err != nil {
 			ctx.Logger.Error("Failed to save conversion goals", slog.Any("error", err), slog.Int("id", id))
-			flash.SetFlash(ctx.Ctx, "error", "Failed to save conversion goals")
-			return ctx.Redirect("/admin/websites/"+strconv.Itoa(id)+"/edit", fiber.StatusFound)
+			return ctx.FlashError("Failed to save conversion goals").Redirect("/admin/websites/"+strconv.Itoa(id)+"/edit", fiber.StatusFound)
 		}
 	} else {
 		ctx.Logger.Warn("No conversion goals JSON provided in form submission")
@@ -278,13 +248,11 @@ func WebsiteUpdateAction(ctx *cartridge.Context) error {
 	ctx.Logger.Info("Processing subdomain tracking setting", slog.Bool("enabled", subdomainTrackingEnabled), slog.String("domain", website.Domain))
 	if err := settings.UpdateSubdomainTrackingSettings(db, website.Domain, subdomainTrackingEnabled); err != nil {
 		ctx.Logger.Error("Failed to update subdomain tracking setting", slog.Any("error", err), slog.String("domain", website.Domain))
-		flash.SetFlash(ctx.Ctx, "error", "Failed to update subdomain tracking setting")
-		return ctx.Redirect("/admin/websites/"+strconv.Itoa(id)+"/edit", fiber.StatusFound)
+		return ctx.FlashError("Failed to update subdomain tracking setting").Redirect("/admin/websites/"+strconv.Itoa(id)+"/edit", fiber.StatusFound)
 	}
 
 	// Success - redirect back to the edit page
-	flash.SetFlash(ctx.Ctx, "success", "Website updated successfully")
-	return ctx.Redirect("/admin/websites/"+strconv.Itoa(id)+"/edit", fiber.StatusFound)
+	return ctx.FlashSuccess("Website updated successfully").Redirect("/admin/websites/"+strconv.Itoa(id)+"/edit", fiber.StatusFound)
 }
 
 // WebsiteDeleteAction handles deleting a website (form submission)
@@ -293,8 +261,7 @@ func WebsiteDeleteAction(ctx *cartridge.Context) error {
 	id, err := ctx.ParamsInt("id")
 	if err != nil {
 		ctx.Logger.Error("Invalid website ID", slog.Any("error", err))
-		flash.SetFlash(ctx.Ctx, "error", "Invalid website ID")
-		return ctx.Redirect("/admin", fiber.StatusFound)
+		return ctx.FlashError("Invalid website ID").Redirect("/admin", fiber.StatusFound)
 	}
 
 	db := ctx.DB()
@@ -302,15 +269,12 @@ func WebsiteDeleteAction(ctx *cartridge.Context) error {
 	// Delete website
 	if err := websites.DeleteWebsite(db, uint(id)); err != nil {
 		if err == gorm.ErrRecordNotFound {
-			flash.SetFlash(ctx.Ctx, "error", "Website not found")
-			return ctx.Redirect("/admin", fiber.StatusFound)
+			return ctx.FlashError("Website not found").Redirect("/admin", fiber.StatusFound)
 		}
 		ctx.Logger.Error("Failed to delete website", slog.Any("error", err), slog.Int("id", id))
-		flash.SetFlash(ctx.Ctx, "error", "Failed to delete website")
-		return ctx.Redirect("/admin", fiber.StatusFound)
+		return ctx.FlashError("Failed to delete website").Redirect("/admin", fiber.StatusFound)
 	}
 
 	// Success - redirect to websites list
-	flash.SetFlash(ctx.Ctx, "success", "Website deleted successfully")
-	return ctx.Redirect("/admin", fiber.StatusFound)
+	return ctx.FlashSuccess("Website deleted successfully").Redirect("/admin", fiber.StatusFound)
 }
