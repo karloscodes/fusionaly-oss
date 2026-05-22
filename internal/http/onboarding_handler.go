@@ -128,7 +128,11 @@ func OnboardingPageAction(ctx *cartridge.Context) error {
 
 // OnboardingUserFormAction handles user account form submission (PRG pattern)
 func OnboardingUserFormAction(ctx *cartridge.Context) error {
-	email := strings.TrimSpace(ctx.FormValue("email"))
+	var in struct {
+		Email string `json:"email" form:"email"`
+	}
+	_ = ctx.Bind(&in)
+	email := strings.TrimSpace(in.Email)
 
 	// Get session ID from cookie
 	sessionID := ctx.Cookies(onboardingSessionCookieName)
@@ -173,8 +177,13 @@ func OnboardingUserFormAction(ctx *cartridge.Context) error {
 
 // OnboardingPasswordFormAction handles password form submission (PRG pattern)
 func OnboardingPasswordFormAction(ctx *cartridge.Context) error {
-	password := ctx.FormValue("password")
-	confirmPassword := ctx.FormValue("confirm_password")
+	var in struct {
+		Password        string `json:"password" form:"password"`
+		ConfirmPassword string `json:"confirm_password" form:"confirm_password"`
+	}
+	_ = ctx.Bind(&in)
+	password := in.Password
+	confirmPassword := in.ConfirmPassword
 
 	// Get session ID from cookie
 	sessionID := ctx.Cookies(onboardingSessionCookieName)
@@ -282,10 +291,17 @@ func OnboardingGeoLiteFormAction(ctx *cartridge.Context) error {
 	}
 
 	// Get GeoLite credentials from form (optional)
-	action := ctx.FormValue("action")
+	var in struct {
+		Action     string `json:"action" form:"action"`
+		AccountID  string `json:"geolite_account_id" form:"geolite_account_id"`
+		LicenseKey string `json:"geolite_license_key" form:"geolite_license_key"`
+	}
+	_ = ctx.Bind(&in)
+
+	action := in.Action
 	if action != "skip" {
-		accountID := strings.TrimSpace(ctx.FormValue("geolite_account_id"))
-		licenseKey := strings.TrimSpace(ctx.FormValue("geolite_license_key"))
+		accountID := strings.TrimSpace(in.AccountID)
+		licenseKey := strings.TrimSpace(in.LicenseKey)
 
 		// Only save if both fields are provided
 		if accountID != "" && licenseKey != "" {
@@ -334,8 +350,14 @@ func OnboardingOpenAIFormAction(ctx *cartridge.Context) error {
 	}
 
 	// OpenAI key is optional - save it only if the user provided one and did not skip
-	action := ctx.FormValue("action")
-	openAIKey := strings.TrimSpace(ctx.FormValue("openai_key"))
+	var in struct {
+		Action    string `json:"action" form:"action"`
+		OpenAIKey string `json:"openai_key" form:"openai_key"`
+	}
+	_ = ctx.Bind(&in)
+
+	action := in.Action
+	openAIKey := strings.TrimSpace(in.OpenAIKey)
 	if action != "skip" && openAIKey != "" {
 		session.Data.OpenAIKey = openAIKey
 	}
