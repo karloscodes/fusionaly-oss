@@ -7,9 +7,11 @@ type PublicDashboardProps = DashboardComponentProps & {
 
 const GITHUB_URL = "https://github.com/karloscodes/fusionaly-oss";
 
-// Quiet wordmark — attribution, not promotion.
+// Same brand colors as the in-app logo (admin-layout): dark wordmark with a
+// green underscore. Self-colored so a muted parent link can't tint it; kept
+// small here as quiet attribution.
 const FusionalyWordmark = () => (
-  <span className="font-mono">
+  <span className="font-mono font-semibold text-gray-900">
     fusionaly<span className="text-[#00D678]">_</span>
   </span>
 );
@@ -37,7 +39,7 @@ export default function PublicDashboard() {
               target="_blank"
               rel="noopener noreferrer"
               title="Fusionaly on GitHub"
-              className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors whitespace-nowrap"
+              className="text-xs hover:opacity-80 transition-opacity whitespace-nowrap"
             >
               <FusionalyWordmark />
             </a>
@@ -59,7 +61,7 @@ export default function PublicDashboard() {
             href="https://fusionaly.com"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-xs text-gray-500 hover:text-gray-800 transition-colors"
+            className="text-xs text-gray-500 hover:opacity-80 transition-opacity"
           >
             Self-hosted with <FusionalyWordmark />
           </a>
