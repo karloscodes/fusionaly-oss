@@ -72,7 +72,7 @@ Ask is optional and stays off until you add a key. It connects to [OpenRouter](h
 
 - One SQLite file. No external database, no Redis, no queue.
 - Runs on a Raspberry Pi or a $5 VPS.
-- The installer sets up nightly auto-updates and backups — no SSH chores.
+- The installer sets up nightly auto-updates and local backups, no SSH chores. For off-server backups (VPS snapshots, Litestream, rsync), see [Backups](https://fusionaly.com/docs/server-administration/#backups).
 
 ## Tech stack
 
