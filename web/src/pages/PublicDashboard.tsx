@@ -5,7 +5,7 @@ type PublicDashboardProps = DashboardComponentProps & {
   website_domain: string;
 };
 
-const GITHUB_URL = "https://github.com/karloscodes/fusionaly-oss";
+const FUSIONALY_URL = "https://fusionaly.com";
 
 // Same brand colors as the in-app logo (admin-layout): dark wordmark with a
 // green underscore. Self-colored so a muted parent link can't tint it; kept
@@ -23,7 +23,7 @@ export default function PublicDashboard() {
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* Header — same slim chrome as the in-app dashboard. The dashboard is
-          the subject; Fusionaly is a quiet GitHub attribution, not a pitch. */}
+          the subject; Fusionaly is a quiet attribution, not a pitch. */}
       <header className="border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex h-14 items-center justify-between gap-4">
@@ -35,10 +35,10 @@ export default function PublicDashboard() {
               <span className="text-sm text-gray-500 whitespace-nowrap">Last 30 days</span>
             </div>
             <a
-              href={GITHUB_URL}
+              href={FUSIONALY_URL}
               target="_blank"
               rel="noopener noreferrer"
-              title="Fusionaly on GitHub"
+              title="Fusionaly"
               className="text-xs hover:opacity-80 transition-opacity whitespace-nowrap"
             >
               <FusionalyWordmark />
@@ -58,7 +58,7 @@ export default function PublicDashboard() {
       <footer className="border-t border-gray-200">
         <div className="max-w-7xl mx-auto px-4 py-6">
           <a
-            href="https://fusionaly.com"
+            href={FUSIONALY_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="text-xs text-gray-500 hover:opacity-80 transition-opacity"
