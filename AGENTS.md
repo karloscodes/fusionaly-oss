@@ -180,8 +180,10 @@ All pages MUST use Inertia.js patterns. No exceptions. No fetch() API calls for 
 
 2. **FORMS**: vanilla Inertia protocol + PRG (POST → Redirect → GET)
    - The frontend uses Inertia endpoints and the **vanilla Inertia protocol**: submit with `useForm().post()` / `router.post()`, NOT raw `fetch()`
-   - Inertia sends the body as **JSON**. Go handlers MUST read it with `ctx.BodyParser(&struct{...})`. Fiber's `ctx.FormValue` does **not** read a JSON body — relying on it alone silently drops the data (the handler may still "succeed" with empty values). Accept both if a plain HTML form also posts to the route (FormValue first, BodyParser fallback — see `SystemGeoLiteFormAction`).
-   - Server validates, sets a flash message, then redirects (PRG); flash shown via `props.flash`
+   - Inertia sends the body as **JSON**. Read it with cartridge's content-type-aware helpers — **never** Fiber's `ctx.FormValue` directly (it can't read a JSON body and silently drops the data, so the handler "succeeds" with empty values):
+     - **1–2 string fields → `ctx.Input("name")`**: returns a single value regardless of transport (JSON body, form, route param, query). No struct needed: `email := strings.TrimSpace(ctx.Input("email"))`.
+     - **3+ fields, typed, or a field name that collides with a route param → `ctx.Bind(&in)`**: decodes into a struct (`json:"x"` tags). Bind overlays route params/query over the body, so a body field named `id` on a `:id` route must be tagged `json:"id"` only (no `params:"id"`) to avoid the route value clobbering it.
+   - Server validates, sets a flash message, then redirects (PRG): `return ctx.FlashError("msg").Redirect(path, fiber.StatusFound)`; flash shown via `props.flash`. Render pages with `ctx.Inertia("Component", inertia.Props{...})`.
    - Examples: Settings, Websites, Account, Login, Onboarding
 
 3. **DATA FLOW**:
@@ -204,28 +206,26 @@ const result = await res.json();
 
 // ✅ GOOD: vanilla Inertia protocol (sends a JSON body, gets an Inertia response)
 const form = useForm({ email: "" });
-form.post("/setup/user");   // Go handler reads it via ctx.BodyParser, then redirects (PRG)
+form.post("/setup/user");   // Go handler reads it via ctx.Input/ctx.Bind, then redirects (PRG)
 ```
 
 ### Server Handler Pattern
 
 ```go
-// ✅ GOOD: Inertia page render
+// ✅ GOOD: Inertia page render (ctx.Inertia auto-injects the flash prop)
 func OnboardingPageAction(ctx *cartridge.Context) error {
-    props := inertia.Props{
+    return ctx.Inertia("Onboarding", inertia.Props{
         "step":  session.Step,
         "email": session.Data.Email,
-    }
-    return inertia.RenderPage(ctx.Ctx, "Onboarding", props)
+    })
 }
 
 // ✅ GOOD: PRG form handler
 func OnboardingUserFormAction(ctx *cartridge.Context) error {
-    email := ctx.FormValue("email")
+    email := strings.TrimSpace(ctx.Input("email"))
     // ... validation ...
-    if err != nil {
-        flash.SetFlash(ctx.Ctx, "error", "Invalid email")
-        return ctx.Redirect("/setup", fiber.StatusFound)
+    if email == "" {
+        return ctx.FlashError("Invalid email").Redirect("/setup", fiber.StatusFound)
     }
     // ... save data ...
     return ctx.Redirect("/setup", fiber.StatusFound)
