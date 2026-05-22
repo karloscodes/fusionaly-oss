@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { cssVarColor, getTheme, onThemeChange, Theme } from "@/lib/theme";
+import { cssVarColor, cssVarList, onThemeChange } from "@/lib/theme";
 
 // Chart libraries (Recharts/Vega) take plain color strings, so they can't read
 // CSS variables directly. This hook resolves the themed colors a chart needs
@@ -12,7 +12,7 @@ export interface ChartColors {
   bar: string | null; // optional bar fill (gradient top), --c-bar; null → use metric color
   barDeep: string | null; // gradient bottom, --c-bar-deep
   barRadius: number; // bar corner radius in px, --c-bar-radius
-  theme: Theme; // still used by the Sankey until it moves to tokens
+  flow: string[]; // Sankey step ramp, --c-flow (comma-separated); empty → caller default
 }
 
 function cssVarRaw(name: string): string {
@@ -31,7 +31,7 @@ export function useChartColors(): ChartColors {
       bar: bar || null,
       barDeep: barDeep || bar || null,
       barRadius: radius ? Number(radius) : 4,
-      theme: getTheme(),
+      flow: cssVarList("--c-flow"),
     };
   };
 

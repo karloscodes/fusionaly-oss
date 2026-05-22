@@ -34,7 +34,8 @@ interface SankeyLink {
 	thickness: number;
 }
 
-// Color scheme - gradient from entry to exit
+// Default step ramp (entry → exit). A theme overrides it via the --c-flow
+// token (read through useChartColors); this is only the fallback.
 const STEP_COLORS = [
 	"#3b82f6", // blue-500 - step 1 (entry)
 	"#6366f1", // indigo-500 - step 2
@@ -44,18 +45,8 @@ const STEP_COLORS = [
 	"#d946ef", // fuchsia-500 - step 6+
 ];
 
-// Terminal theme: a green ramp (btop-ish) instead of blue/purple.
-const STEP_COLORS_TERMINAL = [
-	"#0B7A3E",
-	"#0E9E50",
-	"#16C062",
-	"#27DB78",
-	"#46F091",
-	"#7CFFB0",
-];
-
-const getStepColor = (step: number, theme?: string): string => {
-	const palette = theme === "terminal" ? STEP_COLORS_TERMINAL : STEP_COLORS;
+const getStepColor = (step: number, ramp: string[]): string => {
+	const palette = ramp.length ? ramp : STEP_COLORS;
 	const index = Math.min(step - 1, palette.length - 1);
 	return palette[Math.max(0, index)];
 };
@@ -82,9 +73,10 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 	const [showHelp, setShowHelp] = useState(false);
 	const [viewportHeight, setViewportHeight] = useState(() => (typeof window !== "undefined" ? window.innerHeight : 900));
 
-	// Theme-aware colors. useChartColors re-renders this on theme change; the
-	// step palette switches to a green ramp in Terminal (see getStepColor).
-	const { theme } = useChartColors();
+	// Theme colors come entirely from tokens (useChartColors re-renders on theme
+	// change). No theme-name checks here — a theme just defines the tokens.
+	const { flow, barRadius } = useChartColors();
+	const nodeRadius = Math.min(barRadius, 3); // sharp in Terminal (radius 0), rounded elsewhere
 	const sankeyNodeStroke = cssVarColor("--c-white"); // separates nodes from the surface
 	const sankeyInk = cssVarColor("--c-black");
 	const sankeyLabel = cssVarColor("--c-gray-700");
@@ -584,7 +576,7 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 								<div>
 									<div className="font-medium text-gray-900 mb-1">Color Legend</div>
 									<div className="flex flex-wrap gap-1.5 mt-1">
-										{(theme === "terminal" ? STEP_COLORS_TERMINAL : STEP_COLORS).slice(0, 4).map((color, i) => (
+										{(flow.length ? flow : STEP_COLORS).slice(0, 4).map((color, i) => (
 											<div key={color} className="flex items-center gap-1">
 												<div className="w-3 h-3 rounded" style={{ backgroundColor: color }} />
 												<span className="text-[10px]">Step {i + 1}</span>
@@ -633,13 +625,13 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 						{/* Render links */}
 						<g>
 							{sankeyLinks.map((link, i) => {
-								const color = getStepColor(link.source.step, theme);
+								const color = getStepColor(link.source.step, flow);
 								const key = linkKey(link);
 								const isSelected = selectedLinkKey === key;
 								const isHovered = hoveredLinkKey === key;
 								const activeNode = selectedNode || hoveredNode;
 
-								let opacity = theme === "terminal" ? 0.62 : 0.5;
+								let opacity = 0.5;
 								if (isSelected || isHovered) {
 									opacity = 0.85;
 								} else if (selectedLinkKey && selectedLinkKey !== key) {
@@ -676,7 +668,7 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 						{/* Render nodes */}
 						<g>
 							{nodes.map((node, i) => {
-								const color = getStepColor(node.step, theme);
+								const color = getStepColor(node.step, flow);
 								const isSelectedNode = selectedNode === node.id;
 								const isHoveredNode = hoveredNode === node.id;
 								const isConnectedToLink = selectedLink ? isNodeConnectedToSelectedLink(node) : false;
@@ -705,7 +697,7 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 											fill={color}
 											stroke={isSelectedNode || isHoveredNode ? sankeyInk : sankeyNodeStroke}
 											strokeWidth={isSelectedNode || isHoveredNode ? 2 : 1}
-											rx={theme === "terminal" ? 0 : 3}
+											rx={nodeRadius}
 											className="transition-all cursor-pointer"
 											style={{ opacity: nodeOpacity }}
 											onMouseEnter={() => setHoveredNode(node.id)}

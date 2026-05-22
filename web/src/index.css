@@ -29,6 +29,7 @@
        the bar corner radius in px. */
     --c-chart-line: 75 85 99;
     --c-bar-radius: 4;
+    --c-flow: #3b82f6, #6366f1, #8b5cf6, #a855f7, #c084fc, #d946ef;
   }
 
   /* Dark. Pole swap: surface (white) goes dark, ink (black) goes light, and
@@ -72,6 +73,7 @@
     --c-bar: 31 179 94;          /* btop bar gradient top */
     --c-bar-deep: 10 110 56;     /* btop bar gradient bottom */
     --c-bar-radius: 0;
+    --c-flow: #0B7A3E, #0E9E50, #16C062, #27DB78, #46F091, #7CFFB0;
   }
 
   html {

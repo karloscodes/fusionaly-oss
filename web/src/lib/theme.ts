@@ -57,3 +57,10 @@ export function cssVarColor(name: string): string {
   // Channel form "229 231 235" → "rgb(229 231 235)"; pass through anything else.
   return /^\d/.test(raw) ? `rgb(${raw})` : raw;
 }
+
+// cssVarList reads a comma-separated variable (e.g. a color ramp) into a list.
+// Lets a theme declare a whole palette as data, e.g. --c-flow: #0B7A3E, #16C062.
+export function cssVarList(name: string): string[] {
+  const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return raw ? raw.split(",").map((s) => s.trim()).filter(Boolean) : [];
+}
