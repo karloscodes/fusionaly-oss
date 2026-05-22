@@ -41,6 +41,20 @@ export default {
 				neutral: ramp,
 				slate: ramp,
 			},
+			// Corner radius scales with the --c-radius-scale token: 1 keeps the
+			// stock values (Light/Dark), 0 squares everything off (Terminal). A
+			// theme sets the scale as data — no per-theme CSS override needed.
+			borderRadius: {
+				none: "0px",
+				sm: "calc(0.125rem * var(--c-radius-scale, 1))",
+				DEFAULT: "calc(0.25rem * var(--c-radius-scale, 1))",
+				md: "calc(0.375rem * var(--c-radius-scale, 1))",
+				lg: "calc(0.5rem * var(--c-radius-scale, 1))",
+				xl: "calc(0.75rem * var(--c-radius-scale, 1))",
+				"2xl": "calc(1rem * var(--c-radius-scale, 1))",
+				"3xl": "calc(1.5rem * var(--c-radius-scale, 1))",
+				full: "calc(9999px * var(--c-radius-scale, 1))",
+			},
 		},
 	},
 } satisfies Config;

@@ -11,6 +11,8 @@ import { formatNumber, cn } from "@/lib/utils";
 import { VegaChart } from "@/components/VegaChart";
 import { AskAIChat } from "@/components/AskAIChat";
 import { ModelSelector, DEFAULT_MODEL } from "@/components/ModelSelector";
+import { useChartColors } from "@/lib/use-chart-colors";
+import { cssVarColor } from "@/lib/theme";
 import { Trash2, Edit3, Copy, RefreshCw, Loader2, Key } from "lucide-react";
 import type { FlashMessage } from "@/types";
 import {
@@ -109,6 +111,7 @@ const getDynamicColor = (index: number): string => {
 
 export const Lens: React.FC = () => {
 	const { props } = usePage<LensPageProps>();
+	const chartColors = useChartColors(); // themed axis/grid/tooltip colors for the result charts
 	const websiteId = props.current_website_id || 0;
 	const websiteDomain = props.website_domain || "";
 	const lensBaseUrl = `/admin/websites/${websiteId}/lens`;
@@ -412,27 +415,27 @@ export const Lens: React.FC = () => {
 			<div className="h-[300px]">
 				<ResponsiveContainer width="100%" height="100%">
 					<BarChart data={data} margin={{ top: 20, right: 20, bottom: 60, left: 20 }}>
-						<CartesianGrid strokeDasharray="3 3" opacity={0.4} />
+						<CartesianGrid strokeDasharray="3 3" opacity={0.4} stroke={chartColors.grid} />
 						<XAxis
 							dataKey="date"
-							tick={{ fill: "#374151", fontSize: 10, textAnchor: "end" }}
+							tick={{ fill: chartColors.axisText, fontSize: 10, textAnchor: "end" }}
 							angle={-45}
 							dy={20}
 						/>
 						<YAxis
-							tick={{ fill: "#374151", fontSize: 10 }}
+							tick={{ fill: chartColors.axisText, fontSize: 10 }}
 							allowDecimals={false}
 						/>
 						<RechartsTooltip
 							contentStyle={{
-								backgroundColor: "#FFFFFF",
-								border: "1px solid #E5E7EB",
+								backgroundColor: cssVarColor("--c-white"), color: cssVarColor("--c-gray-900"),
+								border: `1px solid ${chartColors.grid}`,
 								borderRadius: "6px",
 								boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.1)",
 							}}
 							formatter={(value: number) => formatNumber(value)}
 						/>
-						<Legend />
+						<Legend wrapperStyle={{ color: chartColors.axisText }} />
 						{numericKeys.map((key, index) => (
 							<Bar
 								key={key}
@@ -457,21 +460,21 @@ export const Lens: React.FC = () => {
 			<div className="h-[300px]">
 				<ResponsiveContainer width="100%" height="100%">
 					<BarChart data={data} margin={{ top: 20, right: 20, bottom: 60, left: 20 }}>
-						<CartesianGrid strokeDasharray="3 3" opacity={0.4} />
+						<CartesianGrid strokeDasharray="3 3" opacity={0.4} stroke={chartColors.grid} />
 						<XAxis
 							dataKey={nameKey}
-							tick={{ fill: "#374151", fontSize: 10, textAnchor: "end" }}
+							tick={{ fill: chartColors.axisText, fontSize: 10, textAnchor: "end" }}
 							angle={-45}
 							dy={20}
 						/>
 						<YAxis
-							tick={{ fill: "#374151", fontSize: 10 }}
+							tick={{ fill: chartColors.axisText, fontSize: 10 }}
 							allowDecimals={false}
 						/>
 						<RechartsTooltip
 							contentStyle={{
-								backgroundColor: "#FFFFFF",
-								border: "1px solid #E5E7EB",
+								backgroundColor: cssVarColor("--c-white"), color: cssVarColor("--c-gray-900"),
+								border: `1px solid ${chartColors.grid}`,
 								borderRadius: "6px",
 								boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.1)",
 							}}

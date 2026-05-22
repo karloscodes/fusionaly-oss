@@ -29,6 +29,7 @@
        the bar corner radius in px. */
     --c-chart-line: 75 85 99;
     --c-bar-radius: 4;
+    --c-radius-scale: 1; /* 1 = stock rounding; a theme sets 0 to square corners */
     --c-flow: #3b82f6, #6366f1, #8b5cf6, #a855f7, #c084fc, #d946ef;
   }
 
@@ -73,6 +74,7 @@
     --c-bar: 31 179 94;          /* btop bar gradient top */
     --c-bar-deep: 10 110 56;     /* btop bar gradient bottom */
     --c-bar-radius: 0;
+    --c-radius-scale: 0;         /* square corners — btop/pixel look */
     --c-flow: #0B7A3E, #0E9E50, #16C062, #27DB78, #46F091, #7CFFB0;
   }
 
@@ -98,14 +100,10 @@
     outline-offset: 2px;
   }
 
-  /* Terminal: monospace everywhere + sharp pixel edges (no rounded corners). */
+  /* Terminal uses a monospace face. Corners are squared off via the
+     --c-radius-scale token (see tailwind.config), not a !important override. */
   html[data-theme="terminal"] body {
     font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
       "Liberation Mono", monospace;
-  }
-  [data-theme="terminal"] *,
-  [data-theme="terminal"] *::before,
-  [data-theme="terminal"] *::after {
-    border-radius: 0 !important;
   }
 }
