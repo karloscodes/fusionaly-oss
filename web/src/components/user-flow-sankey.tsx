@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { GitBranch, ZoomIn, ZoomOut, RotateCcw, Maximize2, X, HelpCircle, MousePointer, Move } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { cssVarColor } from "@/lib/theme";
+import { useChartColors } from "@/lib/use-chart-colors";
 
 interface UserFlowLink {
 	source: string;
@@ -32,7 +34,8 @@ interface SankeyLink {
 	thickness: number;
 }
 
-// Color scheme - gradient from entry to exit
+// Default step ramp (entry → exit). A theme overrides it via the --c-flow
+// token (read through useChartColors); this is only the fallback.
 const STEP_COLORS = [
 	"#3b82f6", // blue-500 - step 1 (entry)
 	"#6366f1", // indigo-500 - step 2
@@ -42,9 +45,10 @@ const STEP_COLORS = [
 	"#d946ef", // fuchsia-500 - step 6+
 ];
 
-const getStepColor = (step: number): string => {
-	const index = Math.min(step - 1, STEP_COLORS.length - 1);
-	return STEP_COLORS[Math.max(0, index)];
+const getStepColor = (step: number, ramp: string[]): string => {
+	const palette = ramp.length ? ramp : STEP_COLORS;
+	const index = Math.min(step - 1, palette.length - 1);
+	return palette[Math.max(0, index)];
 };
 
 // Parse step number and page name from node id (e.g., "step1:/home" -> { step: 1, page: "/home" })
@@ -68,6 +72,16 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 	const [isFullscreen, setIsFullscreen] = useState(false);
 	const [showHelp, setShowHelp] = useState(false);
 	const [viewportHeight, setViewportHeight] = useState(() => (typeof window !== "undefined" ? window.innerHeight : 900));
+
+	// Theme colors come entirely from tokens (useChartColors re-renders on theme
+	// change). No theme-name checks here — a theme just defines the tokens.
+	const { flow, barRadius } = useChartColors();
+	const nodeRadius = Math.min(barRadius, 3); // sharp in Terminal (radius 0), rounded elsewhere
+	const sankeyNodeStroke = cssVarColor("--c-white"); // separates nodes from the surface
+	const sankeyInk = cssVarColor("--c-black");
+	const sankeyLabel = cssVarColor("--c-gray-700");
+	const sankeyMuted = cssVarColor("--c-gray-500");
+
 	const isPanningRef = useRef(false);
 	const panStartRef = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
 
@@ -562,7 +576,7 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 								<div>
 									<div className="font-medium text-gray-900 mb-1">Color Legend</div>
 									<div className="flex flex-wrap gap-1.5 mt-1">
-										{STEP_COLORS.slice(0, 4).map((color, i) => (
+										{(flow.length ? flow : STEP_COLORS).slice(0, 4).map((color, i) => (
 											<div key={color} className="flex items-center gap-1">
 												<div className="w-3 h-3 rounded" style={{ backgroundColor: color }} />
 												<span className="text-[10px]">Step {i + 1}</span>
@@ -601,7 +615,7 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 									textAnchor="middle"
 									className="text-xs font-medium"
 									style={{ fontSize: "11px" }}
-									fill="#6b7280"
+									fill={sankeyMuted}
 								>
 									{idx === 0 ? "Entry" : idx === numColumns - 1 ? "Exit" : `Step ${step}`}
 								</text>
@@ -611,7 +625,7 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 						{/* Render links */}
 						<g>
 							{sankeyLinks.map((link, i) => {
-								const color = getStepColor(link.source.step);
+								const color = getStepColor(link.source.step, flow);
 								const key = linkKey(link);
 								const isSelected = selectedLinkKey === key;
 								const isHovered = hoveredLinkKey === key;
@@ -632,7 +646,7 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 										d={generateLinkPath(link, nodeBodyWidth)}
 										fill={color}
 										fillOpacity={opacity}
-										stroke={isSelected ? "#000" : isHovered ? "#374151" : "none"}
+										stroke={isSelected ? sankeyInk : isHovered ? sankeyLabel : "none"}
 										strokeWidth={isSelected || isHovered ? 1.5 : 0}
 										className="transition-all duration-150 cursor-pointer"
 										onMouseEnter={() => setHoveredLinkKey(key)}
@@ -654,7 +668,7 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 						{/* Render nodes */}
 						<g>
 							{nodes.map((node, i) => {
-								const color = getStepColor(node.step);
+								const color = getStepColor(node.step, flow);
 								const isSelectedNode = selectedNode === node.id;
 								const isHoveredNode = hoveredNode === node.id;
 								const isConnectedToLink = selectedLink ? isNodeConnectedToSelectedLink(node) : false;
@@ -681,9 +695,9 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 											width={nodeBodyWidth}
 											height={node.height}
 											fill={color}
-											stroke={isSelectedNode || isHoveredNode ? "#000" : "#fff"}
+											stroke={isSelectedNode || isHoveredNode ? sankeyInk : sankeyNodeStroke}
 											strokeWidth={isSelectedNode || isHoveredNode ? 2 : 1}
-											rx={3}
+											rx={nodeRadius}
 											className="transition-all cursor-pointer"
 											style={{ opacity: nodeOpacity }}
 											onMouseEnter={() => setHoveredNode(node.id)}
@@ -705,7 +719,7 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 												alignmentBaseline="middle"
 												className="text-xs font-medium"
 												style={{ fontSize: "11px", pointerEvents: 'none', opacity: nodeOpacity }}
-												fill="#1f2937"
+												fill={sankeyLabel}
 											>
 												{truncatePageName(node.displayName)}
 											</text>
@@ -720,7 +734,7 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 												alignmentBaseline="middle"
 												className="text-xs"
 												style={{ fontSize: "10px", pointerEvents: 'none', opacity: nodeOpacity }}
-												fill="#6b7280"
+												fill={sankeyMuted}
 											>
 												{node.value.toLocaleString()} visitors
 											</text>
@@ -735,36 +749,36 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 				{/* Selection details panel */}
 				<div className="mt-3">
 					{selectedLink && (
-						<div className="rounded-lg border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-3">
+						<div className="rounded-lg border border-gray-200 bg-gray-100 px-4 py-3">
 							<div className="flex items-center justify-between mb-2">
 								<div className="flex items-center gap-2">
 									<div className="w-2 h-2 rounded-full bg-blue-500" />
-									<span className="font-semibold text-blue-900 text-sm">Selected Transition</span>
+									<span className="font-semibold text-gray-900 text-sm">Selected Transition</span>
 								</div>
 								<div className="bg-white/70 rounded px-3 py-1">
-									<span className="font-bold text-blue-600 text-lg">{selectedLink.value.toLocaleString()}</span>
-									<span className="ml-1 text-blue-500 text-sm">visitors</span>
+									<span className="font-bold text-gray-900 text-lg">{selectedLink.value.toLocaleString()}</span>
+									<span className="ml-1 text-gray-700 text-sm">visitors</span>
 								</div>
 							</div>
 							<div className="bg-white/50 rounded-lg p-3 space-y-2">
 								<div className="flex items-start gap-2">
-									<span className="text-blue-400 text-xs font-medium shrink-0 w-14">From:</span>
-									<span className="font-medium text-blue-800 break-all">{selectedLink.source.displayName}</span>
+									<span className="text-gray-700 text-xs font-medium shrink-0 w-14">From:</span>
+									<span className="font-medium text-gray-900 break-all">{selectedLink.source.displayName}</span>
 								</div>
 								<div className="flex items-start gap-2">
-									<span className="text-blue-400 text-xs font-medium shrink-0 w-14">To:</span>
-									<span className="font-medium text-blue-800 break-all">{selectedLink.target.displayName}</span>
+									<span className="text-gray-700 text-xs font-medium shrink-0 w-14">To:</span>
+									<span className="font-medium text-gray-900 break-all">{selectedLink.target.displayName}</span>
 								</div>
 							</div>
 						</div>
 					)}
 					{selectedNode && !selectedLink && (
-						<div className="rounded-lg border border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 px-4 py-3">
+						<div className="rounded-lg border border-gray-200 bg-gray-100 px-4 py-3">
 							<div className="flex items-center gap-2 mb-2">
 								<div className="w-2 h-2 rounded-full bg-green-500" />
-								<span className="font-semibold text-green-900 text-sm">Selected Page</span>
+								<span className="font-semibold text-gray-900 text-sm">Selected Page</span>
 							</div>
-							<div className="text-green-800 font-medium text-lg mb-2">
+							<div className="text-gray-900 font-medium text-lg mb-2">
 								{nodes.find(n => n.id === selectedNode)?.displayName || selectedNode}
 							</div>
 							{(() => {
@@ -777,31 +791,31 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 								return (
 									<div className="grid grid-cols-3 gap-3 text-xs">
 										<div className="bg-white/70 rounded px-2 py-1.5">
-											<div className="text-green-600 font-semibold text-base">{node.value.toLocaleString()}</div>
-											<div className="text-green-500">total visitors</div>
+											<div className="text-gray-900 font-semibold text-base">{node.value.toLocaleString()}</div>
+											<div className="text-gray-700">total visitors</div>
 										</div>
 										{incomingLinks.length > 0 && (
 											<div className="bg-white/70 rounded px-2 py-1.5">
-												<div className="text-green-600 font-semibold text-base">{incomingLinks.length}</div>
-												<div className="text-green-500">source pages</div>
+												<div className="text-gray-900 font-semibold text-base">{incomingLinks.length}</div>
+												<div className="text-gray-700">source pages</div>
 											</div>
 										)}
 										{outgoingLinks.length > 0 && (
 											<div className="bg-white/70 rounded px-2 py-1.5">
-												<div className="text-green-600 font-semibold text-base">{outgoingLinks.length}</div>
-												<div className="text-green-500">destinations</div>
+												<div className="text-gray-900 font-semibold text-base">{outgoingLinks.length}</div>
+												<div className="text-gray-700">destinations</div>
 											</div>
 										)}
 										{incomingLinks.length === 0 && (
-											<div className="bg-blue-100/50 rounded px-2 py-1.5 border border-blue-200">
-												<div className="text-blue-700 font-medium">Entry Page</div>
-												<div className="text-blue-500 text-[10px]">Visitors land here first</div>
+											<div className="bg-white/70 rounded px-2 py-1.5 border border-gray-200">
+												<div className="text-gray-900 font-medium">Entry Page</div>
+												<div className="text-gray-700 text-[10px]">Visitors land here first</div>
 											</div>
 										)}
 										{outgoingLinks.length === 0 && (
-											<div className="bg-purple-100/50 rounded px-2 py-1.5 border border-purple-200">
-												<div className="text-purple-700 font-medium">Exit Page</div>
-												<div className="text-purple-500 text-[10px]">Last page visited</div>
+											<div className="bg-white/70 rounded px-2 py-1.5 border border-gray-200">
+												<div className="text-gray-900 font-medium">Exit Page</div>
+												<div className="text-gray-700 text-[10px]">Last page visited</div>
 											</div>
 										)}
 									</div>

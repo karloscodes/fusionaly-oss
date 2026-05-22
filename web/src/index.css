@@ -3,9 +3,81 @@
 @tailwind utilities;
 
 @layer base {
+  /* Light (default). Values equal Tailwind's stock neutrals, so the Light
+     theme is pixel-identical to before themes existed. Channels are "R G B"
+     so Tailwind's rgb(var(--c-x) / <alpha-value>) keeps opacity modifiers. */
   :root {
-    --radius: 0.5rem
+    --radius: 0.5rem;
+
+    --c-white: 255 255 255;
+    --c-black: 0 0 0;
+    --c-gray-50: 249 250 251;
+    --c-gray-100: 243 244 246;
+    --c-gray-200: 229 231 235;
+    --c-gray-300: 209 213 219;
+    --c-gray-400: 156 163 175;
+    --c-gray-500: 107 114 128;
+    --c-gray-600: 75 85 99;
+    --c-gray-700: 55 65 81;
+    --c-gray-800: 31 41 55;
+    --c-gray-900: 17 24 39;
+
+    /* Chart tokens. A theme is pure data — define these (+ a switcher entry)
+       and charts adapt with no component changes. --c-chart-line is the
+       secondary (revenue) line; --c-bar(/-deep) optionally override the bar
+       fill with a gradient (omit to use the metric color); --c-bar-radius is
+       the bar corner radius in px. */
+    --c-chart-line: 75 85 99;
+    --c-bar-radius: 4;
+    --c-radius-scale: 1; /* 1 = stock rounding; a theme sets 0 to square corners */
+    --c-flow: #3b82f6, #6366f1, #8b5cf6, #a855f7, #c084fc, #d946ef;
   }
+
+  /* Dark. Pole swap: surface (white) goes dark, ink (black) goes light, and
+     the gray ramp inverts — so the black/white brutalist UI flips coherently
+     without touching components. GitHub-dark-ish neutrals. */
+  [data-theme="dark"] {
+    --c-white: 13 17 23;
+    --c-black: 230 237 243;
+    --c-gray-50: 22 27 34;
+    --c-gray-100: 28 33 40;
+    --c-gray-200: 48 54 61;
+    --c-gray-300: 61 68 77;
+    --c-gray-400: 110 118 129;
+    --c-gray-500: 139 148 158;
+    --c-gray-600: 173 186 199;
+    --c-gray-700: 201 209 217;
+    --c-gray-800: 221 227 234;
+    --c-gray-900: 230 237 243;
+
+    --c-chart-line: 139 148 158; /* calm gray, not near-white */
+    --c-bar-radius: 4;
+  }
+
+  /* Phosphor (omarchy/btop terminal). Near-black green-tinted surface, pale-green ink,
+     dim-green borders. Monospace + sharp corners applied below. */
+  [data-theme="phosphor"] {
+    --c-white: 9 13 11;
+    --c-black: 200 247 208;
+    --c-gray-50: 14 20 16;
+    --c-gray-100: 18 26 21;
+    --c-gray-200: 31 58 42;
+    --c-gray-300: 42 74 54;
+    --c-gray-400: 92 138 105;
+    --c-gray-500: 122 173 138;
+    --c-gray-600: 158 209 173;
+    --c-gray-700: 182 230 196;
+    --c-gray-800: 196 240 208;
+    --c-gray-900: 210 250 220;
+
+    --c-chart-line: 122 173 138; /* muted green, calm secondary line */
+    --c-bar: 31 179 94;          /* btop bar gradient top */
+    --c-bar-deep: 10 110 56;     /* btop bar gradient bottom */
+    --c-bar-radius: 0;
+    --c-radius-scale: 0;         /* square corners — btop/pixel look */
+    --c-flow: #0B7A3E, #0E9E50, #16C062, #27DB78, #46F091, #7CFFB0;
+  }
+
   html {
     overflow-y: scroll;
     /* Reserve the scrollbar gutter so opening a Radix overlay (which locks
@@ -16,5 +88,22 @@
   }
   body {
     min-height: calc(100vh + 60px);
+    background-color: rgb(var(--c-white));
+    color: rgb(var(--c-gray-900));
+  }
+
+  /* On-brand focus ring. shadcn components opt out (focus-visible:outline-none)
+     and use their own themed ring; this covers plain buttons/links that would
+     otherwise show the browser-default blue outline — jarring on dark/phosphor. */
+  :focus-visible {
+    outline: 2px solid rgb(var(--c-gray-500));
+    outline-offset: 2px;
+  }
+
+  /* Phosphor uses a monospace face. Corners are squared off via the
+     --c-radius-scale token (see tailwind.config), not a !important override. */
+  html[data-theme="phosphor"] body {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+      "Liberation Mono", monospace;
   }
 }

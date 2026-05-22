@@ -1,6 +1,15 @@
 import { createInertiaApp, router } from '@inertiajs/react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
+import { getTheme } from './lib/theme'
+
+// Re-apply the saved theme on every full page load. The served HTML shell
+// (cartridge's fallback template) has no inline theme script, so without this a
+// browser refresh would drop back to Light. Runs before React mounts.
+const savedTheme = getTheme()
+if (savedTheme !== 'light') {
+  document.documentElement.setAttribute('data-theme', savedTheme)
+}
 
 // Import all pages
 import { Home } from './pages/Home'

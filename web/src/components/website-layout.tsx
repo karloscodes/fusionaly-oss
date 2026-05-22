@@ -2,6 +2,7 @@ import { ReactNode, useState, useEffect, useRef } from "react";
 import { Link, router } from "@inertiajs/react";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Settings, ChevronDown, Check, AlertTriangle } from "lucide-react";
+import { ThemeSwitcher } from "@/components/theme-switcher";
 
 interface Website {
 	id: number;
@@ -199,8 +200,9 @@ export function WebsiteLayout({
 							))}
 						</div>
 
-						{/* Right side: Health warning + Settings + Logout */}
+						{/* Right side: Theme + Health warning + Settings + Logout */}
 						<div className="flex items-center space-x-4">
+							<ThemeSwitcher />
 							{/* System health warning indicator */}
 							{health && !health.healthy && (
 								<Link

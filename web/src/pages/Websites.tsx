@@ -519,9 +519,9 @@ const Websites: React.FC = () => {
                   )}
                 </Button>
               </div>
-              <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
-                <h4 className="font-medium text-blue-900 mb-2">What happens next?</h4>
-                <ul className="text-sm text-blue-800 space-y-1">
+              <div className="bg-gray-100 border border-gray-200 rounded-lg p-4">
+                <h4 className="font-medium text-gray-900 mb-2">What happens next?</h4>
+                <ul className="text-sm text-gray-700 space-y-1">
                   <li>• Events will start appearing within minutes</li>
                   <li>• Check the Events page to verify data is flowing</li>
                   <li>• View analytics on the Dashboard</li>

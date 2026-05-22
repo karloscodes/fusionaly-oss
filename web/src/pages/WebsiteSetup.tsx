@@ -87,9 +87,9 @@ export function WebsiteSetup() {
 								</Button>
 							</div>
 
-							<div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-								<p className="text-sm text-blue-800">
-									<strong>Tip:</strong> The script loads asynchronously with <code className="bg-blue-100 px-1 rounded">defer</code>, so it won't slow down your page load.
+							<div className="bg-gray-100 border border-gray-200 rounded-lg p-4">
+								<p className="text-sm text-gray-700">
+									<strong>Tip:</strong> The script loads asynchronously with <code className="bg-gray-200 px-1 rounded">defer</code>, so it won't slow down your page load.
 								</p>
 							</div>
 						</div>

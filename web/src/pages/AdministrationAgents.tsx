@@ -114,8 +114,8 @@ export const AdministrationAgentsContent: FC = () => {
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4">
-					<div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-						<p className="text-sm text-blue-900">
+					<div className="bg-gray-100 p-4 rounded-lg border border-gray-200">
+						<p className="text-sm text-gray-700">
 							Read-only API key for AI agents to query your analytics.{" "}
 							<a
 								href="https://fusionaly.com/docs/agent-api/"
