@@ -12,6 +12,10 @@ NC='\033[0m' # No Color
 GITHUB_REPO="karloscodes/fusionaly-oss"
 INSTALL_DIR="/usr/local/bin"
 
+# Action: "install" (default, fresh setup) or "migrate-to-oss" (switch an
+# existing Fusionaly Pro install to the free Fusionaly — keeps your data).
+ACTION="${1:-install}"
+
 run_installer() {
     # Verify running as root
     if [ "$(id -u)" -ne 0 ]; then
@@ -156,6 +160,20 @@ run_installer() {
         exit 1
     }
 
+    # Migrate an existing Fusionaly Pro install to the free Fusionaly.
+    if [ "$ACTION" = "migrate-to-oss" ] || [ "$ACTION" = "migrate" ]; then
+        echo -e "${GREEN}Migrating this installation to Fusionaly (free)...${NC}"
+        echo ""
+        if "$BINARY_PATH" migrate-to-oss; then
+            echo -e "${GREEN}Migration complete!${NC}"
+        else
+            MIGRATE_EXIT_CODE=$?
+            echo -e "${RED}Migration failed with exit code $MIGRATE_EXIT_CODE.${NC}"
+            exit $MIGRATE_EXIT_CODE
+        fi
+        return 0
+    fi
+
     # Run the installer interactively
     echo -e "${GREEN}Running Fusionaly installer...${NC}"
     echo ""
@@ -188,6 +206,7 @@ if [ ! -t 0 ]; then
         echo "NC='$NC'"
         echo "GITHUB_REPO='$GITHUB_REPO'"
         echo "INSTALL_DIR='$INSTALL_DIR'"
+        echo "ACTION='$ACTION'"
         declare -f run_installer
         echo 'run_installer'
     } > "$TEMP_SCRIPT"
