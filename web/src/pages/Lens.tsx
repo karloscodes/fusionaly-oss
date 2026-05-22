@@ -849,7 +849,7 @@ export const Lens: React.FC = () => {
 													</p>
 													{/* Error message from form */}
 													{editForm.errors.title && (
-														<div className="p-3 bg-red-50 border border-red-100 rounded-lg text-red-700 text-sm">
+														<div className="p-3 bg-gray-100 border border-gray-200 border-l-4 border-l-red-500 rounded-lg text-gray-700 text-sm">
 															{editForm.errors.title}
 														</div>
 													)}

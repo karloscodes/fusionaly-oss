@@ -749,36 +749,36 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 				{/* Selection details panel */}
 				<div className="mt-3">
 					{selectedLink && (
-						<div className="rounded-lg border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-3">
+						<div className="rounded-lg border border-gray-200 bg-gray-100 px-4 py-3">
 							<div className="flex items-center justify-between mb-2">
 								<div className="flex items-center gap-2">
 									<div className="w-2 h-2 rounded-full bg-blue-500" />
-									<span className="font-semibold text-blue-900 text-sm">Selected Transition</span>
+									<span className="font-semibold text-gray-900 text-sm">Selected Transition</span>
 								</div>
 								<div className="bg-white/70 rounded px-3 py-1">
-									<span className="font-bold text-blue-600 text-lg">{selectedLink.value.toLocaleString()}</span>
-									<span className="ml-1 text-blue-500 text-sm">visitors</span>
+									<span className="font-bold text-gray-900 text-lg">{selectedLink.value.toLocaleString()}</span>
+									<span className="ml-1 text-gray-700 text-sm">visitors</span>
 								</div>
 							</div>
 							<div className="bg-white/50 rounded-lg p-3 space-y-2">
 								<div className="flex items-start gap-2">
-									<span className="text-blue-400 text-xs font-medium shrink-0 w-14">From:</span>
-									<span className="font-medium text-blue-800 break-all">{selectedLink.source.displayName}</span>
+									<span className="text-gray-700 text-xs font-medium shrink-0 w-14">From:</span>
+									<span className="font-medium text-gray-900 break-all">{selectedLink.source.displayName}</span>
 								</div>
 								<div className="flex items-start gap-2">
-									<span className="text-blue-400 text-xs font-medium shrink-0 w-14">To:</span>
-									<span className="font-medium text-blue-800 break-all">{selectedLink.target.displayName}</span>
+									<span className="text-gray-700 text-xs font-medium shrink-0 w-14">To:</span>
+									<span className="font-medium text-gray-900 break-all">{selectedLink.target.displayName}</span>
 								</div>
 							</div>
 						</div>
 					)}
 					{selectedNode && !selectedLink && (
-						<div className="rounded-lg border border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 px-4 py-3">
+						<div className="rounded-lg border border-gray-200 bg-gray-100 px-4 py-3">
 							<div className="flex items-center gap-2 mb-2">
 								<div className="w-2 h-2 rounded-full bg-green-500" />
-								<span className="font-semibold text-green-900 text-sm">Selected Page</span>
+								<span className="font-semibold text-gray-900 text-sm">Selected Page</span>
 							</div>
-							<div className="text-green-800 font-medium text-lg mb-2">
+							<div className="text-gray-900 font-medium text-lg mb-2">
 								{nodes.find(n => n.id === selectedNode)?.displayName || selectedNode}
 							</div>
 							{(() => {
@@ -791,31 +791,31 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 								return (
 									<div className="grid grid-cols-3 gap-3 text-xs">
 										<div className="bg-white/70 rounded px-2 py-1.5">
-											<div className="text-green-600 font-semibold text-base">{node.value.toLocaleString()}</div>
-											<div className="text-green-500">total visitors</div>
+											<div className="text-gray-900 font-semibold text-base">{node.value.toLocaleString()}</div>
+											<div className="text-gray-700">total visitors</div>
 										</div>
 										{incomingLinks.length > 0 && (
 											<div className="bg-white/70 rounded px-2 py-1.5">
-												<div className="text-green-600 font-semibold text-base">{incomingLinks.length}</div>
-												<div className="text-green-500">source pages</div>
+												<div className="text-gray-900 font-semibold text-base">{incomingLinks.length}</div>
+												<div className="text-gray-700">source pages</div>
 											</div>
 										)}
 										{outgoingLinks.length > 0 && (
 											<div className="bg-white/70 rounded px-2 py-1.5">
-												<div className="text-green-600 font-semibold text-base">{outgoingLinks.length}</div>
-												<div className="text-green-500">destinations</div>
+												<div className="text-gray-900 font-semibold text-base">{outgoingLinks.length}</div>
+												<div className="text-gray-700">destinations</div>
 											</div>
 										)}
 										{incomingLinks.length === 0 && (
-											<div className="bg-blue-100/50 rounded px-2 py-1.5 border border-blue-200">
-												<div className="text-blue-700 font-medium">Entry Page</div>
-												<div className="text-blue-500 text-[10px]">Visitors land here first</div>
+											<div className="bg-white/70 rounded px-2 py-1.5 border border-gray-200">
+												<div className="text-gray-900 font-medium">Entry Page</div>
+												<div className="text-gray-700 text-[10px]">Visitors land here first</div>
 											</div>
 										)}
 										{outgoingLinks.length === 0 && (
-											<div className="bg-purple-100/50 rounded px-2 py-1.5 border border-purple-200">
-												<div className="text-purple-700 font-medium">Exit Page</div>
-												<div className="text-purple-500 text-[10px]">Last page visited</div>
+											<div className="bg-white/70 rounded px-2 py-1.5 border border-gray-200">
+												<div className="text-gray-900 font-medium">Exit Page</div>
+												<div className="text-gray-700 text-[10px]">Last page visited</div>
 											</div>
 										)}
 									</div>

@@ -110,8 +110,8 @@ export default function Onboarding() {
 
   const renderGeoLiteStep = () => (
     <form action="/setup/geolite" method="POST" className="space-y-4">
-      <Alert className="border-amber-200 bg-amber-50">
-        <AlertDescription className="text-amber-800">
+      <Alert className="bg-gray-100 border border-gray-200 border-l-4 border-l-amber-500">
+        <AlertDescription className="text-gray-700">
           <strong>GeoLite Database for Location Data</strong>
         </AlertDescription>
       </Alert>
@@ -171,9 +171,9 @@ export default function Onboarding() {
 
   const renderOpenAIStep = () => (
     <form action="/setup/openai" method="POST" className="space-y-4">
-      <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
-        <h4 className="font-medium text-purple-900 mb-2">AI-Powered Analytics (Optional)</h4>
-        <p className="text-sm text-purple-800">
+      <div className="p-4 bg-gray-100 rounded-lg border border-gray-200">
+        <h4 className="font-medium text-gray-900 mb-2">AI-Powered Analytics (Optional)</h4>
+        <p className="text-sm text-gray-700">
           Add an OpenRouter API key to ask questions about your analytics data in natural language.
         </p>
       </div>
@@ -282,18 +282,18 @@ export default function Onboarding() {
 
           <CardContent>
             {flash.error && (
-              <Alert className="mb-4 border-red-200 bg-red-50">
-                <AlertDescription className="text-red-800">{flash.error}</AlertDescription>
+              <Alert className="mb-4 bg-gray-100 border border-gray-200 border-l-4 border-l-red-500">
+                <AlertDescription className="text-gray-700">{flash.error}</AlertDescription>
               </Alert>
             )}
             {flash.success && (
-              <Alert className="mb-4 border-green-200 bg-green-50">
-                <AlertDescription className="text-green-800">{flash.success}</AlertDescription>
+              <Alert className="mb-4 bg-gray-100 border border-gray-200">
+                <AlertDescription className="text-gray-700">{flash.success}</AlertDescription>
               </Alert>
             )}
             {flash.info && (
-              <Alert className="mb-4 border-blue-200 bg-blue-50">
-                <AlertDescription className="text-blue-800">{flash.info}</AlertDescription>
+              <Alert className="mb-4 bg-gray-100 border border-gray-200">
+                <AlertDescription className="text-gray-700">{flash.info}</AlertDescription>
               </Alert>
             )}
 
