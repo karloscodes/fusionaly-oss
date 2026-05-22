@@ -9,12 +9,11 @@ import (
 
 	"fusionaly/internal/analytics"
 	"fusionaly/internal/annotations"
-	"github.com/karloscodes/cartridge"
-	"github.com/karloscodes/cartridge/flash"
-	"github.com/karloscodes/cartridge/inertia"
-	"github.com/karloscodes/cartridge/structs"
 	"fusionaly/internal/timeframe"
 	websitesCtx "fusionaly/internal/websites"
+	"github.com/karloscodes/cartridge"
+	"github.com/karloscodes/cartridge/inertia"
+	"github.com/karloscodes/cartridge/structs"
 
 	"gorm.io/gorm"
 )
@@ -33,8 +32,7 @@ func WebsiteDashboardAction(ctx *cartridge.Context) error {
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			ctx.Logger.Warn("Website not found", slog.Int("websiteId", websiteId))
-			flash.SetFlash(ctx.Ctx, "error", "Website not found")
-			return ctx.Redirect("/admin/websites", fiber.StatusFound)
+			return ctx.FlashError("Website not found").Redirect("/admin/websites", fiber.StatusFound)
 		}
 		ctx.Logger.Error("Failed to get website", slog.Any("error", err))
 		return ctx.Redirect("/admin/websites", fiber.StatusFound)
@@ -120,5 +118,5 @@ func WebsiteDashboardAction(ctx *cartridge.Context) error {
 		return flowData
 	})
 
-	return inertia.RenderPage(ctx.Ctx, "Dashboard", props)
+	return ctx.Inertia("Dashboard", props)
 }

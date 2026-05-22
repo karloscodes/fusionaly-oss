@@ -7,7 +7,6 @@ import (
 	"github.com/karloscodes/cartridge"
 	"github.com/karloscodes/cartridge/crypto"
 	"github.com/karloscodes/cartridge/inertia"
-	"github.com/karloscodes/cartridge/flash"
 	"log/slog"
 
 	"fusionaly/internal/onboarding"
@@ -34,40 +33,25 @@ func RenderLoginAction(ctx *cartridge.Context) error {
 	}
 
 	// Render the login page using Inertia (csrfToken and flash auto-injected)
-	return inertia.RenderPage(ctx.Ctx, "Login", inertia.Props{})
+	return ctx.Inertia("Login", inertia.Props{})
 }
 
 // ProcessLoginAction handles the login form submission
 func ProcessLoginAction(ctx *cartridge.Context) error {
-	// Parse login form - try both form value and JSON body (for Inertia.js)
-	email := ctx.FormValue("email")
-	password := ctx.FormValue("password")
-	tz := ctx.FormValue("_tz")
-
-	// Try parsing as JSON for Inertia.js requests
-	if email == "" && password == "" {
-		var jsonBody struct {
-			Email    string `json:"email"`
-			Password string `json:"password"`
-			Tz       string `json:"_tz"`
-		}
-		if err := ctx.BodyParser(&jsonBody); err == nil {
-			if jsonBody.Email != "" {
-				email = jsonBody.Email
-			}
-			if jsonBody.Password != "" {
-				password = jsonBody.Password
-			}
-			if jsonBody.Tz != "" {
-				tz = jsonBody.Tz
-			}
-		}
+	// Parse login form - Bind is content-type aware (form-encoded or Inertia.js JSON)
+	var in struct {
+		Email    string `json:"email" form:"email"`
+		Password string `json:"password" form:"password"`
+		Tz       string `json:"_tz" form:"_tz"`
 	}
+	_ = ctx.Bind(&in)
+	email := in.Email
+	password := in.Password
+	tz := in.Tz
 
 	if email == "" || password == "" {
 		// Set flash error message and redirect to login page
-		flash.SetFlash(ctx.Ctx, "error", "Email and password are required")
-		return ctx.Redirect("/login", fiber.StatusFound)
+		return ctx.FlashError("Email and password are required").Redirect("/login", fiber.StatusFound)
 	}
 
 	db := ctx.DB()
@@ -98,15 +82,13 @@ func ProcessLoginAction(ctx *cartridge.Context) error {
 	// Check if authentication failed (either user not found or wrong password)
 	if !passwordValid {
 		// Generic error message - don't reveal whether email exists
-		flash.SetFlash(ctx.Ctx, "error", "Invalid email or password")
-		return ctx.Redirect("/login", fiber.StatusFound)
+		return ctx.FlashError("Invalid email or password").Redirect("/login", fiber.StatusFound)
 	}
 
 	// Set session cookie
 	if err := ctx.Session.SetSession(ctx.Ctx, user.ID); err != nil {
 		ctx.Logger.Error("Failed to set session", slog.Any("error", err))
-		flash.SetFlash(ctx.Ctx, "error", "Login failed")
-		return ctx.Redirect("/login", fiber.StatusFound)
+		return ctx.FlashError("Login failed").Redirect("/login", fiber.StatusFound)
 	}
 	ctx.Logger.Debug("Login successful",
 		slog.String("email", email),
@@ -157,11 +139,8 @@ func LogoutAction(ctx *cartridge.Context) error {
 		SameSite: "Lax",
 	})
 
-	// Set a flash message
-	flash.SetFlash(ctx.Ctx, "success", "You have been successfully logged out")
-
 	ctx.Logger.Debug("LogoutAction: User logged out, redirecting to login page")
 
-	// Return a redirect to /login
-	return ctx.Redirect("/login", fiber.StatusFound)
+	// Set a flash message and redirect to /login
+	return ctx.FlashSuccess("You have been successfully logged out").Redirect("/login", fiber.StatusFound)
 }
