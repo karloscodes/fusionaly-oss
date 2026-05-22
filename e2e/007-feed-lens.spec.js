@@ -57,7 +57,7 @@ test.describe.serial("Feed Home and AI Lens", () => {
 		helpers.log("'What's new' activity area is visible");
 	});
 
-	test("Lens page shows the add-your-OpenAI-key empty state when no key is configured", async ({ page }) => {
+	test("Lens page shows the add-your-OpenRouter-key empty state when no key is configured", async ({ page }) => {
 		helpers.log("Testing the Lens no-key empty state");
 
 		// Create a site and grab its ID from the post-create URL
@@ -83,8 +83,8 @@ test.describe.serial("Feed Home and AI Lens", () => {
 		const currentUrl = page.url();
 		expect(currentUrl).toContain(`/admin/websites/${websiteId}/lens`);
 
-		// With no OpenAI key configured, the empty state prompts to add a key
-		await helpers.waitForElement('text=Add your OpenAI key to get started', { timeout: 10000 });
+		// With no OpenRouter key configured, the empty state prompts to add a key
+		await helpers.waitForElement('text=Add your OpenRouter key to get started', { timeout: 10000 });
 		helpers.log("Lens empty-state title is visible");
 
 		// And links to the AI settings page to add the key
