@@ -120,9 +120,18 @@ func WebsiteLensAskAIAction(ctx *cartridge.Context) error {
 		return ctx.FlashError("Invalid website ID").Redirect("/admin/websites", fiber.StatusFound)
 	}
 
-	question := ctx.FormValue("query")
+	// Read the question/model from the request body. The route :id is the
+	// website id (read via ctx.Params above); this struct deliberately omits a
+	// params tag so Bind's ParamsParser can't overlay it.
+	var in struct {
+		Query string `json:"query" form:"query"`
+		Model string `json:"model" form:"model"`
+	}
+	_ = ctx.Bind(&in)
+
+	question := in.Query
 	// Empty model lets GetQueryFromOpenAI fall back to ai.DefaultModel.
-	model := ctx.FormValue("model")
+	model := in.Model
 	if question == "" {
 		return ctx.FlashError("Please enter a question").Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
 	}
@@ -191,11 +200,22 @@ func WebsiteLensSaveAction(ctx *cartridge.Context) error {
 		return ctx.FlashError("Invalid website ID").Redirect("/admin/websites", fiber.StatusFound)
 	}
 
-	title := ctx.FormValue("title")
-	generatedSQL := ctx.FormValue("generated_sql")
-	queryType := ctx.FormValue("query_type")
-	vegaSpec := ctx.FormValue("vega_spec")
-	model := ctx.FormValue("model")
+	// The route :id is the website id (read via ctx.Params above); this struct
+	// deliberately omits a params tag so Bind's ParamsParser can't overlay it.
+	var in struct {
+		Title        string `json:"title" form:"title"`
+		GeneratedSQL string `json:"generated_sql" form:"generated_sql"`
+		QueryType    string `json:"query_type" form:"query_type"`
+		VegaSpec     string `json:"vega_spec" form:"vega_spec"`
+		Model        string `json:"model" form:"model"`
+	}
+	_ = ctx.Bind(&in)
+
+	title := in.Title
+	generatedSQL := in.GeneratedSQL
+	queryType := in.QueryType
+	vegaSpec := in.VegaSpec
+	model := in.Model
 
 	if title == "" || generatedSQL == "" {
 		return ctx.FlashError("Title and SQL are required").Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
@@ -226,10 +246,20 @@ func WebsiteLensUpdateAction(ctx *cartridge.Context) error {
 		return ctx.FlashError("Invalid website ID").Redirect("/admin/websites", fiber.StatusFound)
 	}
 
-	queryID, _ := strconv.Atoi(ctx.FormValue("id"))
-	newTitle := ctx.FormValue("title")
+	// in.ID is the saved-query id from the form/body. The route :id is the
+	// website id (read via ctx.Params above); this struct deliberately omits a
+	// params tag so Bind's ParamsParser can't overlay in.ID with the website id.
+	var in struct {
+		ID    string `json:"id" form:"id"`
+		Title string `json:"title" form:"title"`
+		Model string `json:"model" form:"model"`
+	}
+	_ = ctx.Bind(&in)
+
+	queryID, _ := strconv.Atoi(in.ID)
+	newTitle := in.Title
 	// Empty model lets GetQueryFromOpenAI fall back to ai.DefaultModel.
-	model := ctx.FormValue("model")
+	model := in.Model
 
 	if queryID <= 0 || newTitle == "" {
 		return ctx.FlashError("Invalid query ID or title").Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
@@ -267,7 +297,15 @@ func WebsiteLensDeleteAction(ctx *cartridge.Context) error {
 		return ctx.FlashError("Invalid website ID").Redirect("/admin/websites", fiber.StatusFound)
 	}
 
-	queryID, _ := strconv.Atoi(ctx.FormValue("id"))
+	// in.ID is the saved-query id from the form/body. The route :id is the
+	// website id (read via ctx.Params above); this struct deliberately omits a
+	// params tag so Bind's ParamsParser can't overlay in.ID with the website id.
+	var in struct {
+		ID string `json:"id" form:"id"`
+	}
+	_ = ctx.Bind(&in)
+
+	queryID, _ := strconv.Atoi(in.ID)
 	if queryID <= 0 {
 		return ctx.FlashError("Invalid query ID").Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
 	}
@@ -288,7 +326,15 @@ func WebsiteLensCloneAction(ctx *cartridge.Context) error {
 		return ctx.FlashError("Invalid website ID").Redirect("/admin/websites", fiber.StatusFound)
 	}
 
-	queryID, _ := strconv.Atoi(ctx.FormValue("id"))
+	// in.ID is the saved-query id from the form/body. The route :id is the
+	// website id (read via ctx.Params above); this struct deliberately omits a
+	// params tag so Bind's ParamsParser can't overlay in.ID with the website id.
+	var in struct {
+		ID string `json:"id" form:"id"`
+	}
+	_ = ctx.Bind(&in)
+
+	queryID, _ := strconv.Atoi(in.ID)
 	if queryID <= 0 {
 		return ctx.FlashError("Invalid query ID").Redirect("/admin/websites/"+websiteIDStr+"/lens", fiber.StatusFound)
 	}
