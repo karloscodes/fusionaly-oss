@@ -29,6 +29,7 @@ import {
 	Copy,
 } from "lucide-react";
 import { HeroMetricsBar, createMetric } from "@/components/hero-metrics-bar";
+import { useChartColors } from "@/lib/use-chart-colors";
 import DataTable from "./data-table";
 import type {
 	AnalyticsData,
@@ -119,6 +120,10 @@ export const Dashboard = (props: DashboardComponentProps) => {
 	>("visitors"); // Toggle between charts
 	const [showRevenueLine, setShowRevenueLine] = useState(true); // Control revenue line visibility
 	const [tooltipOpen, setTooltipOpen] = useState(false);
+
+	// Theme-aware neutral colors for the chart (gridlines, axis text, revenue
+	// line). Recomputes when the theme changes so charts stay readable in dark.
+	const chartColors = useChartColors();
 
 	// State for viewing/editing existing annotations when clicked on chart
 	const [selectedAnnotation, setSelectedAnnotation] = useState<Annotation | null>(null);
@@ -456,9 +461,10 @@ export const Dashboard = (props: DashboardComponentProps) => {
 		}
 	};
 
-	// Get the revenue line color (darker version of the active chart color)
+	// Revenue line: a calm secondary color (--c-chart-line per theme) so it
+	// doesn't out-shout the primary bars.
 	const getRevenueLineColor = () => {
-		return "#000000";
+		return chartColors.line;
 	};
 
 	// Get the revenue axis domain with a reasonable minimum
@@ -544,27 +550,38 @@ export const Dashboard = (props: DashboardComponentProps) => {
 				barSize={isMobile ? 12 : 36}
 				onClick={props.is_public_view ? undefined : handleChartClick}
 			>
+				{/* Optional bar gradient — a theme opts in by setting --c-bar
+					(e.g. Terminal's btop look). Other themes use the metric color. */}
+				{chartColors.bar && (
+					<defs>
+						<linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+							<stop offset="0%" stopColor={chartColors.bar} />
+							<stop offset="100%" stopColor={chartColors.barDeep || chartColors.bar} />
+						</linearGradient>
+					</defs>
+				)}
 				<CartesianGrid
 					horizontal={true}
 					vertical={false}
+					stroke={chartColors.grid}
 					strokeDasharray="3 4"
 					opacity={0.2}
 				/>
 				<XAxis
 					dataKey="formattedDate"
 					strokeWidth={1}
-					tick={{ fill: "#374151", fontSize: isMobile ? 9 : 10, textAnchor: "end" }}
-					axisLine={{ stroke: "#E5E7EB" }}
-					tickLine={{ stroke: "#E5E7EB" }}
+					tick={{ fill: chartColors.axisText, fontSize: isMobile ? 9 : 10, textAnchor: "end" }}
+					axisLine={{ stroke: chartColors.grid }}
+					tickLine={{ stroke: chartColors.grid }}
 					dy={10}
 					interval={isMobile ? "equidistantPreserveStart" : "preserveStartEnd"}
 					angle={-45}
 				/>
 				<YAxis
 					strokeWidth={1}
-					tick={{ fill: "#374151", fontSize: isMobile ? 9 : 10 }}
-					axisLine={{ stroke: "#E5E7EB" }}
-					tickLine={{ stroke: "#E5E7EB" }}
+					tick={{ fill: chartColors.axisText, fontSize: isMobile ? 9 : 10 }}
+					axisLine={{ stroke: chartColors.grid }}
+					tickLine={{ stroke: chartColors.grid }}
 					dx={-10}
 					width={isMobile ? 30 : 60}
 					domain={[0, getMaxValue()]}
@@ -575,9 +592,9 @@ export const Dashboard = (props: DashboardComponentProps) => {
 					yAxisId="right"
 					orientation="right"
 					strokeWidth={1}
-					tick={{ fill: "#374151", fontSize: isMobile ? 9 : 10 }}
-					axisLine={{ stroke: "#E5E7EB" }}
-					tickLine={{ stroke: "#E5E7EB" }}
+					tick={{ fill: chartColors.axisText, fontSize: isMobile ? 9 : 10 }}
+					axisLine={{ stroke: chartColors.grid }}
+					tickLine={{ stroke: chartColors.grid }}
 					dx={10}
 					width={isMobile ? 35 : 60}
 					domain={getRevenueAxisDomain()}
@@ -615,13 +632,13 @@ export const Dashboard = (props: DashboardComponentProps) => {
 						);
 					}}
 					wrapperStyle={{ outline: "none" }}
-					cursor={{ fill: "#E5E7EB", opacity: 0.4, radius: 4 }}
+					cursor={{ fill: chartColors.grid, opacity: 0.4, radius: 4 }}
 				/>
 				<Bar
 					dataKey={dataKey}
 					name={chartName}
-					fill={colors.default}
-					radius={[4, 4, 0, 0]}
+					fill={chartColors.bar ? "url(#barGradient)" : colors.default}
+					radius={[chartColors.barRadius, chartColors.barRadius, 0, 0]}
 					animationDuration={300}
 					animationEasing="ease-out"
 					style={{ cursor: props.current_website_id ? "pointer" : "default" }}

@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { VegaEmbed } from "react-vega";
+import { useChartColors } from "@/lib/use-chart-colors";
+import { cssVarColor } from "@/lib/theme";
 
 interface VegaChartProps {
 	spec: any;
@@ -9,6 +11,10 @@ interface VegaChartProps {
 
 export const VegaChart: React.FC<VegaChartProps> = ({ spec, data, className }) => {
 	const [error, setError] = useState<string | null>(null);
+
+	// Subscribe to theme changes so the Vega config (built below) re-reads the
+	// themed axis/grid/label colors and the chart re-renders on theme switch.
+	const chartColors = useChartColors();
 
 	const finalSpec = useMemo(() => {
 		try {
@@ -55,7 +61,7 @@ export const VegaChart: React.FC<VegaChartProps> = ({ spec, data, className }) =
 
 	// Vega-Lite theme matching Dashboard Recharts colors
 	const config = {
-		background: "white",
+		background: cssVarColor("--c-white"),
 		// Primary marks use cyan (same as Dashboard page views)
 		arc: { fill: "#00D1FF" },
 		area: { fill: "#00D1FF" },
@@ -66,11 +72,11 @@ export const VegaChart: React.FC<VegaChartProps> = ({ spec, data, className }) =
 		symbol: { fill: "#00D1FF", size: 30 },
 		bar: { fill: "#00D1FF" },
 		axis: {
-			domainColor: "#E5E7EB",
-			gridColor: "#F3F4F6",
-			tickColor: "#E5E7EB",
-			labelColor: "#6B7280",
-			titleColor: "#374151",
+			domainColor: chartColors.grid,
+			gridColor: cssVarColor("--c-gray-100"),
+			tickColor: chartColors.grid,
+			labelColor: cssVarColor("--c-gray-500"),
+			titleColor: chartColors.axisText,
 		},
 		axisX: {
 			grid: false,
@@ -82,8 +88,8 @@ export const VegaChart: React.FC<VegaChartProps> = ({ spec, data, className }) =
 			gridDash: [3, 3],
 		},
 		legend: {
-			labelColor: "#6B7280",
-			titleColor: "#374151",
+			labelColor: cssVarColor("--c-gray-500"),
+			titleColor: chartColors.axisText,
 		},
 		// Category palette: Cyan, Green, Orange (matches Dashboard)
 		range: {

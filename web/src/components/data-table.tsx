@@ -146,7 +146,7 @@ const DataTable = ({
 							>
 								<div className="flex-1 relative min-w-0 pr-2">
 					<div
-						className="absolute inset-0 bg-blue-50/50"
+						className="absolute inset-0 bg-gray-200/70"
 										style={{
 											width: `${maxCount > 0 ? (item.count / maxCount) * 100 : 0}%`,
 										}}

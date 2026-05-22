@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { GitBranch, ZoomIn, ZoomOut, RotateCcw, Maximize2, X, HelpCircle, MousePointer, Move } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { cssVarColor } from "@/lib/theme";
+import { useChartColors } from "@/lib/use-chart-colors";
 
 interface UserFlowLink {
 	source: string;
@@ -42,9 +44,20 @@ const STEP_COLORS = [
 	"#d946ef", // fuchsia-500 - step 6+
 ];
 
-const getStepColor = (step: number): string => {
-	const index = Math.min(step - 1, STEP_COLORS.length - 1);
-	return STEP_COLORS[Math.max(0, index)];
+// Terminal theme: a green ramp (btop-ish) instead of blue/purple.
+const STEP_COLORS_TERMINAL = [
+	"#0B7A3E",
+	"#0E9E50",
+	"#16C062",
+	"#27DB78",
+	"#46F091",
+	"#7CFFB0",
+];
+
+const getStepColor = (step: number, theme?: string): string => {
+	const palette = theme === "terminal" ? STEP_COLORS_TERMINAL : STEP_COLORS;
+	const index = Math.min(step - 1, palette.length - 1);
+	return palette[Math.max(0, index)];
 };
 
 // Parse step number and page name from node id (e.g., "step1:/home" -> { step: 1, page: "/home" })
@@ -68,6 +81,15 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 	const [isFullscreen, setIsFullscreen] = useState(false);
 	const [showHelp, setShowHelp] = useState(false);
 	const [viewportHeight, setViewportHeight] = useState(() => (typeof window !== "undefined" ? window.innerHeight : 900));
+
+	// Theme-aware colors. useChartColors re-renders this on theme change; the
+	// step palette switches to a green ramp in Terminal (see getStepColor).
+	const { theme } = useChartColors();
+	const sankeyNodeStroke = cssVarColor("--c-white"); // separates nodes from the surface
+	const sankeyInk = cssVarColor("--c-black");
+	const sankeyLabel = cssVarColor("--c-gray-700");
+	const sankeyMuted = cssVarColor("--c-gray-500");
+
 	const isPanningRef = useRef(false);
 	const panStartRef = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
 
@@ -562,7 +584,7 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 								<div>
 									<div className="font-medium text-gray-900 mb-1">Color Legend</div>
 									<div className="flex flex-wrap gap-1.5 mt-1">
-										{STEP_COLORS.slice(0, 4).map((color, i) => (
+										{(theme === "terminal" ? STEP_COLORS_TERMINAL : STEP_COLORS).slice(0, 4).map((color, i) => (
 											<div key={color} className="flex items-center gap-1">
 												<div className="w-3 h-3 rounded" style={{ backgroundColor: color }} />
 												<span className="text-[10px]">Step {i + 1}</span>
@@ -601,7 +623,7 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 									textAnchor="middle"
 									className="text-xs font-medium"
 									style={{ fontSize: "11px" }}
-									fill="#6b7280"
+									fill={sankeyMuted}
 								>
 									{idx === 0 ? "Entry" : idx === numColumns - 1 ? "Exit" : `Step ${step}`}
 								</text>
@@ -611,13 +633,13 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 						{/* Render links */}
 						<g>
 							{sankeyLinks.map((link, i) => {
-								const color = getStepColor(link.source.step);
+								const color = getStepColor(link.source.step, theme);
 								const key = linkKey(link);
 								const isSelected = selectedLinkKey === key;
 								const isHovered = hoveredLinkKey === key;
 								const activeNode = selectedNode || hoveredNode;
 
-								let opacity = 0.5;
+								let opacity = theme === "terminal" ? 0.62 : 0.5;
 								if (isSelected || isHovered) {
 									opacity = 0.85;
 								} else if (selectedLinkKey && selectedLinkKey !== key) {
@@ -632,7 +654,7 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 										d={generateLinkPath(link, nodeBodyWidth)}
 										fill={color}
 										fillOpacity={opacity}
-										stroke={isSelected ? "#000" : isHovered ? "#374151" : "none"}
+										stroke={isSelected ? sankeyInk : isHovered ? sankeyLabel : "none"}
 										strokeWidth={isSelected || isHovered ? 1.5 : 0}
 										className="transition-all duration-150 cursor-pointer"
 										onMouseEnter={() => setHoveredLinkKey(key)}
@@ -654,7 +676,7 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 						{/* Render nodes */}
 						<g>
 							{nodes.map((node, i) => {
-								const color = getStepColor(node.step);
+								const color = getStepColor(node.step, theme);
 								const isSelectedNode = selectedNode === node.id;
 								const isHoveredNode = hoveredNode === node.id;
 								const isConnectedToLink = selectedLink ? isNodeConnectedToSelectedLink(node) : false;
@@ -681,9 +703,9 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 											width={nodeBodyWidth}
 											height={node.height}
 											fill={color}
-											stroke={isSelectedNode || isHoveredNode ? "#000" : "#fff"}
+											stroke={isSelectedNode || isHoveredNode ? sankeyInk : sankeyNodeStroke}
 											strokeWidth={isSelectedNode || isHoveredNode ? 2 : 1}
-											rx={3}
+											rx={theme === "terminal" ? 0 : 3}
 											className="transition-all cursor-pointer"
 											style={{ opacity: nodeOpacity }}
 											onMouseEnter={() => setHoveredNode(node.id)}
@@ -705,7 +727,7 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 												alignmentBaseline="middle"
 												className="text-xs font-medium"
 												style={{ fontSize: "11px", pointerEvents: 'none', opacity: nodeOpacity }}
-												fill="#1f2937"
+												fill={sankeyLabel}
 											>
 												{truncatePageName(node.displayName)}
 											</text>
@@ -720,7 +742,7 @@ export const VisitorFlowSankey = ({ links }: VisitorFlowSankeyProps) => {
 												alignmentBaseline="middle"
 												className="text-xs"
 												style={{ fontSize: "10px", pointerEvents: 'none', opacity: nodeOpacity }}
-												fill="#6b7280"
+												fill={sankeyMuted}
 											>
 												{node.value.toLocaleString()} visitors
 											</text>

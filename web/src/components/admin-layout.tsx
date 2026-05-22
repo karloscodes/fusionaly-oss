@@ -1,6 +1,7 @@
 import { ReactNode, useState, useEffect } from "react";
 import { Link, router } from "@inertiajs/react";
 import { AlertTriangle } from "lucide-react";
+import { ThemeSwitcher } from "@/components/theme-switcher";
 
 interface AdminLayoutProps {
 	children: ReactNode;
@@ -58,6 +59,7 @@ export function AdminLayout({ children, currentPath, badge }: AdminLayoutProps) 
 						</div>
 
 						<div className="flex items-center space-x-4">
+							<ThemeSwitcher />
 							{health && !health.healthy && (
 								<Link
 									href="/admin/administration/system"

@@ -184,8 +184,8 @@ export const AdministrationSystemContent: FC = () => {
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4">
-					<div className="bg-blue-50 p-4 rounded-lg border border-blue-200 mb-4">
-						<p className="text-sm text-blue-900">
+					<div className="bg-gray-100 p-4 rounded-lg border border-gray-200 mb-4">
+						<p className="text-sm text-gray-700">
 							Get your free credentials at{" "}
 							<a
 								href="https://www.maxmind.com/en/geolite2/signup"
@@ -325,8 +325,8 @@ export const AdministrationSystemContent: FC = () => {
 					</CardDescription>
 				</CardHeader>
 				<CardContent>
-					<div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 mb-4">
-						<p className="text-sm text-yellow-900">
+					<div className="bg-gray-100 p-4 rounded-lg border border-gray-200 border-l-4 border-l-amber-500 mb-4">
+						<p className="text-sm text-gray-700">
 							Warning: The exported database contains
 							sensitive data including user passwords (hashed), API keys, and
 							analytics data. Store it securely.

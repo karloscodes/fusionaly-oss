@@ -1,5 +1,6 @@
 import { usePage } from "@inertiajs/react";
 import { Dashboard, DashboardComponentProps } from "@/components/dashboard";
+import { ThemeSwitcher } from "@/components/theme-switcher";
 
 type PublicDashboardProps = DashboardComponentProps & {
   website_domain: string;
@@ -34,15 +35,18 @@ export default function PublicDashboard() {
               <span className="text-gray-300">·</span>
               <span className="text-sm text-gray-500 whitespace-nowrap">Last 30 days</span>
             </div>
-            <a
-              href={FUSIONALY_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Fusionaly"
-              className="text-xs hover:opacity-80 transition-opacity whitespace-nowrap"
-            >
-              <FusionalyWordmark />
-            </a>
+            <div className="flex items-center gap-4">
+              <ThemeSwitcher />
+              <a
+                href={FUSIONALY_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Fusionaly"
+                className="text-xs hover:opacity-80 transition-opacity whitespace-nowrap"
+              >
+                <FusionalyWordmark />
+              </a>
+            </div>
           </div>
         </div>
       </header>
