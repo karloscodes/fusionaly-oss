@@ -118,3 +118,6 @@ debug
 
 # Minified SDK (build artifact)
 api/v1/sdk.min.js
+
+# Built manager binary — comes from releases (goreleaser), never commit it
+/manager
