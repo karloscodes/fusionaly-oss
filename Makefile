@@ -338,3 +338,8 @@ test-ua-fixtures:
 	@echo "Running strict Matomo fixture tests..."
 	@go test -v -tags matomo_fixtures ./tests/internal/pkg/user_agent/ -run TestMatomoFixtures
 	@echo "Matomo fixture tests completed"
+
+# Scan for known reachable vulnerabilities (CVEs)
+.PHONY: vuln
+vuln:
+	$(GO) run golang.org/x/vuln/cmd/govulncheck@latest ./...

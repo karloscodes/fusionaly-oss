@@ -1,0 +1,31 @@
+name: govulncheck
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+  schedule:
+    # Weekly catch for newly-disclosed stdlib/toolchain CVEs. A red run emails you.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  govulncheck:
+    name: Scan for reachable vulnerabilities
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          # Float to the latest 1.25.x (same as CI and the Docker build) so
+          # stdlib CVEs already patched upstream don't show as reachable —
+          # the toolchain auto-patches on every build, no PR needed.
+          go-version: "1.25"
+          cache: true
+      # golang.org/x/vuln is maintained by the Go team and verified via the Go
+      # checksum DB; the vulnerability database is fetched fresh on every run.
+      - name: Run govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
