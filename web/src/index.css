@@ -28,6 +28,7 @@
        fill with a gradient (omit to use the metric color); --c-bar-radius is
        the bar corner radius in px. */
     --c-chart-line: 75 85 99;
+    --c-accent: 0 214 120; /* signature data color — heat map + chart bars (brand green) */
     --c-bar-radius: 4;
     --c-radius-scale: 1; /* 1 = stock rounding; a theme sets 0 to square corners */
     --c-flow: #3b82f6, #6366f1, #8b5cf6, #a855f7, #c084fc, #d946ef;
@@ -53,6 +54,7 @@
     --c-gray-900: 230 237 243;
 
     --c-chart-line: 139 148 158; /* calm gray, not near-white */
+    --c-accent: 0 214 120; /* brand green */
     --c-bar-radius: 4;
   }
 
@@ -73,7 +75,8 @@
     --c-gray-900: 210 250 220;
 
     --c-chart-line: 122 173 138; /* muted green, calm secondary line */
-    --c-bar: 31 179 94;          /* btop bar gradient top */
+    --c-accent: 31 179 94;       /* CRT green — heat map + bars */
+    --c-bar: var(--c-accent);    /* btop bar gradient top */
     --c-bar-deep: 10 110 56;     /* btop bar gradient bottom */
     --c-bar-radius: 0;
     --c-radius-scale: 0;         /* square corners — btop/pixel look */
@@ -97,8 +100,9 @@
     --c-gray-900: 205 214 244; /* text */
 
     --c-chart-line: 147 153 178; /* overlay2 */
-    --c-bar: 166 227 161;        /* green */
-    --c-bar-deep: 64 122 90;
+    --c-accent: 203 166 247;     /* mauve — Catppuccin's signature (heat map + bars) */
+    --c-bar: var(--c-accent);
+    --c-bar-deep: 124 87 168;    /* darker mauve */
     --c-bar-radius: 0;
     --c-radius-scale: 0;
     --c-font: var(--c-mono);
@@ -121,7 +125,8 @@
     --c-gray-900: 235 219 178; /* fg1 */
 
     --c-chart-line: 168 153 132; /* fg4 */
-    --c-bar: 184 187 38;         /* bright green */
+    --c-accent: 184 187 38;      /* gruvbox green — heat map + bars */
+    --c-bar: var(--c-accent);
     --c-bar-deep: 121 116 14;
     --c-bar-radius: 0;
     --c-radius-scale: 0;
