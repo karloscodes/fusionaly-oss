@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="web/public/favicon.svg" alt="Fusionaly" width="72" height="72">
+</p>
+
 # Fusionaly
 
 [![Latest Release](https://img.shields.io/github/v/release/karloscodes/fusionaly-oss)](https://github.com/karloscodes/fusionaly-oss/releases/latest)
@@ -27,7 +31,7 @@ docker pull karloscodes/fusionaly:latest
 
 Full setup in the [Installation Guide](https://fusionaly.com/docs/installation/).
 
-> Don't host it on an `analytics.*` subdomain — ad blockers (uBlock Origin, EasyPrivacy) block hostnames like that and drop your tracking requests. Use a neutral subdomain such as `data.example.com`.
+> Avoid subdomains ad blockers reject (`analytics.`, `tracking.`, `stats.`, …) — the tracking script won't load. Use your apex domain or a neutral subdomain like `data.`. The installer flags this, and the [Installation Guide](https://fusionaly.com/docs/installation/) has the full list.
 
 ## How it works
 
