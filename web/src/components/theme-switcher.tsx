@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, Moon, Sun, Terminal } from "lucide-react";
+import { Box, Cat, Check, Moon, Sun, Terminal } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,6 +12,8 @@ const ICONS: Record<Theme, typeof Sun> = {
   light: Sun,
   dark: Moon,
   phosphor: Terminal,
+  catppuccin: Cat,
+  gruvbox: Box,
 };
 
 export function ThemeSwitcher() {

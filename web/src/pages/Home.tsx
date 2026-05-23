@@ -302,15 +302,26 @@ function VisitorCalendar({
     }
   });
 
-  const getIntensity = (count: number): string => {
-    if (count < 0) return "bg-transparent";
-    if (count === 0) return "bg-gray-100";
+  // Cell background as the theme accent at increasing opacity, so the heat map
+  // matches each theme (green, mauve, …). Empty days use a faint themed gray.
+  const cellColor = (count: number): string => {
+    if (count < 0) return "transparent";
+    if (count === 0) return "rgb(var(--c-gray-200))";
     const ratio = count / maxCount;
-    if (ratio < 0.25) return "bg-green-200";
-    if (ratio < 0.5) return "bg-green-300";
-    if (ratio < 0.75) return "bg-green-400";
-    return "bg-green-500";
+    if (ratio < 0.25) return "rgb(var(--c-accent) / 0.3)";
+    if (ratio < 0.5) return "rgb(var(--c-accent) / 0.55)";
+    if (ratio < 0.75) return "rgb(var(--c-accent) / 0.8)";
+    return "rgb(var(--c-accent))";
   };
+
+  // Legend swatches: empty → 4 ascending accent levels.
+  const legendColors = [
+    "rgb(var(--c-gray-200))",
+    "rgb(var(--c-accent) / 0.3)",
+    "rgb(var(--c-accent) / 0.55)",
+    "rgb(var(--c-accent) / 0.8)",
+    "rgb(var(--c-accent))",
+  ];
 
   const [hoveredDay, setHoveredDay] = useState<{
     date: Date;
@@ -331,8 +342,8 @@ function VisitorCalendar({
         </h3>
         <div className="flex items-center gap-1 text-xs text-gray-500">
           <span>Less</span>
-          {["bg-gray-100", "bg-green-200", "bg-green-300", "bg-green-400", "bg-green-500"].map((c, i) => (
-            <div key={i} className={cn("w-[10px] h-[10px] rounded-sm", c)} />
+          {legendColors.map((c, i) => (
+            <div key={i} className="w-[10px] h-[10px] rounded-sm" style={{ backgroundColor: c }} />
           ))}
           <span>More</span>
         </div>
@@ -360,9 +371,9 @@ function VisitorCalendar({
                 key={dayIndex}
                 className={cn(
                   "w-[10px] h-[10px] rounded-sm",
-                  getIntensity(day.count),
                   day.count >= 0 && "cursor-pointer"
                 )}
+                style={{ backgroundColor: cellColor(day.count) }}
                 onMouseEnter={(e) => {
                   if (day.count >= 0) {
                     const rect = e.currentTarget.getBoundingClientRect();

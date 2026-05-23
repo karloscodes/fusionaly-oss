@@ -28,9 +28,12 @@
        fill with a gradient (omit to use the metric color); --c-bar-radius is
        the bar corner radius in px. */
     --c-chart-line: 75 85 99;
+    --c-accent: 0 214 120; /* signature data color — heat map + chart bars (brand green) */
     --c-bar-radius: 4;
     --c-radius-scale: 1; /* 1 = stock rounding; a theme sets 0 to square corners */
     --c-flow: #3b82f6, #6366f1, #8b5cf6, #a855f7, #c084fc, #d946ef;
+    /* Monospace stack the terminal-style themes opt into via --c-font. */
+    --c-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
   }
 
   /* Dark. Pole swap: surface (white) goes dark, ink (black) goes light, and
@@ -51,6 +54,7 @@
     --c-gray-900: 230 237 243;
 
     --c-chart-line: 139 148 158; /* calm gray, not near-white */
+    --c-accent: 0 214 120; /* brand green */
     --c-bar-radius: 4;
   }
 
@@ -71,11 +75,63 @@
     --c-gray-900: 210 250 220;
 
     --c-chart-line: 122 173 138; /* muted green, calm secondary line */
-    --c-bar: 31 179 94;          /* btop bar gradient top */
+    --c-accent: 31 179 94;       /* CRT green — heat map + bars */
+    --c-bar: var(--c-accent);    /* btop bar gradient top */
     --c-bar-deep: 10 110 56;     /* btop bar gradient bottom */
     --c-bar-radius: 0;
     --c-radius-scale: 0;         /* square corners — btop/pixel look */
+    --c-font: var(--c-mono);     /* monospace */
     --c-flow: #0B7A3E, #0E9E50, #16C062, #27DB78, #46F091, #7CFFB0;
+  }
+
+  /* Catppuccin (Mocha) — terminal style, lavender-on-deep-navy. */
+  [data-theme="catppuccin"] {
+    --c-white: 30 30 46;     /* base */
+    --c-black: 205 214 244;  /* text */
+    --c-gray-50: 24 24 37;   /* mantle */
+    --c-gray-100: 30 30 46;  /* base */
+    --c-gray-200: 49 50 68;  /* surface0 (borders) */
+    --c-gray-300: 69 71 90;  /* surface1 */
+    --c-gray-400: 108 112 134; /* overlay0 */
+    --c-gray-500: 127 132 156; /* overlay1 (muted text) */
+    --c-gray-600: 166 173 200; /* subtext0 */
+    --c-gray-700: 186 194 222; /* subtext1 */
+    --c-gray-800: 198 205 236;
+    --c-gray-900: 205 214 244; /* text */
+
+    --c-chart-line: 147 153 178; /* overlay2 */
+    --c-accent: 203 166 247;     /* mauve — Catppuccin's signature (heat map + bars) */
+    --c-bar: var(--c-accent);
+    --c-bar-deep: 124 87 168;    /* darker mauve */
+    --c-bar-radius: 0;
+    --c-radius-scale: 0;
+    --c-font: var(--c-mono);
+    --c-flow: #89b4fa, #74c7ec, #94e2d5, #a6e3a1, #cba6f7, #f5c2e7;
+  }
+
+  /* Gruvbox (dark) — terminal style, warm retro. */
+  [data-theme="gruvbox"] {
+    --c-white: 40 40 40;     /* bg0 */
+    --c-black: 235 219 178;  /* fg1 */
+    --c-gray-50: 29 32 33;   /* bg0_hard */
+    --c-gray-100: 40 40 40;  /* bg0 */
+    --c-gray-200: 60 56 54;  /* bg1 (borders) */
+    --c-gray-300: 80 73 69;  /* bg2 */
+    --c-gray-400: 124 111 100; /* bg4 */
+    --c-gray-500: 168 153 132; /* fg4 (muted text) */
+    --c-gray-600: 189 174 147; /* fg3 */
+    --c-gray-700: 213 196 161; /* fg2 */
+    --c-gray-800: 224 212 173;
+    --c-gray-900: 235 219 178; /* fg1 */
+
+    --c-chart-line: 168 153 132; /* fg4 */
+    --c-accent: 184 187 38;      /* gruvbox green — heat map + bars */
+    --c-bar: var(--c-accent);
+    --c-bar-deep: 121 116 14;
+    --c-bar-radius: 0;
+    --c-radius-scale: 0;
+    --c-font: var(--c-mono);
+    --c-flow: #83a598, #8ec07c, #b8bb26, #fabd2f, #fe8019, #d3869b;
   }
 
   html {
@@ -90,6 +146,9 @@
     min-height: calc(100vh + 60px);
     background-color: rgb(var(--c-white));
     color: rgb(var(--c-gray-900));
+    /* Light/Dark leave --c-font unset → inherit Tailwind's sans; terminal-style
+       themes set --c-font to the mono stack. Pure data, no per-theme CSS rule. */
+    font-family: var(--c-font, inherit);
   }
 
   /* On-brand focus ring. shadcn components opt out (focus-visible:outline-none)
@@ -100,10 +159,4 @@
     outline-offset: 2px;
   }
 
-  /* Phosphor uses a monospace face. Corners are squared off via the
-     --c-radius-scale token (see tailwind.config), not a !important override. */
-  html[data-theme="phosphor"] body {
-    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
-      "Liberation Mono", monospace;
-  }
 }
