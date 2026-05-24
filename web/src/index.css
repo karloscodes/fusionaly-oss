@@ -34,6 +34,22 @@
     --c-flow: #3b82f6, #6366f1, #8b5cf6, #a855f7, #c084fc, #d946ef;
     /* Monospace stack the terminal-style themes opt into via --c-font. */
     --c-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+    /* Data-table proportion bar. Light keeps the original faint blue
+       (bg-blue-50/50) it shipped with before themes existed; the
+       dark/terminal themes override this below to tint from their own
+       gray-200 so the bar adapts to a dark surface instead of washing out. */
+    --databar: rgb(239 246 255 / 0.5);
+  }
+
+  /* Non-light themes derive the proportion bar from their themed gray-200.
+     Equal specificity to :root but later in source order, so this wins for
+     them; Light has no [data-theme] and keeps the faint blue above. */
+  [data-theme="dark"],
+  [data-theme="phosphor"],
+  [data-theme="catppuccin"],
+  [data-theme="gruvbox"] {
+    --databar: rgb(var(--c-gray-200) / 0.7);
   }
 
   /* Dark. Pole swap: surface (white) goes dark, ink (black) goes light, and

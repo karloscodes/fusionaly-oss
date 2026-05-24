@@ -19,6 +19,9 @@ var currentManagerVersion string = "dev"
 
 const ossImage = "karloscodes/fusionaly:latest"
 
+// updateCronPath is the auto-update cron installed by matcha (CronUpdates).
+const updateCronPath = "/etc/cron.d/fusionaly-update"
+
 func main() {
 	if len(os.Args) < 2 {
 		printUsage()
@@ -36,6 +39,7 @@ func main() {
 		}
 	case "update":
 		migrateCaddyToKamalProxy(m)
+		repairUpdateCron(m)
 		if err := m.Update(); err != nil {
 			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
@@ -187,6 +191,10 @@ func runMigrateToOSS(m *matcha.Matcha) {
 		os.Exit(1)
 	}
 
+	// Old /opt/fusionaly Pro installs carry a stale auto-update cron that
+	// redirects to a now-missing log dir; replace it with the self-healing one.
+	repairUpdateCron(m)
+
 	fmt.Println("Migration completed successfully!")
 
 	if domain, err := m.GetDomain(); err == nil && domain != "" {
@@ -211,6 +219,52 @@ func validatePassword(password string) error {
 		return fmt.Errorf("password must be at least 8 characters")
 	}
 	return nil
+}
+
+// buildUpdateCron returns the self-healing auto-update cron line. It creates
+// the log directory inline (mkdir -p) so a missing dir can never make cron's
+// redirect fail before fusionaly runs — the failure that silently stopped
+// nightly updates on boxes carrying a stale legacy cron. Appends (>>) so the
+// log keeps history instead of only the last run.
+func buildUpdateCron(binPath, logDir string) string {
+	return fmt.Sprintf("# Fusionaly auto-update (managed by fusionaly)\n"+
+		"# Runs daily at 3 AM\n"+
+		"0 3 * * * root mkdir -p %s && %s update >> %s/update.log 2>&1\n",
+		logDir, binPath, logDir)
+}
+
+// repairCronFile writes the self-healing cron to path when it is missing or
+// differs from the desired content. Returns whether it wrote.
+func repairCronFile(path, binPath, logDir string) (bool, error) {
+	desired := buildUpdateCron(binPath, logDir)
+	if current, err := os.ReadFile(path); err == nil && string(current) == desired {
+		return false, nil
+	}
+	if err := os.WriteFile(path, []byte(desired), 0644); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// repairUpdateCron ensures the auto-update cron is the self-healing form.
+// Old /opt/fusionaly installers wrote a cron that redirected to a log dir
+// which no longer exists; cron's `>` then failed before fusionaly ran, so
+// nightly updates silently stopped. Runs on `update` and after migrate-to-oss.
+func repairUpdateCron(m *matcha.Matcha) {
+	binPath := m.GetConfig().BinaryPath
+	if binPath == "" {
+		binPath = "/usr/local/bin/fusionaly"
+	}
+	logDir := m.DataDir() + "/logs"
+
+	wrote, err := repairCronFile(updateCronPath, binPath, logDir)
+	if err != nil {
+		fmt.Printf("Warning: could not repair auto-update cron: %v\n", err)
+		return
+	}
+	if wrote {
+		fmt.Println("Repaired auto-update cron (now self-creates its log dir).")
+	}
 }
 
 // migrateCaddyToKamalProxy removes legacy Caddy and blue-green containers
