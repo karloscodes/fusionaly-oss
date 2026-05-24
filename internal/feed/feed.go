@@ -116,6 +116,34 @@ func CleanupOldItems(db *gorm.DB, olderThan time.Duration) error {
 	return db.Where("detected_at < ?", cutoff).Delete(&FeedItem{}).Error
 }
 
+// CleanupLegacyDrops removes traffic_drop items that predate the retuned drop
+// detector — drops on sites below the MinDropVisitors volume floor. The old rule
+// used a scale-free z-score and flagged meaningless dips on tiny sites (an 11→1
+// "Slow day"). The new rule only fires on sites averaging >= MinDropVisitors, so
+// any stored drop with a smaller baseline is noise we now suppress. Safe to run
+// repeatedly: the current detector never creates such rows, so it only ever
+// deletes legacy noise, never a legitimate drop.
+func CleanupLegacyDrops(db *gorm.DB) error {
+	var drops []FeedItem
+	if err := db.Where("item_type = ?", ItemTypeTrafficDrop).Find(&drops).Error; err != nil {
+		return err
+	}
+
+	var staleIDs []uint
+	for _, d := range drops {
+		// JSON numbers decode as float64; a missing/zero baseline is also legacy noise.
+		avg, _ := d.MetadataMap()["avgVisitors"].(float64)
+		if avg < MinDropVisitors {
+			staleIDs = append(staleIDs, d.ID)
+		}
+	}
+
+	if len(staleIDs) == 0 {
+		return nil
+	}
+	return db.Where("id IN ?", staleIDs).Delete(&FeedItem{}).Error
+}
+
 // ClearAllItems removes all feed items (for dev reset)
 func ClearAllItems(db *gorm.DB) error {
 	return db.Where("1 = 1").Delete(&FeedItem{}).Error

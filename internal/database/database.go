@@ -97,6 +97,14 @@ func (dm *DBManager) MigrateDatabase() error {
 		return err
 	}
 
+	// One-time cleanup of legacy low-volume traffic_drop feed items left over from
+	// before the drop detector was retuned (see feed.CleanupLegacyDrops). Safe to
+	// run on every boot; it only ever deletes drops the current rule won't produce.
+	if err := feed.CleanupLegacyDrops(db); err != nil {
+		dm.logger.Error("Failed to clean up legacy feed drops", slog.Any("error", err))
+		return err
+	}
+
 	if err := dm.CheckpointWAL("FULL"); err != nil {
 		dm.logger.Warn("Failed to checkpoint WAL after migration", slog.Any("error", err))
 	}

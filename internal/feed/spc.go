@@ -44,10 +44,18 @@ const (
 	// reported as a traffic spike. Below this, a "spike" is just a quiet site.
 	MinSpikeVisitors = 10
 
-	// MinDropVisitors is the minimum average a site must normally see before a
-	// quiet day is worth flagging as a drop. A site that averages a handful of
-	// visitors has nothing meaningful to "drop".
-	MinDropVisitors = 10
+	// MinDropVisitors is the minimum a site must AVERAGE on a given weekday before
+	// a quiet day is worth flagging as a drop. A drop is a "you lost real humans"
+	// signal — a source dried up, a campaign ended, tracking broke. On a small site
+	// a quiet day is just variance, never news, so the floor keeps small sites
+	// silent. At 500/day a flagged drop means losing ~150+ real visitors.
+	MinDropVisitors = 500
+
+	// MinDropPercent is how far below the typical day yesterday must fall before a
+	// drop is flagged. We use a plain magnitude rule (not a z-score) because SPC is
+	// scale-free: on a tiny site an 11→1 dip is "statistically significant" yet
+	// meaningless. A 30% fall on a real-traffic site is a genuine signal.
+	MinDropPercent = 30.0
 
 	// MinGoalConversions is the minimum conversions before a goal spike is
 	// reported. One or two conversions is never a story; three on a small site is.
@@ -93,24 +101,6 @@ func SPCIsSpike(current, mean, stddev float64) (bool, string) {
 		return true, "critical"
 	}
 	if zScore >= WarningSigma {
-		return true, "warning"
-	}
-	return false, ""
-}
-
-// SPCIsDrop checks if current value is a statistical drop using z-score.
-// Returns (isDrop, severity) where severity is "warning", "critical", or "".
-func SPCIsDrop(current, mean, stddev float64) (bool, string) {
-	if stddev == 0 {
-		stddev = 1.0 // Prevent division by zero
-	}
-
-	zScore := (current - mean) / stddev
-
-	if zScore <= -CriticalSigma {
-		return true, "critical"
-	}
-	if zScore <= -WarningSigma {
 		return true, "warning"
 	}
 	return false, ""
