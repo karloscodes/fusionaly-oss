@@ -130,41 +130,73 @@ func TestDetector_TrafficSpike(t *testing.T) {
 	assert.Contains(t, items[0].Description, "200 visitors")
 }
 
+// TestDetector_TrafficDrop covers the retuned drop rule: a drop fires only on a
+// real-traffic site (averages >= MinDropVisitors) that falls >= MinDropPercent
+// below its typical day. Small sites and shallow dips stay silent.
 func TestDetector_TrafficDrop(t *testing.T) {
-	db := setupTestDB(t)
-
-	db.Exec("INSERT INTO websites (id, domain) VALUES (1, 'test.com')")
-
-	now := time.Now().UTC()
-	yesterday := now.AddDate(0, 0, -1).Truncate(24 * time.Hour)
-
-	// Seed 7 days of normal traffic (~100 visitors/day)
-	for i := 8; i >= 2; i-- {
-		day := now.AddDate(0, 0, -i).Truncate(24 * time.Hour)
-		db.Exec(`
-			INSERT INTO site_stats (website_id, visitors, hour)
-			VALUES (1, 100, ?)
-		`, day.Add(12*time.Hour))
+	seedBaseline := func(db *gorm.DB, now time.Time, perDay int) {
+		for i := 8; i >= 2; i-- {
+			day := now.AddDate(0, 0, -i).Truncate(24 * time.Hour)
+			db.Exec(`INSERT INTO site_stats (website_id, visitors, hour) VALUES (1, ?, ?)`, perDay, day.Add(12*time.Hour))
+		}
 	}
 
-	// Yesterday: a genuine crash (10 visitors - 90% decrease). Under the wider
-	// cold-start variance, an ordinary -50% day is treated as normal noise; a
-	// drop has to be severe (and on a site with real traffic) to surface.
-	db.Exec(`
-		INSERT INTO site_stats (website_id, visitors, hour)
-		VALUES (1, 10, ?)
-	`, yesterday.Add(12*time.Hour))
+	t.Run("flags a meaningful drop on a real-traffic site", func(t *testing.T) {
+		db := setupTestDB(t)
+		db.Exec("INSERT INTO websites (id, domain) VALUES (1, 'test.com')")
 
-	detector := feed.NewDetector(db, testLogger())
-	err := detector.DetectForWebsite(1)
-	require.NoError(t, err)
+		now := time.Now().UTC()
+		yesterday := now.AddDate(0, 0, -1).Truncate(24 * time.Hour)
+		seedBaseline(db, now, 600)                 // ~600 visitors/day baseline
+		db.Exec(`INSERT INTO site_stats (website_id, visitors, hour) VALUES (1, 300, ?)`, yesterday.Add(12*time.Hour)) // -50%
 
-	var items []feed.FeedItem
-	db.Where("website_id = ? AND item_type = ?", 1, feed.ItemTypeTrafficDrop).Find(&items)
+		detector := feed.NewDetector(db, testLogger())
+		err := detector.DetectForWebsite(1)
+		require.NoError(t, err)
 
-	assert.Len(t, items, 1)
-	assert.Equal(t, "Slow day", items[0].Title)
-	assert.Contains(t, items[0].Description, "10 visitors")
+		var items []feed.FeedItem
+		db.Where("website_id = ? AND item_type = ?", 1, feed.ItemTypeTrafficDrop).Find(&items)
+
+		assert.Len(t, items, 1)
+		assert.Equal(t, "Slow day", items[0].Title)
+		assert.Contains(t, items[0].Description, "300 visitors")
+	})
+
+	t.Run("stays quiet when the fall is below 30%", func(t *testing.T) {
+		db := setupTestDB(t)
+		db.Exec("INSERT INTO websites (id, domain) VALUES (1, 'test.com')")
+
+		now := time.Now().UTC()
+		yesterday := now.AddDate(0, 0, -1).Truncate(24 * time.Hour)
+		seedBaseline(db, now, 600)
+		db.Exec(`INSERT INTO site_stats (website_id, visitors, hour) VALUES (1, 540, ?)`, yesterday.Add(12*time.Hour)) // -10%, ordinary noise
+
+		detector := feed.NewDetector(db, testLogger())
+		err := detector.DetectForWebsite(1)
+		require.NoError(t, err)
+
+		var count int64
+		db.Model(&feed.FeedItem{}).Where("website_id = ? AND item_type = ?", 1, feed.ItemTypeTrafficDrop).Count(&count)
+		assert.Equal(t, int64(0), count)
+	})
+
+	t.Run("stays quiet on a low-traffic site even on a severe crash", func(t *testing.T) {
+		db := setupTestDB(t)
+		db.Exec("INSERT INTO websites (id, domain) VALUES (1, 'test.com')")
+
+		now := time.Now().UTC()
+		yesterday := now.AddDate(0, 0, -1).Truncate(24 * time.Hour)
+		seedBaseline(db, now, 100)                // below the MinDropVisitors floor
+		db.Exec(`INSERT INTO site_stats (website_id, visitors, hour) VALUES (1, 10, ?)`, yesterday.Add(12*time.Hour)) // -90%, but too small to matter
+
+		detector := feed.NewDetector(db, testLogger())
+		err := detector.DetectForWebsite(1)
+		require.NoError(t, err)
+
+		var count int64
+		db.Model(&feed.FeedItem{}).Where("website_id = ? AND item_type = ?", 1, feed.ItemTypeTrafficDrop).Count(&count)
+		assert.Equal(t, int64(0), count)
+	})
 }
 
 func TestDetector_NewReferrer(t *testing.T) {
@@ -764,4 +796,48 @@ func TestDetector_BestSources_SkipsLowEngagement(t *testing.T) {
 	var count int64
 	db.Model(&feed.FeedItem{}).Where("website_id = ? AND item_type = ?", 1, feed.ItemTypeBestSources).Count(&count)
 	assert.Equal(t, int64(0), count)
+}
+
+// TestCleanupLegacyDrops verifies the one-time cleanup removes only low-volume
+// legacy drops (below the MinDropVisitors floor), leaving legitimate drops on
+// real-traffic sites and every non-drop item untouched.
+func TestCleanupLegacyDrops(t *testing.T) {
+	db := setupTestDB(t)
+	db.Exec("INSERT INTO websites (id, domain) VALUES (1, 'test.com')")
+
+	now := time.Now().UTC()
+	mkDrop := func(avg int, periodStart time.Time, desc string) {
+		item := &feed.FeedItem{
+			WebsiteID:   1,
+			ItemType:    feed.ItemTypeTrafficDrop,
+			Title:       "Slow day",
+			Description: desc,
+			DetectedAt:  now,
+			PeriodStart: periodStart,
+			PeriodEnd:   periodStart.Add(24 * time.Hour),
+		}
+		item.SetMetadata(map[string]any{"avgVisitors": avg})
+		require.NoError(t, feed.CreateItem(db, item))
+	}
+
+	mkDrop(3, now, "1 visitors (vs 3 avg).")                       // legacy noise
+	mkDrop(800, now.AddDate(0, 0, -1), "400 visitors (vs 800 avg).") // legitimate drop
+	spike := &feed.FeedItem{
+		WebsiteID: 1, ItemType: feed.ItemTypeTrafficSpike, Title: "Busy day",
+		Description: "200 visitors (vs 100 avg).", DetectedAt: now,
+		PeriodStart: now.AddDate(0, 0, -2), PeriodEnd: now,
+	}
+	require.NoError(t, feed.CreateItem(db, spike))
+
+	err := feed.CleanupLegacyDrops(db)
+	require.NoError(t, err)
+
+	var drops []feed.FeedItem
+	db.Where("item_type = ?", feed.ItemTypeTrafficDrop).Find(&drops)
+	assert.Len(t, drops, 1, "only the legitimate (avg 800) drop should remain")
+	assert.Contains(t, drops[0].Description, "800 avg")
+
+	var total int64
+	db.Model(&feed.FeedItem{}).Count(&total)
+	assert.Equal(t, int64(2), total, "legit drop + spike survive")
 }

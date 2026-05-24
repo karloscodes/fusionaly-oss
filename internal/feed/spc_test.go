@@ -48,38 +48,6 @@ func TestSPCIsSpike(t *testing.T) {
 	})
 }
 
-func TestSPCIsDrop(t *testing.T) {
-	t.Run("returns critical when below -3 sigma", func(t *testing.T) {
-		isDrop, severity := SPCIsDrop(2.0, 10.0, 2.0) // z = (2-10)/2 = -4
-
-		if !isDrop {
-			t.Error("expected drop to be detected")
-		}
-		if severity != "critical" {
-			t.Errorf("expected critical, got %s", severity)
-		}
-	})
-
-	t.Run("returns warning when between -2 and -3 sigma", func(t *testing.T) {
-		isDrop, severity := SPCIsDrop(5.5, 10.0, 2.0) // z = (5.5-10)/2 = -2.25
-
-		if !isDrop {
-			t.Error("expected drop to be detected")
-		}
-		if severity != "warning" {
-			t.Errorf("expected warning, got %s", severity)
-		}
-	})
-
-	t.Run("returns false when within normal range", func(t *testing.T) {
-		isDrop, _ := SPCIsDrop(8.0, 10.0, 2.0) // z = (8-10)/2 = -1
-
-		if isDrop {
-			t.Error("expected no drop")
-		}
-	})
-}
-
 func TestHourOfWeek(t *testing.T) {
 	t.Run("monday midnight is 0", func(t *testing.T) {
 		// 2026-02-09 is a Monday
@@ -201,19 +169,6 @@ func TestSPC_ColdStartScenario(t *testing.T) {
 
 		if isSpike {
 			t.Error("140 visitors during cold start should NOT trigger spike (z=1.6 < 2)")
-		}
-	})
-
-	t.Run("50 visitors triggers drop during cold start", func(t *testing.T) {
-		// With defaults (mean=100, stddev=25), 50 gives z-score = (50-100)/25 = -2
-		// This should be warning (exactly at -2 sigma)
-		baseline := &FeedBaseline{SampleCount: 5}
-		mean, stddev := GetEffectiveBaseline(baseline)
-
-		isDrop, severity := SPCIsDrop(49.0, mean, stddev)
-
-		if !isDrop || severity != "warning" {
-			t.Errorf("49 visitors during cold start should be warning drop, got drop=%v severity=%s", isDrop, severity)
 		}
 	})
 }

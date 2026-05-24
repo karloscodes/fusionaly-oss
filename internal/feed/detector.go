@@ -144,9 +144,12 @@ func (d *Detector) detectTrafficChanges(websiteID uint, yesterday time.Time) {
 		}
 	}
 
-	// Traffic drop: z-score <= -2 AND the site normally has meaningful traffic.
-	// A site that averages a handful of visitors has nothing real to "drop".
-	if isDrop, _ := SPCIsDrop(float64(yesterdayVisitors), mean, stddev); isDrop && mean >= MinDropVisitors {
+	// Traffic drop: only on real-traffic sites that fall meaningfully. A drop is a
+	// "you lost real humans" signal, so we gate on absolute volume (the site must
+	// average >= MinDropVisitors) AND magnitude (yesterday >= MinDropPercent below
+	// the typical day). We deliberately do NOT use a z-score: SPC is scale-free and
+	// flags an 11→1 dip on a tiny site as "significant" noise.
+	if mean >= MinDropVisitors && percentChange <= -MinDropPercent {
 		item := &FeedItem{
 			WebsiteID:   websiteID,
 			ItemType:    ItemTypeTrafficDrop,
