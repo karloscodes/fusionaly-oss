@@ -241,11 +241,11 @@ loadtest-heavy:
 build: clean minify-sdk
 	@echo "Building distribution..."
 	@mkdir -p $(DIST_DIR)
+	@echo "Building web assets..."
+	cd web && $(NPM) run build
 	@$(eval export CGO_ENABLED=1)
 	go build -o $(DIST_DIR)/$(BINARY_NAME) cmd/fusionaly/main.go
 	go build -o $(DIST_DIR)/$(IMCTL_BINARY) cmd/fnctl/main.go
-	@echo "Building web assets..."
-	cd web && $(NPM) run build
 	@echo "Build completed successfully."
 
 # Build manager for current platform
