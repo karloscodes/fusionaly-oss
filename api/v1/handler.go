@@ -14,6 +14,7 @@ import (
 
 	"fusionaly/internal/config"
 	"fusionaly/internal/events"
+	"fusionaly/internal/settings"
 	"fusionaly/internal/websites"
 )
 
@@ -129,9 +130,7 @@ func validateOrigin(c *fiber.Ctx, dbManager cartridge.DBManager, logger *slog.Lo
 		return fiber.NewError(http.StatusForbidden, errInvalidOrigin)
 	}
 
-	// Get the base domain (e.g., sub.example.com -> example.com)
 	hostname := parsedURL.Hostname()
-	baseDomain := websites.BaseDomainForHost(hostname)
 
 	// Allow localhost in non-production environments
 	// This exercises the same validation code path but with relaxed rules for dev/test
@@ -143,22 +142,34 @@ func validateOrigin(c *fiber.Ctx, dbManager cartridge.DBManager, logger *slog.Lo
 		return nil
 	}
 
-	// Check if this domain is registered
+	// Check if this exact hostname is registered (covers websites registered
+	// as a subdomain, e.g. "blog.example.com")
 	db := dbManager.GetConnection()
-	_, err = websites.GetWebsiteByDomain(db, baseDomain)
-	if err != nil {
-		logger.Debug("Origin domain not registered",
+	if _, err := websites.GetWebsiteByDomain(db, hostname); err == nil {
+		logger.Debug("Origin validated successfully",
 			slog.String("origin", origin),
-			slog.String("hostname", hostname),
-			slog.String("baseDomain", baseDomain))
-		return fiber.NewError(http.StatusForbidden, errInvalidOrigin)
+			slog.String("hostname", hostname))
+		return nil
 	}
 
-	logger.Debug("Origin validated successfully",
-		slog.String("origin", origin),
-		slog.String("baseDomain", baseDomain))
+	// Fall back to the base domain (e.g. sub.example.com -> example.com) for
+	// websites registered by their apex domain with subdomain tracking enabled
+	baseDomain := websites.BaseDomainForHost(hostname)
+	if baseDomain != hostname && settings.IsSubdomainTrackingEnabled(db, baseDomain) {
+		if _, err := websites.GetWebsiteByDomain(db, baseDomain); err == nil {
+			logger.Debug("Origin validated successfully via base domain",
+				slog.String("origin", origin),
+				slog.String("hostname", hostname),
+				slog.String("baseDomain", baseDomain))
+			return nil
+		}
+	}
 
-	return nil
+	logger.Debug("Origin domain not registered",
+		slog.String("origin", origin),
+		slog.String("hostname", hostname),
+		slog.String("baseDomain", baseDomain))
+	return fiber.NewError(http.StatusForbidden, errInvalidOrigin)
 }
 
 // CreateEventBeaconHandler handles event tracking requests sent via navigator.sendBeacon

@@ -133,6 +133,54 @@ func TestCreateEventPublicAPIHandler(t *testing.T) {
 		assert.Equal(t, int64(1), count, "Expected one event in the ingest database")
 	})
 
+	t.Run("accepts valid event with registered subdomain origin", func(t *testing.T) {
+		dbManager, _ := testsupport.SetupTestDBManager(t)
+		db := dbManager.GetConnection()
+		testsupport.CleanAllTables(db)
+
+		// Website registered directly as a subdomain (not the base domain)
+		website := testsupport.CreateTestWebsite(db, "blog.example.com")
+		require.NotZero(t, website.ID, "Website ID should not be zero")
+
+		app := testsupport.CreateMinimalTestApp(t, db)
+
+		payload := map[string]interface{}{
+			"url":           "https://blog.example.com/test",
+			"referrer":      "https://referer.com",
+			"timestamp":     time.Now(),
+			"eventType":     events.EventTypePageView,
+			"eventKey":      "",
+			"eventMetadata": map[string]interface{}{},
+			"userAgent":     "Mozilla/5.0 (Test Agent)",
+		}
+
+		jsonPayload, err := json.Marshal(payload)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest("POST", "/x/api/v1/events", bytes.NewReader(jsonPayload))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("User-Agent", "Test-Agent")
+		req.Header.Set("Origin", "https://blog.example.com")
+		req.Header.Set("X-Forwarded-For", "127.0.0.1")
+		req.Header.Set("Sec-Fetch-Site", "cross-site") // Required for browser-only validation
+
+		resp, err := app.Test(req, 30000)
+		require.NoError(t, err)
+
+		if resp.StatusCode != http.StatusAccepted {
+			respBody, _ := io.ReadAll(resp.Body)
+			t.Logf("Response body: %s", string(respBody))
+			t.Logf("Response status: %d", resp.StatusCode)
+		}
+
+		assert.Equal(t, http.StatusAccepted, resp.StatusCode)
+
+		var count int64
+		err = dbManager.GetConnection().Model(&events.IngestedEvent{}).Count(&count).Error
+		require.NoError(t, err)
+		assert.Equal(t, int64(1), count, "Expected one event in the ingest database")
+	})
+
 	t.Run("rejects request from unregistered origin", func(t *testing.T) {
 		dbManager, _ := testsupport.SetupTestDBManager(t)
 		db := dbManager.GetConnection()
