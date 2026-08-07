@@ -20,10 +20,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          # Float to the latest 1.25.x (same as CI and the Docker build) so
+          # go.mod pins an explicit `toolchain` line (not just `go 1.26`) so
           # stdlib CVEs already patched upstream don't show as reachable —
-          # the toolchain auto-patches on every build, no PR needed.
-          go-version: "1.25"
+          # bump the toolchain directive when new CVEs land, no workflow
+          # change needed here.
+          go-version: "1.26"
           cache: true
       # golang.org/x/vuln is maintained by the Go team and verified via the Go
       # checksum DB; the vulnerability database is fetched fresh on every run.
