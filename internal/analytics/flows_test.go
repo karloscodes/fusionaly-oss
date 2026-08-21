@@ -76,7 +76,7 @@ func TestGetUserFlowDataFallbackToEvents(t *testing.T) {
 	testsupport.CleanAllTables(db)
 
 	// Create events but no flow_transition_stats (to test fallback)
-	now := time.Now().UTC()
+	now := time.Now().UTC().Truncate(time.Hour)
 	evts := []events.Event{
 		{
 			WebsiteID:     1,

@@ -75,45 +75,31 @@ func GetUserFlowDataFromEvents(db *gorm.DB, params WebsiteScopedQueryParams, max
 	var results []UserFlowLink
 
 	query := `
-	WITH session_windows AS (
+	WITH ordered_events AS (
 		SELECT
 			user_signature,
 			hostname || pathname AS page,
 			timestamp,
-			strftime('%Y-%m-%d %H', timestamp,
-				CASE
-					WHEN strftime('%M', timestamp) < '30' THEN '-0 hours'
-					ELSE '-0 hours'
-				END
-			) AS session_window
+			ROW_NUMBER() OVER (
+				PARTITION BY user_signature
+				ORDER BY timestamp
+			) AS page_position,
+			LEAD(hostname || pathname) OVER (
+				PARTITION BY user_signature
+				ORDER BY timestamp
+			) AS next_page
 		FROM events
 		WHERE
 			timestamp BETWEEN ? AND ?
 			AND website_id = ?
 			AND event_type = ?
 	),
-	ranked_events AS (
-		SELECT
-			user_signature,
-			page,
-			timestamp,
-			session_window,
-			ROW_NUMBER() OVER (
-				PARTITION BY user_signature, session_window
-				ORDER BY timestamp
-			) AS page_position,
-			LEAD(page) OVER (
-				PARTITION BY user_signature, session_window
-				ORDER BY timestamp
-			) AS next_page
-		FROM session_windows
-	),
 	page_transitions AS (
 		SELECT
 			'step' || page_position || ':' || page AS source,
 			'step' || (page_position + 1) || ':' || next_page AS target,
 			COUNT(*) AS value
-		FROM ranked_events
+		FROM ordered_events
 		WHERE next_page IS NOT NULL
 			AND page != next_page
 			AND page_position <= ?
