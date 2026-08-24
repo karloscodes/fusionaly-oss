@@ -145,6 +145,38 @@ test.describe.serial("Admin Pages Accessibility Tests", () => {
 		helpers.log("Websites management page accessible and loaded correctly");
 	});
 
+	test("should apply Tailwind CSS styling (catches broken build config)", async ({ page }) => {
+		// Regression test: the Tailwind v4 migration once shipped a build where
+		// tailwind.config.ts (content globs + custom theme) was silently
+		// disconnected from the CSS pipeline. The build succeeded and produced
+		// real CSS, so nothing failed loudly - the site just rendered
+		// completely unstyled in production. A visual check on a real
+		// rendered page is the only thing that reliably catches this class
+		// of bug; a CSS-bundle-size or grep check would not have.
+		helpers.log("Testing that Tailwind CSS utility classes actually render styles");
+
+		await helpers.navigateTo("/admin/websites", { timeout: 30000 });
+
+		// "Your Websites" list container uses rounded-xl; a broken Tailwind
+		// build (missing @config / content scan) renders it with no radius.
+		const listContainer = page.locator("div.rounded-xl.border").first();
+		await expect(listContainer).toBeVisible({ timeout: 10000 });
+
+		const borderRadius = await listContainer.evaluate(
+			(el) => window.getComputedStyle(el).borderRadius,
+		);
+		expect(borderRadius).not.toBe("0px");
+
+		// Preflight resets the body away from the browser's serif/monospace
+		// default onto Tailwind's sans-serif stack.
+		const bodyFont = await page.evaluate(
+			() => window.getComputedStyle(document.body).fontFamily,
+		);
+		expect(bodyFont.toLowerCase()).not.toContain("monospace");
+
+		helpers.log(`Tailwind CSS applied correctly (border-radius: ${borderRadius})`);
+	});
+
 	test("should maintain authentication across all admin pages", async ({ page }) => {
 		helpers.log("Testing authentication persistence across admin pages");
 
