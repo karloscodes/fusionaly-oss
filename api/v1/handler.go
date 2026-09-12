@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -22,6 +21,11 @@ const (
 	msgEventAdded     = "Event added successfully"
 	errInvalidRequest = "Invalid request"
 	errInvalidOrigin  = "Invalid origin"
+
+	// retryAfterSeconds is the Retry-After value sent when the database is busy.
+	// It must exceed the SDK's own first backoff (1s) to change anything, since
+	// the SDK treats the hint as a floor, and stay under the SDK's 5s cap.
+	retryAfterSeconds = "3"
 )
 
 type CreateEventParams struct {
@@ -65,9 +69,6 @@ func CreateEventPublicAPIHandler(ctx *cartridge.Context) error {
 	// Pass dbManager directly to CollectEvent
 	if err := events.CollectEvent(ctx.DBManager, ctx.Logger, input); err != nil {
 		ctx.Logger.Error("Failed to collect event", slog.Any("error", err))
-		if strings.Contains(err.Error(), "database is locked") || strings.Contains(err.Error(), "busy") {
-			return ctx.Status(599).JSON(fiber.Map{}) // custom status code
-		}
 
 		// Check for website not found error using the custom error type
 		var websiteNotFoundErr *websites.WebsiteNotFoundError
@@ -76,6 +77,10 @@ func CreateEventPublicAPIHandler(ctx *cartridge.Context) error {
 				"error": "Website not found - please register your domain first",
 				"code":  "WEBSITE_NOT_FOUND",
 			})
+		}
+
+		if errors.Is(err, events.ErrStorageBusy) {
+			return respondDatabaseBusy(ctx.Ctx)
 		}
 
 		return ctx.Status(http.StatusInternalServerError).JSON(fiber.Map{
@@ -88,6 +93,17 @@ func CreateEventPublicAPIHandler(ctx *cartridge.Context) error {
 	return ctx.Status(http.StatusAccepted).JSON(fiber.Map{
 		"message": msgEventAdded,
 		"status":  http.StatusAccepted,
+	})
+}
+
+// respondDatabaseBusy answers a write that lost to transient SQLite contention.
+// Retry-After tells the client when to come back; the SDK reads it off this
+// response, so internal/routes.go must keep exposing the header via CORS.
+func respondDatabaseBusy(c *fiber.Ctx) error {
+	c.Set(fiber.HeaderRetryAfter, retryAfterSeconds)
+	return c.Status(http.StatusServiceUnavailable).JSON(fiber.Map{
+		"error": "Database busy - retry shortly",
+		"code":  "DATABASE_BUSY",
 	})
 }
 

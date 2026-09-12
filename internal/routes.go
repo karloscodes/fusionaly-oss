@@ -20,6 +20,8 @@ var publicCORSConfig = &cors.Config{
 	AllowOrigins: "*",
 	AllowMethods: "POST,GET,OPTIONS",
 	AllowHeaders: "Origin, Content-Type, Accept, Authorization, Referrer, User-Agent",
+	// The SDK reads Retry-After off 503 responses; without this the browser hides it.
+	ExposeHeaders: "Retry-After",
 }
 
 // MountAppRoutes mounts all application routes using cartridge's route API

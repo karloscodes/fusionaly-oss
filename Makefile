@@ -162,7 +162,7 @@ lint:
 	@golangci-lint run
 
 # E2E Testing (optimized for speed)
-test-e2e:
+test-e2e: minify-sdk
 	@echo "Running E2E tests..."
 	@echo "Checking if Fusionaly is already running..."
 	@if lsof -i :$(APP_PORT) >/dev/null 2>&1; then \

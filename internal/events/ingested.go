@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/karloscodes/cartridge"
@@ -90,7 +91,7 @@ func CollectEvent(dbManager cartridge.DBManager, logger *slog.Logger, input *Col
 	tempEvent, err := prepareTempEvent(db, logger, input, urlData, country)
 	if err != nil {
 		logger.Error("Failed to prepare temp event", slog.Any("error", err))
-		return err
+		return classifyWriteError(err)
 	}
 
 	err = sqlite.PerformWrite(logger, db, func(tx *gorm.DB) error {
@@ -98,10 +99,46 @@ func CollectEvent(dbManager cartridge.DBManager, logger *slog.Logger, input *Col
 	})
 	if err != nil {
 		logger.Error("Failed to store ingested event", slog.Any("error", err))
-		return fmt.Errorf("failed to store ingested event: %w", err)
+		return classifyWriteError(fmt.Errorf("failed to store ingested event: %w", err))
 	}
 
 	return nil
+}
+
+// ErrStorageBusy marks a write that lost to transient SQLite contention. The
+// HTTP layer turns it into a 503 with Retry-After, so callers can retry.
+var ErrStorageBusy = errors.New("event storage busy")
+
+// classifyWriteError tags busy errors so callers test them with errors.Is,
+// and passes everything else through untouched.
+func classifyWriteError(err error) error {
+	if isBusyError(err) {
+		return fmt.Errorf("%w: %w", ErrStorageBusy, err)
+	}
+	return err
+}
+
+// isBusyError reports whether a write lost to SQLite contention.
+//
+// It matches the driver's full lock messages, never a bare "locked" or "busy".
+// Cartridge's IsBusyError matches those bare words, which also appear in
+// tracked domains and URLs, so a website-not-found error for busybee.com read
+// as a busy database and answered 503 instead of 400.
+//
+// The driver's error code would be exact, but sqlite3.Error exists only under
+// cgo, and importing it breaks CGO_ENABLED=0 builds. Gorm's own sqlite driver
+// skips that import for the same reason.
+func isBusyError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	// sqlite3_errstr text for SQLITE_BUSY and SQLITE_LOCKED, plus the
+	// shared-cache variant. Verified against the driver.
+	msg := err.Error()
+	return strings.Contains(msg, "database is locked") ||
+		strings.Contains(msg, "database table is locked") ||
+		strings.Contains(msg, "database schema is locked")
 }
 
 // parseInputURL parses a URL string into its components

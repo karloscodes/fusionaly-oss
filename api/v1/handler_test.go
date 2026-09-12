@@ -112,6 +112,9 @@ func TestCreateEventPublicAPIHandler(t *testing.T) {
 		}
 
 		assert.Equal(t, http.StatusAccepted, resp.StatusCode)
+		// The events route must expose Retry-After on every response, or the
+		// browser hides it from the SDK when the handler answers 503.
+		assert.Contains(t, resp.Header.Get("Access-Control-Expose-Headers"), "Retry-After")
 
 		body, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)

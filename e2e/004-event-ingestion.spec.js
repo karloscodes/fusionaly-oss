@@ -444,6 +444,97 @@ test.describe("Event Ingestion E2E", () => {
 		expect(consoleErrors, "Expected no console errors").toEqual([]);
 	});
 
+	// These stub the endpoint, so they cover the SDK half of the retry contract
+	// only. The server half (503 body, Retry-After value, the CORS expose rule)
+	// is covered by the Go tests in api/v1 and internal/events.
+	//
+	// Returns how long the SDK waited before resending the first event, after
+	// the stub answers that first send with `status` and `retryAfter`.
+	const measureRetryDelay = async (page, status, retryAfter) => {
+		let stubbed = false;
+		let firstPayload = null;
+		const sendTimes = [];
+
+		await page.route("**/x/api/v1/events", async (route) => {
+			// Only sends carry a body. Stubbing a preflight would set
+			// firstPayload to null and never match the real event again.
+			if (route.request().method() !== "POST") {
+				return route.continue();
+			}
+
+			const payload = route.request().postData();
+
+			if (!stubbed) {
+				stubbed = true;
+				firstPayload = payload;
+				sendTimes.push(Date.now());
+				await route.fulfill({
+					status,
+					headers: {
+						"Retry-After": retryAfter,
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({ error: "stubbed" }),
+				});
+				return;
+			}
+
+			// Same payload means this is the retry of the event we failed.
+			if (payload === firstPayload) {
+				sendTimes.push(Date.now());
+			}
+			await route.continue();
+		});
+
+		await page.goto("/_demo");
+
+		await expect
+			.poll(() => sendTimes.length, { timeout: 20000 })
+			.toBeGreaterThanOrEqual(2);
+
+		return sendTimes[1] - sendTimes[0];
+	};
+
+	test("should wait for the Retry-After the busy endpoint actually sends", async ({ page }) => {
+		// api/v1/handler.go sends Retry-After: 3. The SDK's first backoff is
+		// 2**0 * 1000, jittered to at most 1200ms, so the hint must raise the
+		// floor and land the retry in 2400-3600ms.
+		const delay = await measureRetryDelay(page, 503, "3");
+
+		expect(
+			delay,
+			`503 Retry-After: 3 should outlast the 1s backoff (got ${delay}ms)`,
+		).toBeGreaterThan(1800);
+		expect(
+			delay,
+			`503 Retry-After: 3 should not delay much beyond its hint (got ${delay}ms)`,
+		).toBeLessThan(7000);
+	});
+
+	test("should cap a long Retry-After from an intermediary", async ({ page }) => {
+		// kamal-proxy or Cloudflare answers 503 with Retry-After: 60 during a
+		// deploy. Waiting a minute loses the event on navigation, so the SDK
+		// caps the hint at 5s (4000-6000ms after jitter).
+		const delay = await measureRetryDelay(page, 503, "60");
+
+		expect(
+			delay,
+			`Retry-After: 60 must be capped, not followed (got ${delay}ms)`,
+		).toBeLessThan(9000);
+	});
+
+	test("should ignore Retry-After on a 429 from the rate limiter", async ({ page }) => {
+		// Cartridge's rate limiter answers 429 with Retry-After: 60. The SDK
+		// trusts the hint only on a 503, so it keeps its own ~1s backoff and
+		// lands inside the next rate-limit window.
+		const delay = await measureRetryDelay(page, 429, "60");
+
+		expect(
+			delay,
+			`429 Retry-After: 60 must not delay the retry (got ${delay}ms)`,
+		).toBeLessThan(2500);
+	});
+
 	test("should ingest page view, custom event, and purchase registration without errors", async ({
 		page,
 	}) => {

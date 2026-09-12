@@ -39,6 +39,11 @@
 	let eventBuffer = [];
 	let isOnline = navigator.onLine;
 	const STORAGE_KEY = "fusionaly_pendingEvents";
+	// Cap the hint at something a page outlives. An intermediary (kamal-proxy,
+	// Cloudflare) answers 503 with Retry-After: 60 during a deploy, and waiting
+	// that long loses the event: the visitor navigates away, and beforeunload
+	// only flushes eventBuffer, which no longer holds an in-flight retry.
+	const MAX_RETRY_AFTER_SECONDS = 5;
 
 	// Helper function for conditional logging
 	const log = (message, level = "info") => {
@@ -128,7 +133,14 @@
 						`Error sending event: ${response.status} ${response.statusText}`,
 						"error",
 					);
-					retry(eventData, retryCount);
+					// Only the busy response carries a hint worth following. The
+					// rate limiter answers 429 with Retry-After: 60, and waiting
+					// that long outlives the page and loses the event.
+					const hint =
+						response.status === 503
+							? parseRetryAfter(response.headers.get("Retry-After"))
+							: null;
+					retry(eventData, retryCount, hint);
 				} else {
 					response
 						.json()
@@ -144,9 +156,24 @@
 			});
 	};
 
-	const retry = (eventData, retryCount) => {
+	// Reads the server's Retry-After hint. Seconds only, capped so a bad value
+	// cannot park an event forever. Returns null when the header is absent.
+	const parseRetryAfter = (headerValue) => {
+		const seconds = Number.parseInt(headerValue, 10);
+		if (!Number.isFinite(seconds) || seconds <= 0) {
+			return null;
+		}
+		return Math.min(seconds, MAX_RETRY_AFTER_SECONDS) * 1000;
+	};
+
+	const retry = (eventData, retryCount, retryAfterMs) => {
 		if (retryCount < window.Fusionaly.config.maxRetries) {
-			const delay = 2 ** retryCount * 1000 * (0.8 + Math.random() * 0.4);
+			// Retry-After is a floor, never a replacement: a server asking for
+			// 1s must not flatten our escalating backoff into three 1s tries.
+			// Network failures pass no hint, and undefined > backoff is false.
+			const backoff = 2 ** retryCount * 1000;
+			const base = retryAfterMs > backoff ? retryAfterMs : backoff;
+			const delay = base * (0.8 + Math.random() * 0.4);
 			log(`Retrying in ${Math.round(delay / 1000)} seconds...`);
 			setTimeout(() => sendEventWithRetry(eventData, retryCount + 1), delay);
 		} else {
