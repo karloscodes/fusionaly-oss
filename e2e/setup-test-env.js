@@ -126,36 +126,8 @@ async function setupTestEnvironment() {
 			}
 		);
 
-		// Clean the test database
-		runCommand(
-			"make db-drop",
-			"Dropping test database",
-			{
-				env: { ...process.env, FUSIONALY_ENV: "test" },
-				cwd: projectRoot,
-			}
-		);
-
-		// Run migrations for test database
-		runCommand(
-			"make db-migrate",
-			"Running database migrations",
-			{
-				env: { ...process.env, FUSIONALY_ENV: "test" },
-				cwd: projectRoot,
-			}
-		);
-
-		// Create localhost website for event ingestion tests
-		// This is needed because the SDK validates the origin against registered websites
-		runCommand(
-			`"${fnctlPath}" create-website localhost`,
-			"Creating localhost website for event tests",
-			{
-				env: { ...process.env, FUSIONALY_ENV: "test" },
-				cwd: projectRoot,
-			}
-		);
+		// The test database is reset by the webServer command in
+		// playwright.config.js, before the server opens it.
 
 		// Create test user with validation (skip for onboarding tests)
 		// const skipUserCreation = process.env.SKIP_TEST_USER_CREATION === "true";
@@ -177,7 +149,7 @@ async function setupTestEnvironment() {
 
 		console.log("\n🎉 E2E test environment setup completed successfully!");
 		console.log("📊 Setup summary:");
-		console.log("  - Database: ✅ Created and migrated");
+		console.log("  - Database: ✅ Reset by the webServer command");
 		console.log("  - Tools: ✅ Built and validated");
 
 	} catch (error) {

@@ -51,8 +51,13 @@ module.exports = {
 		// },
 	],
 	// Run your local dev server before starting the tests.
+	// The test database is reset here, before the server opens it. Playwright
+	// starts webServer before globalSetup, so resetting it in globalSetup
+	// replaced the file under the running server, which kept writing to the
+	// deleted one.
 	webServer: {
-		command: "cd .. && mkdir -p tmp/go-cache && FUSIONALY_ENV=test LOG_LEVEL=error go run cmd/fusionaly/main.go",
+		command:
+			"cd .. && mkdir -p tmp/go-cache && make db-drop db-migrate && ./tmp/fnctl create-website localhost && FUSIONALY_ENV=test LOG_LEVEL=error go run cmd/fusionaly/main.go",
 		url: "http://localhost:3000/_health",
 		reuseExistingServer: !process.env.CI,
 		timeout: 90000, // 90s server startup (reduced from 120s)
