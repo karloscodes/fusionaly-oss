@@ -1,0 +1,27 @@
+{
+  "name": "fusionaly",
+  "version": "2.3.0",
+  "description": "Ask your self-hosted Fusionaly analytics from Gemini CLI.",
+  "contextFileName": "plugin/skills/fusionaly/SKILL.md",
+  "settings": [
+    {
+      "name": "Fusionaly URL",
+      "description": "Your Fusionaly address, for example https://data.yoursite.com",
+      "envVar": "FUSIONALY_URL"
+    },
+    {
+      "name": "Agent key",
+      "description": "From Administration > Agents in Fusionaly. Read-only.",
+      "envVar": "FUSIONALY_AGENT_KEY",
+      "sensitive": true
+    }
+  ],
+  "mcpServers": {
+    "fusionaly": {
+      "httpUrl": "${FUSIONALY_URL}/mcp",
+      "headers": {
+        "Authorization": "Bearer ${FUSIONALY_AGENT_KEY}"
+      }
+    }
+  }
+}

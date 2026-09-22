@@ -1,0 +1,36 @@
+{
+  "name": "fusionaly",
+  "version": "2.3.0",
+  "description": "Ask your analytics from Codex. Bundles the Fusionaly MCP server with the analytics skill.",
+  "author": {
+    "name": "Carlos Castellanos",
+    "url": "https://fusionaly.com"
+  },
+  "homepage": "https://fusionaly.com/docs/agent-api/",
+  "repository": "https://github.com/karloscodes/fusionaly-oss",
+  "license": "MIT",
+  "keywords": [
+    "analytics",
+    "web-analytics",
+    "privacy",
+    "self-hosted",
+    "mcp"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Fusionaly",
+    "shortDescription": "Ask your self-hosted web analytics.",
+    "longDescription": "Ask questions about your websites in plain English: where traffic comes from, what changed this week, which pages drive signups. Codex queries your own Fusionaly server through read-only MCP tools. Ask Codex to \"connect Fusionaly\" first: it verifies your URL and agent key (Administration > Agents) and adds the MCP server.",
+    "developerName": "Fusionaly",
+    "category": "Productivity",
+    "capabilities": [
+      "Read"
+    ],
+    "websiteURL": "https://fusionaly.com",
+    "defaultPrompt": [
+      "How is my traffic this week compared to last week?",
+      "Where do my visitors come from?",
+      "What changed on my websites recently?"
+    ]
+  }
+}

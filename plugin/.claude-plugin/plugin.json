@@ -1,0 +1,13 @@
+{
+  "name": "fusionaly",
+  "description": "Ask your analytics from inside your AI client. Bundles the Fusionaly MCP server with the analytics skill.",
+  "version": "2.3.0",
+  "author": {
+    "name": "Carlos Castellanos",
+    "url": "https://fusionaly.com"
+  },
+  "homepage": "https://fusionaly.com/docs/agent-api/",
+  "repository": "https://github.com/karloscodes/fusionaly-oss",
+  "license": "MIT",
+  "keywords": ["analytics", "web-analytics", "privacy", "self-hosted", "mcp"]
+}

@@ -1,0 +1,13 @@
+{
+  "name": "fusionaly",
+  "version": "2.3.0",
+  "description": "Ask your analytics from Cursor. Bundles the Fusionaly MCP server with the analytics skill.",
+  "author": {
+    "name": "Carlos Castellanos",
+    "url": "https://fusionaly.com"
+  },
+  "homepage": "https://fusionaly.com/docs/agent-api/",
+  "repository": "https://github.com/karloscodes/fusionaly-oss",
+  "license": "MIT",
+  "skills": "./skills/"
+}

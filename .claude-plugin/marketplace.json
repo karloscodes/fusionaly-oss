@@ -1,0 +1,21 @@
+{
+  "name": "fusionaly",
+  "owner": {
+    "name": "Carlos Castellanos",
+    "url": "https://fusionaly.com"
+  },
+  "metadata": {
+    "description": "Fusionaly: privacy-first web analytics you host yourself.",
+    "version": "2.3.0"
+  },
+  "plugins": [
+    {
+      "name": "fusionaly",
+      "source": "./plugin",
+      "description": "Ask your analytics from inside your AI client. MCP server plus the analytics skill.",
+      "version": "2.3.0",
+      "category": "analytics",
+      "keywords": ["analytics", "web-analytics", "privacy", "self-hosted", "mcp"]
+    }
+  ]
+}

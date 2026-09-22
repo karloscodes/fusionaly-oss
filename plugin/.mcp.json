@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "fusionaly": {
+      "type": "http",
+      "url": "${FUSIONALY_URL}/mcp",
+      "headers": {
+        "Authorization": "Bearer ${FUSIONALY_AGENT_KEY}"
+      }
+    }
+  }
+}
