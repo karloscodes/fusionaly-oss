@@ -52,6 +52,40 @@ test.describe.serial("Security Tests", () => {
 		helpers.log("All protected routes correctly require authentication");
 	});
 
+	test("should close the setup wizard once an admin exists", async ({ request }) => {
+		// Onboarding already ran (001), so the wizard must not open again, even with ?force=1.
+		for (const path of ["/setup", "/setup?force=1"]) {
+			const res = await request.get(path, { maxRedirects: 0 });
+			expect(res.status()).toBe(302);
+			expect(res.headers()["location"]).toBe("/login");
+		}
+
+		const res = await request.post("/setup/user", {
+			data: { email: "attacker@example.com" },
+			headers: { "Sec-Fetch-Site": "same-origin" },
+			maxRedirects: 0,
+		});
+		expect(res.status()).toBe(302);
+		expect(res.headers()["location"]).toBe("/login");
+	});
+
+	test("should reject cross-site and same-site POSTs to admin routes (CSRF)", async ({ request }) => {
+		for (const site of ["cross-site", "same-site"]) {
+			const res = await request.post("/admin/websites/1/delete", {
+				headers: { "Sec-Fetch-Site": site },
+				maxRedirects: 0,
+			});
+			expect(res.status()).toBe(403);
+		}
+
+		// Same-origin passes the CSRF check and reaches auth, which redirects to login.
+		const res = await request.post("/admin/websites/1/delete", {
+			headers: { "Sec-Fetch-Site": "same-origin" },
+			maxRedirects: 0,
+		});
+		expect(res.status()).toBe(302);
+	});
+
 	test("should not expose sensitive data in page source", async ({ page }) => {
 		helpers.log("Testing for sensitive data exposure");
 
