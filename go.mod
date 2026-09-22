@@ -6,7 +6,7 @@ toolchain go1.26.5
 
 require (
 	github.com/gofiber/fiber/v2 v2.52.14
-	github.com/karloscodes/cartridge v0.15.1
+	github.com/karloscodes/cartridge v0.15.5
 	github.com/karloscodes/matcha v0.12.18
 	github.com/oschwald/geoip2-golang v1.13.0
 	github.com/pariz/gountries v0.1.6
@@ -15,7 +15,7 @@ require (
 	go.elara.ws/pcre v0.0.0-20230805032557-4ce849193f64
 	golang.org/x/crypto v0.52.0
 	golang.org/x/term v0.43.0
-	golang.org/x/text v0.39.0
+	golang.org/x/text v0.40.0
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/driver/sqlite v1.6.0
 	gorm.io/gorm v1.31.0
@@ -60,7 +60,7 @@ require (
 	github.com/valyala/fasthttp v1.68.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546 // indirect
-	golang.org/x/sync v0.21.0 // indirect
+	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/sys v0.45.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect

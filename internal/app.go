@@ -95,7 +95,9 @@ func NewAppWithConfig(cfg *config.Config, opts ...AppOption) (*Application, erro
 	// admin forms reject cross-site requests (CSRF). Only event ingestion
 	// accepts cross-site requests; see publicAPIConfig in routes.go.
 	serverConfig := cartridge.DefaultServerConfig()
-	serverConfig.ProxyHeader = "X-Forwarded-For"
+	// No ProxyHeader: Fiber would trust the leftmost X-Forwarded-For entry,
+	// which the client controls. clientip.FromRequest finds the real address;
+	// the rate limiters and event ingestion use it.
 
 	// Static assets: embedded in production, disk in development
 	if !cfg.IsDevelopment() && options.staticFS != nil {

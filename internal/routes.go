@@ -12,6 +12,7 @@ import (
 	"fusionaly/internal/config"
 	"fusionaly/internal/http"
 	"fusionaly/internal/http/middleware"
+	"fusionaly/internal/pkg/clientip"
 )
 
 // publicCORSConfig returns the standard CORS configuration for public endpoints.
@@ -60,6 +61,7 @@ func MountAppRoutes(srv *cartridge.Server) {
 	// Rate limiter for public event ingestion API (70 requests per minute per IP)
 	// 70/min = ~1.2 req/sec - handles legitimate analytics traffic while preventing abuse
 	publicRateLimiter := conditionalRateLimiter(cartridgemiddleware.RateLimiter(
+		cartridgemiddleware.WithKeyGenerator(clientip.FromRequest),
 		cartridgemiddleware.WithMax(70),
 		cartridgemiddleware.WithDuration(time.Minute),
 	))
@@ -67,6 +69,7 @@ func MountAppRoutes(srv *cartridge.Server) {
 	// Stricter rate limiter for auth endpoints (10 requests per minute)
 	// Prevents brute force login attempts
 	authRateLimiter := conditionalRateLimiter(cartridgemiddleware.RateLimiter(
+		cartridgemiddleware.WithKeyGenerator(clientip.FromRequest),
 		cartridgemiddleware.WithMax(10),
 		cartridgemiddleware.WithDuration(time.Minute),
 	))
@@ -174,6 +177,7 @@ func MountAppRoutes(srv *cartridge.Server) {
 	// /z/ namespace for AI agent access (Claude, etc.)
 	// Rate limited: 30 req/min, requires API key auth
 	agentRateLimiter := conditionalRateLimiter(cartridgemiddleware.RateLimiter(
+		cartridgemiddleware.WithKeyGenerator(clientip.FromRequest),
 		cartridgemiddleware.WithMax(30),
 		cartridgemiddleware.WithDuration(time.Minute),
 	))
