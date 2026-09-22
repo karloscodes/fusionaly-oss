@@ -419,23 +419,24 @@ func generateRandomToken(length int) string {
 	return string(b)
 }
 
-// GetAllSettingsForDisplay retrieves all general (non-website-specific) settings
-// with sensitive values masked for display
+// displaySettings are the settings admin pages may receive as props. Props
+// end up in the page HTML, so this is an allowlist: API keys, license keys,
+// and any setting added later stay out unless they are listed here.
+var displaySettings = map[string]bool{
+	"excluded_ips": true,
+}
+
+// GetAllSettingsForDisplay returns the settings admin pages show.
 func GetAllSettingsForDisplay(db *gorm.DB) ([]SettingResponse, error) {
 	var allSettings []Setting
 	if err := db.Find(&allSettings).Error; err != nil {
 		return nil, fmt.Errorf("failed to fetch settings: %w", err)
 	}
 
-	var result []SettingResponse
+	result := []SettingResponse{}
 	for _, setting := range allSettings {
-		// Include only general settings (not per-website, except website_goals)
-		if !strings.HasPrefix(setting.Key, "website_") || setting.Key == "website_goals" {
-			value := setting.Value
-			result = append(result, SettingResponse{
-				Key:   setting.Key,
-				Value: value,
-			})
+		if displaySettings[setting.Key] {
+			result = append(result, SettingResponse{Key: setting.Key, Value: setting.Value})
 		}
 	}
 	return result, nil

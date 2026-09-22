@@ -235,3 +235,23 @@ func TestAgentAPIKey(t *testing.T) {
 		assert.Empty(t, key)
 	})
 }
+
+func TestGetAllSettingsForDisplay(t *testing.T) {
+	dbManager, _ := testsupport.SetupTestDBManager(t)
+	db := dbManager.GetConnection()
+	settings.SetupDefaultSettings(db)
+	require.NoError(t, settings.SaveOpenAIKey(db, "sk-secret"))
+	require.NoError(t, settings.SaveGeoLiteCredentials(db, "123456", "license-secret"))
+	_, err := settings.GenerateAgentAPIKey(db)
+	require.NoError(t, err)
+
+	shown, err := settings.GetAllSettingsForDisplay(db)
+
+	require.NoError(t, err)
+	var keys []string
+	for _, s := range shown {
+		keys = append(keys, s.Key)
+		assert.NotContains(t, s.Value, "secret")
+	}
+	assert.Equal(t, []string{"excluded_ips"}, keys, "API keys and licenses never reach page props")
+}
