@@ -360,7 +360,7 @@ func TestTimezoneScenario_RealWorld_NYCUserMonthlyReport(t *testing.T) {
 	datePoints := tf.GenerateDateTimePointsReference()
 
 	// VERIFY: All 30 days of November
-	assert.Equal(t, 31, len(datePoints), "November should have 30 days")
+	assert.Equal(t, 30, len(datePoints), "November should have 30 days")
 
 	// VERIFY: Starts Nov 1
 	assert.Equal(t, "2025-11-01", datePoints[0].SQLiteBucketTimeFormat)

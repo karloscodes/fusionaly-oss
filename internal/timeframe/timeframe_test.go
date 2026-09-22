@@ -510,7 +510,7 @@ func TestGenerateDateTimePointsReference_Timezone(t *testing.T) {
 	// User input: from=2025-07-06 (meaning July 6 midnight in Madrid)
 	// Backend should parse this as Madrid midnight, convert to UTC for storage
 	fromTime := time.Date(2025, 7, 6, 0, 0, 0, 0, madridTz) // July 6 00:00 Madrid
-	toTime := time.Date(2025, 7, 8, 0, 0, 0, 0, madridTz)   // July 8 00:00 Madrid
+	toTime := time.Date(2025, 7, 7, 23, 59, 59, 999999999, madridTz) // end of July 7 in Madrid, as the parser builds it
 
 	timeFrame := &timeframe.TimeFrame{
 		From:       fromTime.UTC(), // TimeFrame stores UTC internally (July 5 22:00 UTC)
@@ -523,7 +523,6 @@ func TestGenerateDateTimePointsReference_Timezone(t *testing.T) {
 	points := timeFrame.GenerateDateTimePointsReference()
 
 	// Should have 2 points: July 6, 7
-	// ToTime is July 8 00:00 Madrid = July 7 22:00 UTC, so July 8 is not included
 	assert.Len(t, points, 2)
 
 	// First point should be July 6 at 00:00 UTC (representing the date July 6)

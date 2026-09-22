@@ -24,7 +24,7 @@ func setupTimeFrame(t *testing.T) *timeframe.TimeFrame {
 		FromTime:      time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC),
 		ToTime:        time.Date(2024, 7, 2, 0, 0, 0, 0, time.UTC),
 		TimeFrameSize: timeframe.DailyTimeFrame,
-	}, time.Local)
+	}, time.UTC)
 	require.NoError(t, err)
 	return timeFrame
 }
@@ -559,7 +559,7 @@ func TestAggregatedGoalConversionsInTimeFrame(t *testing.T) {
 		FromTime:      time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC),
 		ToTime:        time.Date(2024, 7, 2, 23, 59, 59, 0, time.UTC),
 		TimeFrameSize: timeframe.DailyTimeFrame,
-	}, time.Local)
+	}, time.UTC)
 	require.NoError(t, err)
 
 	queryParams := analytics.NewWebsiteScopedQueryParams(timeFrame, int(websiteID))
@@ -737,7 +737,7 @@ func TestAggregatedRevenueInTimeFrame(t *testing.T) {
 		FromTime:      time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC),
 		ToTime:        time.Date(2024, 7, 2, 23, 59, 59, 0, time.UTC),
 		TimeFrameSize: timeframe.DailyTimeFrame,
-	}, time.Local)
+	}, time.UTC)
 	require.NoError(t, err)
 
 	queryParams := analytics.NewWebsiteScopedQueryParams(timeFrame, int(websiteID))

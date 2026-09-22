@@ -28,7 +28,7 @@ func TestGetTopUTMMediumsInTimeFrame(t *testing.T) {
 		FromTime:      time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC),
 		ToTime:        time.Date(2024, 7, 2, 0, 0, 0, 0, time.UTC),
 		TimeFrameSize: timeframe.DailyTimeFrame,
-	}, time.Local)
+	}, time.UTC)
 	assert.NoError(t, err)
 
 	params := analytics.NewWebsiteScopedQueryParams(timeFrame, 1)
@@ -56,7 +56,7 @@ func TestGetTopUTMSourcesInTimeFrame(t *testing.T) {
 		FromTime:      time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC),
 		ToTime:        time.Date(2024, 7, 2, 0, 0, 0, 0, time.UTC),
 		TimeFrameSize: timeframe.DailyTimeFrame,
-	}, time.Local)
+	}, time.UTC)
 	assert.NoError(t, err)
 
 	params := analytics.NewWebsiteScopedQueryParams(timeFrame, 1)
@@ -84,7 +84,7 @@ func TestGetTopUTMCampaignsInTimeFrame(t *testing.T) {
 		FromTime:      time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC),
 		ToTime:        time.Date(2024, 7, 2, 0, 0, 0, 0, time.UTC),
 		TimeFrameSize: timeframe.DailyTimeFrame,
-	}, time.Local)
+	}, time.UTC)
 	assert.NoError(t, err)
 
 	params := analytics.NewWebsiteScopedQueryParams(timeFrame, 1)
@@ -112,7 +112,7 @@ func TestGetTopUTMTermsInTimeFrame(t *testing.T) {
 		FromTime:      time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC),
 		ToTime:        time.Date(2024, 7, 2, 0, 0, 0, 0, time.UTC),
 		TimeFrameSize: timeframe.DailyTimeFrame,
-	}, time.Local)
+	}, time.UTC)
 	assert.NoError(t, err)
 
 	params := analytics.NewWebsiteScopedQueryParams(timeFrame, 1)
@@ -140,7 +140,7 @@ func TestGetTopUTMContentsInTimeFrame(t *testing.T) {
 		FromTime:      time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC),
 		ToTime:        time.Date(2024, 7, 2, 0, 0, 0, 0, time.UTC),
 		TimeFrameSize: timeframe.DailyTimeFrame,
-	}, time.Local)
+	}, time.UTC)
 	assert.NoError(t, err)
 
 	params := analytics.NewWebsiteScopedQueryParams(timeFrame, 1)

@@ -207,26 +207,77 @@ func (tf *TimeFrame) GetDBFormat() string {
 }
 
 // GetSQLiteGroupByExpression returns the SQLite expression to use for grouping events based on the time frame's bucket size.
+//
+// Rows are stored in UTC hours. Day, week, month, and year buckets are the
+// user's local ones (see GenerateDateTimePointsReference), so the expression
+// first shifts each row into the time frame's zone. Hour buckets stay UTC.
 func (tf *TimeFrame) GetSQLiteGroupByExpression() (string, error) {
+	shift := tf.localShiftModifier()
 	switch tf.BucketSize {
 	case TimeFrameBucketSizeHour:
 		// Use consistent format YYYY-MM-DD HH (to match existing tests)
 		return "strftime('%Y-%m-%d %H', hour)", nil
 	case TimeFrameBucketSizeDay:
 		// Use consistent format YYYY-MM-DD
-		return "strftime('%Y-%m-%d', hour)", nil
+		return "strftime('%Y-%m-%d', hour" + shift + ")", nil
 	case TimeFrameBucketSizeWeek:
 		// Use consistent format YYYY-MM-DD for week start
-		return "date(hour, 'start of day', '-' || ((strftime('%w', hour) + 6) % 7) || ' days')", nil
+		return "date(hour" + shift + ", 'start of day', '-' || ((strftime('%w', hour" + shift + ") + 6) % 7) || ' days')", nil
 	case TimeFrameBucketSizeMonth:
 		// Use consistent format YYYY-MM
-		return "strftime('%Y-%m', hour)", nil
+		return "strftime('%Y-%m', hour" + shift + ")", nil
 	case TimeFrameBucketSizeYear:
 		// Use consistent format YYYY
-		return "strftime('%Y', hour)", nil
+		return "strftime('%Y', hour" + shift + ")", nil
 	default:
 		return "", fmt.Errorf("unsupported time frame bucket size: %v", tf.BucketSize)
 	}
+}
+
+// localShiftModifier returns a SQLite date modifier (with a leading comma)
+// that moves a UTC hour into the time frame's zone, or "" for UTC.
+//
+// SQLite has no time zone database, so the offsets come from Go: one per
+// stretch between offset changes (daylight saving) inside the time frame.
+// Each row gets the offset of its own stretch, so a range across a DST switch
+// still buckets every hour on the right local day.
+func (tf *TimeFrame) localShiftModifier() string {
+	if tf.Tz == nil || tf.Tz == time.UTC {
+		return ""
+	}
+
+	type stretch struct {
+		until  int64 // unix seconds where the next offset starts; 0 = no end
+		offset int   // seconds east of UTC
+	}
+	var stretches []stretch
+	at := tf.From.In(tf.Tz)
+	for len(stretches) < 64 {
+		_, offset := at.Zone()
+		_, end := at.ZoneBounds()
+		if end.IsZero() || !end.Before(tf.To) {
+			stretches = append(stretches, stretch{offset: offset})
+			break
+		}
+		stretches = append(stretches, stretch{until: end.Unix(), offset: offset})
+		at = end
+	}
+
+	minutes := func(offset int) string { return fmt.Sprintf("'%+d minutes'", offset/60) }
+	if len(stretches) == 1 {
+		if stretches[0].offset == 0 {
+			return ""
+		}
+		return ", " + minutes(stretches[0].offset)
+	}
+
+	var b strings.Builder
+	b.WriteString(", CASE")
+	for _, st := range stretches[:len(stretches)-1] {
+		fmt.Fprintf(&b, " WHEN CAST(strftime('%%s', hour) AS INTEGER) < %d THEN %s", st.until, minutes(st.offset))
+	}
+	fmt.Fprintf(&b, " ELSE %s END", minutes(stretches[len(stretches)-1].offset))
+	return b.String()
 }
 
 func (tf *TimeFrame) GenerateDateTimePointsReference() []DatePointsOfReference {
@@ -265,6 +316,11 @@ func (tf *TimeFrame) GenerateDateTimePointsReference() []DatePointsOfReference {
 		currentTime = truncateToBucket(currentTime, tf.BucketSize)
 	}
 
+	// The last bucket is the local day, month, or year that contains the end
+	// of the range (inclusive, 23:59:59.999 from the parser), in the user's
+	// zone. Its UTC date can be a day later for zones west of UTC.
+	localEnd := endTime.In(tz)
+
 	// Set a reasonable maximum number of points to prevent infinite loops
 	maxPoints := 1000
 	pointCount := 0
@@ -281,18 +337,18 @@ func (tf *TimeFrame) GenerateDateTimePointsReference() []DatePointsOfReference {
 		shouldStop := false
 		switch tf.BucketSize {
 		case TimeFrameBucketSizeDay:
-			// Include bucket if currentTime is on or before the day containing endTime
+			// Include bucket if currentTime is on or before the local day containing endTime
 			currentDay := time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), 0, 0, 0, 0, time.UTC)
-			endDay := time.Date(endTime.Year(), endTime.Month(), endTime.Day(), 0, 0, 0, 0, time.UTC)
+			endDay := time.Date(localEnd.Year(), localEnd.Month(), localEnd.Day(), 0, 0, 0, 0, time.UTC)
 			shouldStop = currentDay.After(endDay)
 		case TimeFrameBucketSizeMonth:
-			// Include bucket if currentTime is on or before the month containing endTime
+			// Include bucket if currentTime is on or before the local month containing endTime
 			currentMonth := time.Date(currentTime.Year(), currentTime.Month(), 1, 0, 0, 0, 0, time.UTC)
-			endMonth := time.Date(endTime.Year(), endTime.Month(), 1, 0, 0, 0, 0, time.UTC)
+			endMonth := time.Date(localEnd.Year(), localEnd.Month(), 1, 0, 0, 0, 0, time.UTC)
 			shouldStop = currentMonth.After(endMonth)
 		case TimeFrameBucketSizeYear:
-			// Include bucket if currentTime is on or before the year containing endTime
-			shouldStop = currentTime.Year() > endTime.Year()
+			// Include bucket if currentTime is on or before the local year containing endTime
+			shouldStop = currentTime.Year() > localEnd.Year()
 		default:
 			// For hour and week buckets, use exact time comparison
 			shouldStop = currentTime.After(endTime)

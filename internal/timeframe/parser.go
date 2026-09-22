@@ -62,9 +62,9 @@ func (p *TimeFrameParser) parseCustomDateRange(params TimeFrameParserParams) (ti
 	}
 	now := p.timeProvider.Now(loc)
 
-	// Option 1: Provide sensible defaults when no dates are provided
-	// Default to last 7 days if no dates are specified
-	defaultFrom := now.Truncate(24*time.Hour).AddDate(0, 0, -30)
+	// Default to the last 30 days when no dates are given. Start at local
+	// midnight: Truncate(24h) would give UTC midnight, a partial first day.
+	defaultFrom := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc).AddDate(0, 0, -30)
 	defaultTo := now
 
 	from, err := p.parseDateWithDefault(params.FromDate, defaultFrom, loc, false)
