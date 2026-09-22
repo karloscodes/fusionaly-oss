@@ -247,4 +247,18 @@ func TestQuery(t *testing.T) {
 
 		assert.NoError(t, err, "no read-only connection may return to the pool")
 	})
+
+	t.Run("keeps existing data after a query", func(t *testing.T) {
+		dbManager, _ := testsupport.SetupTestDBManager(t)
+		db := dbManager.GetConnection()
+		require.NoError(t, db.Exec("CREATE TABLE keep_me (x INTEGER)").Error)
+		require.NoError(t, db.Exec("INSERT INTO keep_me VALUES (1)").Error)
+
+		_, err := agent.Query(context.Background(), db, "SELECT 1", 5*time.Second)
+		require.NoError(t, err)
+
+		var count int64
+		db.Raw("SELECT COUNT(*) FROM keep_me").Scan(&count)
+		assert.Equal(t, int64(1), count, "an in-memory DB is lost if its last connection closes")
+	})
 }

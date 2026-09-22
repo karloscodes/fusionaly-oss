@@ -205,8 +205,9 @@ func isWordByte(c byte) bool {
 
 // Query validates and runs one read-only query with a timeout and a row cap.
 // It runs on a dedicated connection with PRAGMA query_only, so SQLite itself
-// rejects any write the validator misses. The connection is then discarded,
-// so it never returns to the pool read-only or holding a lock.
+// rejects any write the validator misses. query_only is switched off again
+// before the connection returns to the pool; if that fails, the connection
+// is discarded instead.
 func Query(ctx context.Context, db *gorm.DB, sqlQuery string, timeout time.Duration) (*SQLResponse, error) {
 	var tableNames []string
 	if err := db.Raw("SELECT name FROM sqlite_master WHERE type = 'table'").Scan(&tableNames).Error; err != nil {
@@ -228,7 +229,10 @@ func Query(ctx context.Context, db *gorm.DB, sqlQuery string, timeout time.Durat
 		return nil, fmt.Errorf("failed to get connection: %w", err)
 	}
 	defer func() {
-		_ = conn.Raw(func(any) error { return driver.ErrBadConn })
+		// Background context: the reset must run even after a timeout.
+		if _, err := conn.ExecContext(context.Background(), "PRAGMA query_only = OFF"); err != nil {
+			_ = conn.Raw(func(any) error { return driver.ErrBadConn })
+		}
 		_ = conn.Close()
 	}()
 
