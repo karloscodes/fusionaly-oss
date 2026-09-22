@@ -4,8 +4,8 @@ package agent
 
 import (
 	"context"
+	"database/sql/driver"
 	"fmt"
-	"regexp"
 	"strings"
 	"time"
 
@@ -20,15 +20,15 @@ type SchemaResponse struct {
 
 // SQLRequest is the request format for the SQL endpoint
 type SQLRequest struct {
-	SQL       string `json:"sql"`
-	WebsiteID int    `json:"website_id"`
+	SQL string `json:"sql"`
 }
 
 // SQLResponse is the response format for the SQL endpoint
 type SQLResponse struct {
-	Columns  []string        `json:"columns"`
-	Rows     [][]interface{} `json:"rows"`
-	RowCount int             `json:"row_count"`
+	Columns   []string        `json:"columns"`
+	Rows      [][]interface{} `json:"rows"`
+	RowCount  int             `json:"row_count"`
+	Truncated bool            `json:"truncated"` // true when the result hit MaxRows
 }
 
 // GetSchema returns the database schema with concepts and examples
@@ -52,105 +52,214 @@ func GetSchema(db *gorm.DB) (*SchemaResponse, error) {
 	}, nil
 }
 
-// GetDatabaseSchema retrieves the schema from sqlite_master
+// AllowedTables are the tables agents may read: analytics data only. Everything
+// else (users, settings, sessions, caches) holds secrets or internals and stays
+// out of the schema and out of queries.
+var AllowedTables = map[string]bool{
+	"websites":              true,
+	"events":                true,
+	"site_stats":            true,
+	"page_stats":            true,
+	"ref_stats":             true,
+	"event_stats":           true,
+	"browser_stats":         true,
+	"os_stats":              true,
+	"device_stats":          true,
+	"country_stats":         true,
+	"utm_stats":             true,
+	"query_param_stats":     true,
+	"flow_transition_stats": true,
+	"annotations":           true,
+	"feed_items":            true,
+}
+
+// MaxRows caps a query result so one SELECT cannot load a whole table.
+const MaxRows = 1000
+
+// GetDatabaseSchema returns the CREATE TABLE statements of the allowed tables.
 func GetDatabaseSchema(db *gorm.DB) (string, error) {
-	var schemas []string
-	rows, err := db.Raw("SELECT sql FROM sqlite_master WHERE type='table'").Rows()
-	if err != nil {
+	type table struct {
+		Name string
+		SQL  string
+	}
+	var tables []table
+	if err := db.Raw("SELECT name, sql FROM sqlite_master WHERE type = 'table' ORDER BY name").Scan(&tables).Error; err != nil {
 		return "", err
 	}
-	defer rows.Close()
 
-	for rows.Next() {
-		var schema string
-		if err := rows.Scan(&schema); err != nil {
-			return "", err
-		}
-		if schema != "" {
-			schemas = append(schemas, schema)
+	var schemas []string
+	for _, t := range tables {
+		if AllowedTables[t.Name] && t.SQL != "" {
+			schemas = append(schemas, t.SQL)
 		}
 	}
-
 	return strings.Join(schemas, ";\n") + ";", nil
 }
 
-// ValidateReadOnlyQuery checks if the SQL query is safe (read-only)
-func ValidateReadOnlyQuery(sqlQuery string) error {
-	// Reject queries with comments - no legitimate reason for agents to use them
-	if strings.Contains(sqlQuery, "/*") || strings.Contains(sqlQuery, "--") {
-		return fmt.Errorf("comments not allowed in queries")
+// deniedWords block statements and functions that write, change the session,
+// or reach outside the database. query_only already stops writes; this list
+// gives a clear error first.
+var deniedWords = map[string]bool{
+	"insert": true, "update": true, "delete": true, "drop": true, "alter": true,
+	"create": true, "replace": true, "truncate": true, "pragma": true,
+	"attach": true, "detach": true, "vacuum": true, "reindex": true, "analyze": true,
+	"begin": true, "commit": true, "rollback": true, "savepoint": true, "release": true,
+	"load_extension": true, "writefile": true, "readfile": true,
+}
+
+// ValidateReadOnlyQuery checks that sqlQuery is one SELECT (or WITH) statement
+// that only reads allowed tables. It tokenizes string literals, quoted
+// identifiers, and comments together, so a "/*" or ";" inside a string cannot
+// hide a second statement.
+func ValidateReadOnlyQuery(sqlQuery string, tableNames []string) error {
+	words, err := sqlWords(sqlQuery)
+	if err != nil {
+		return err
 	}
-
-	// Reject multiple statements
-	if strings.Count(sqlQuery, ";") > 1 {
-		return fmt.Errorf("multiple statements not allowed")
-	}
-
-	// Remove string literals before keyword checking (replace with empty placeholder)
-	// This prevents false positives on pathnames like '/delete-account'
-	withoutStrings := regexp.MustCompile(`'[^']*'`).ReplaceAllString(sqlQuery, "''")
-
-	// Normalize: lowercase and collapse whitespace
-	normalized := strings.ToLower(withoutStrings)
-	normalized = regexp.MustCompile(`\s+`).ReplaceAllString(normalized, " ")
-	normalized = strings.TrimSpace(normalized)
-
-	// Must start with SELECT or WITH (CTEs are read-only)
-	if !strings.HasPrefix(normalized, "select ") && !strings.HasPrefix(normalized, "with ") {
+	if len(words) == 0 || (words[0] != "select" && words[0] != "with") {
 		return fmt.Errorf("only SELECT queries are allowed")
 	}
 
-	// Block dangerous keywords (word boundary check)
-	dangerous := []string{
-		"insert", "update", "delete", "drop", "alter", "create",
-		"truncate", "replace", "grant", "revoke", "exec", "execute",
-		"call", "pragma", "attach", "detach", "vacuum", "reindex",
-		"load_extension", "writefile", "readfile",
+	existing := make(map[string]bool, len(tableNames))
+	for _, name := range tableNames {
+		existing[strings.ToLower(name)] = true
 	}
 
-	for _, keyword := range dangerous {
-		pattern := regexp.MustCompile(`\b` + keyword + `\b`)
-		if pattern.MatchString(normalized) {
-			return fmt.Errorf("dangerous operation not allowed: %s", keyword)
+	for _, w := range words {
+		if deniedWords[w] {
+			return fmt.Errorf("operation not allowed: %s", w)
+		}
+		if strings.HasPrefix(w, "pragma_") || strings.HasPrefix(w, "sqlite_") {
+			return fmt.Errorf("table not allowed: %s", w)
+		}
+		if existing[w] && !AllowedTables[w] {
+			return fmt.Errorf("table not allowed: %s", w)
 		}
 	}
-
 	return nil
 }
 
-// ExecuteQuery runs a validated SQL query and returns the results
-func ExecuteQuery(ctx context.Context, db *gorm.DB, sqlQuery string, timeout time.Duration) (*SQLResponse, error) {
-	// Validate first
-	if err := ValidateReadOnlyQuery(sqlQuery); err != nil {
+// sqlWords returns the lowercased keywords and identifiers of one statement.
+// String literals are skipped. Comments and a second statement are errors.
+func sqlWords(q string) ([]string, error) {
+	var words []string
+	for i := 0; i < len(q); {
+		c := q[i]
+		switch {
+		case c == '\'':
+			end := closingQuote(q, i, '\'')
+			if end < 0 {
+				return nil, fmt.Errorf("unterminated string literal")
+			}
+			i = end + 1
+		case c == '"' || c == '`' || c == '[':
+			closer := c
+			if c == '[' {
+				closer = ']'
+			}
+			end := closingQuote(q, i, closer)
+			if end < 0 {
+				return nil, fmt.Errorf("unterminated identifier")
+			}
+			words = append(words, strings.ToLower(q[i+1:end]))
+			i = end + 1
+		case strings.HasPrefix(q[i:], "--") || strings.HasPrefix(q[i:], "/*"):
+			return nil, fmt.Errorf("comments not allowed in queries")
+		case c == ';':
+			if strings.TrimSpace(q[i+1:]) != "" {
+				return nil, fmt.Errorf("multiple statements not allowed")
+			}
+			return words, nil
+		case isWordByte(c):
+			start := i
+			for i < len(q) && isWordByte(q[i]) {
+				i++
+			}
+			words = append(words, strings.ToLower(q[start:i]))
+		default:
+			i++
+		}
+	}
+	return words, nil
+}
+
+// closingQuote returns the index of the quote that closes the one at start.
+// A doubled quote (” or "") is an escaped quote, not the end.
+func closingQuote(q string, start int, quote byte) int {
+	for i := start + 1; i < len(q); i++ {
+		if q[i] != quote {
+			continue
+		}
+		if quote != ']' && i+1 < len(q) && q[i+1] == quote {
+			i++
+			continue
+		}
+		return i
+	}
+	return -1
+}
+
+func isWordByte(c byte) bool {
+	return c == '_' || c == '$' || c >= '0' && c <= '9' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= 0x80
+}
+
+// Query validates and runs one read-only query with a timeout and a row cap.
+// It runs on a dedicated connection with PRAGMA query_only, so SQLite itself
+// rejects any write the validator misses. The connection is then discarded,
+// so it never returns to the pool read-only or holding a lock.
+func Query(ctx context.Context, db *gorm.DB, sqlQuery string, timeout time.Duration) (*SQLResponse, error) {
+	var tableNames []string
+	if err := db.Raw("SELECT name FROM sqlite_master WHERE type = 'table'").Scan(&tableNames).Error; err != nil {
+		return nil, fmt.Errorf("failed to list tables: %w", err)
+	}
+	if err := ValidateReadOnlyQuery(sqlQuery, tableNames); err != nil {
 		return nil, err
 	}
 
-	// Create context with timeout
 	queryCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	// Execute query
-	rows, err := db.WithContext(queryCtx).Raw(sqlQuery).Rows()
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, err
+	}
+	conn, err := sqlDB.Conn(queryCtx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get connection: %w", err)
+	}
+	defer func() {
+		_ = conn.Raw(func(any) error { return driver.ErrBadConn })
+		_ = conn.Close()
+	}()
+
+	if _, err := conn.ExecContext(queryCtx, "PRAGMA query_only = ON"); err != nil {
+		return nil, fmt.Errorf("failed to enter read-only mode: %w", err)
+	}
+
+	rows, err := conn.QueryContext(queryCtx, sqlQuery)
 	if err != nil {
 		return nil, fmt.Errorf("query execution failed: %w", err)
 	}
 	defer rows.Close()
 
-	// Get column names
 	columns, err := rows.Columns()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get columns: %w", err)
 	}
 
-	// Scan results
-	var resultRows [][]interface{}
+	resultRows := make([][]interface{}, 0)
 	values := make([]interface{}, len(columns))
 	valuePtrs := make([]interface{}, len(columns))
 	for i := range columns {
 		valuePtrs[i] = &values[i]
 	}
 
+	truncated := false
 	for rows.Next() {
+		if len(resultRows) == MaxRows {
+			truncated = true
+			break
+		}
 		if err := rows.Scan(valuePtrs...); err != nil {
 			return nil, fmt.Errorf("row scan failed: %w", err)
 		}
@@ -171,8 +280,9 @@ func ExecuteQuery(ctx context.Context, db *gorm.DB, sqlQuery string, timeout tim
 	}
 
 	return &SQLResponse{
-		Columns:  columns,
-		Rows:     resultRows,
-		RowCount: len(resultRows),
+		Columns:   columns,
+		Rows:      resultRows,
+		RowCount:  len(resultRows),
+		Truncated: truncated,
 	}, nil
 }

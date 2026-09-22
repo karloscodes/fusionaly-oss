@@ -35,23 +35,10 @@ func AgentSQLAction(ctx *cartridge.Context) error {
 		})
 	}
 
-	if req.WebsiteID <= 0 {
-		return ctx.Ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "website_id is required and must be positive",
-		})
-	}
-
-	// Validate query is read-only
-	if err := agent.ValidateReadOnlyQuery(req.SQL); err != nil {
-		return ctx.Ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": err.Error(),
-		})
-	}
-
-	// Execute with 5 second timeout
-	result, err := agent.ExecuteQuery(ctx.Ctx.Context(), ctx.DB(), req.SQL, 5*time.Second)
+	// Validation (read-only, one statement, allowed tables) happens in Query.
+	result, err := agent.Query(ctx.Ctx.Context(), ctx.DB(), req.SQL, 5*time.Second)
 	if err != nil {
-		return ctx.Ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+		return ctx.Ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": err.Error(),
 		})
 	}
