@@ -18,6 +18,7 @@ import (
 
 	"gorm.io/gorm"
 
+	"fusionaly/internal/agent"
 	"fusionaly/internal/settings"
 )
 
@@ -447,11 +448,11 @@ func GetInvestigationFromOpenAI(ctx context.Context, db *gorm.DB, question, open
 type QuestionIntent string
 
 const (
-	IntentDiagnosis   QuestionIntent = "diagnosis"   // Why, drop, problem, issue
-	IntentComparison  QuestionIntent = "comparison"  // vs, compare, change, difference
-	IntentDiscovery   QuestionIntent = "discovery"   // best, top, most, highest
-	IntentTrend       QuestionIntent = "trend"       // over time, growth, pattern, history
-	IntentGeneral     QuestionIntent = "general"     // catch-all
+	IntentDiagnosis  QuestionIntent = "diagnosis"  // Why, drop, problem, issue
+	IntentComparison QuestionIntent = "comparison" // vs, compare, change, difference
+	IntentDiscovery  QuestionIntent = "discovery"  // best, top, most, highest
+	IntentTrend      QuestionIntent = "trend"      // over time, growth, pattern, history
+	IntentGeneral    QuestionIntent = "general"    // catch-all
 )
 
 // detectQuestionIntent classifies the question to pick the right research strategy
@@ -879,108 +880,40 @@ func ExecuteQuery(db *gorm.DB, query string, queryType ...string) ([]map[string]
 		detectedType = ExtractTypeFromComment(query)
 	}
 
-	switch strings.ToUpper(detectedType) {
-	case TypeScalar:
-		return executeScalarQuery(db, query)
-	default:
-		return executeStandardQuery(db, query)
-	}
-}
-
-func executeScalarQuery(db *gorm.DB, query string) ([]map[string]interface{}, error) {
-	rows, err := db.Raw(query).Rows()
-	if err != nil {
-		return nil, fmt.Errorf("scalar query execution failed: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-
-	columns, err := rows.Columns()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get columns: %w", err)
-	}
-
-	values := make([]interface{}, len(columns))
-	valuePtrs := make([]interface{}, len(columns))
-	for i := range columns {
-		valuePtrs[i] = &values[i]
-	}
-
-	if !rows.Next() {
-		result := make(map[string]interface{})
-		for _, col := range columns {
-			result[col] = 0
-		}
-		return []map[string]interface{}{result}, nil
-	}
-
-	if err := rows.Scan(valuePtrs...); err != nil {
-		return nil, fmt.Errorf("scalar row scan failed: %w", err)
-	}
-
-	rowMap := make(map[string]interface{})
-	for i, col := range columns {
-		val := values[i]
-		if val == nil {
-			rowMap[col] = 0
-			continue
-		}
-		if b, ok := val.([]byte); ok {
-			rowMap[col] = string(b)
-		} else {
-			rowMap[col] = val
-		}
-	}
-
-	return []map[string]interface{}{rowMap}, nil
-}
-
-func executeStandardQuery(db *gorm.DB, query string) ([]map[string]interface{}, error) {
-	rows, err := db.Raw(query).Rows()
+	// agent.Query is the security boundary: one statement, analytics tables
+	// only, a read-only connection, a row cap, and a timeout. Saved Lens queries
+	// run on every page load, so they must never reach a writable connection.
+	result, err := agent.Query(context.Background(), db, query, lensQueryTimeout)
 	if err != nil {
 		return nil, fmt.Errorf("query execution failed: %w", err)
 	}
-	defer func() { _ = rows.Close() }()
 
-	columns, err := rows.Columns()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get columns: %w", err)
-	}
-
-	// Always return empty slice, never nil
-	results := make([]map[string]interface{}, 0)
-	values := make([]interface{}, len(columns))
-	valuePtrs := make([]interface{}, len(columns))
-	for i := range columns {
-		valuePtrs[i] = &values[i]
-	}
-
-	for rows.Next() {
-		if err := rows.Scan(valuePtrs...); err != nil {
-			return nil, fmt.Errorf("row scan failed: %w", err)
+	rows := make([]map[string]interface{}, 0, len(result.Rows))
+	for _, row := range result.Rows {
+		rowMap := make(map[string]interface{}, len(result.Columns))
+		for i, col := range result.Columns {
+			rowMap[col] = row[i]
 		}
+		rows = append(rows, rowMap)
+	}
 
-		rowMap := make(map[string]interface{})
-		for i, col := range columns {
-			val := values[i]
-			if val == nil {
-				rowMap[col] = nil
-				continue
-			}
-			if b, ok := val.([]byte); ok {
-				rowMap[col] = string(b)
-			} else {
-				rowMap[col] = val
-			}
+	if strings.ToUpper(detectedType) != TypeScalar {
+		return rows, nil
+	}
+
+	// Scalar results are one row; missing values read as 0.
+	scalar := make(map[string]interface{}, len(result.Columns))
+	for _, col := range result.Columns {
+		scalar[col] = 0
+		if len(rows) > 0 && rows[0][col] != nil {
+			scalar[col] = rows[0][col]
 		}
-		results = append(results, rowMap)
 	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("row iteration error: %w", err)
-	}
-
-	return results, nil
+	return []map[string]interface{}{scalar}, nil
 }
+
+// lensQueryTimeout bounds one Lens query, like the agent API's 5s.
+const lensQueryTimeout = 10 * time.Second
 
 // === SavedQuery CRUD Operations ===
 
