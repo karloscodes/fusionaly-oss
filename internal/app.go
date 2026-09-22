@@ -91,10 +91,10 @@ func NewAppWithConfig(cfg *config.Config, opts ...AppOption) (*Application, erro
 		return nil, fmt.Errorf("failed to initialize jobs: %w", err)
 	}
 
-	// Configure server with SecFetchSite for cross-origin analytics
-	// Analytics SDK sends events from customer sites (cross-site) to our API
+	// Sec-Fetch-Site keeps cartridge's strict default (same-origin, none), so
+	// admin forms reject cross-site requests (CSRF). Only event ingestion
+	// accepts cross-site requests; see publicAPIConfig in routes.go.
 	serverConfig := cartridge.DefaultServerConfig()
-	serverConfig.SecFetchSiteAllowedValues = []string{"cross-site", "same-site", "same-origin"}
 	serverConfig.ProxyHeader = "X-Forwarded-For"
 
 	// Static assets: embedded in production, disk in development
