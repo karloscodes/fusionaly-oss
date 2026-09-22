@@ -136,39 +136,6 @@ func TestChangePassword(t *testing.T) {
 	})
 }
 
-func TestSetupAdminUserIfNotExists(t *testing.T) {
-	dbManager, _ := testsupport.SetupTestDBManager(t)
-	db := dbManager.GetConnection()
-
-	t.Run("creates user if not exists", func(t *testing.T) {
-		email := "setup@example.com"
-
-		// Call setup function
-		users.SetupAdminUserIfNotExists(db, email)
-
-		// Verify user was created
-		foundUser, err := users.FindByEmail(db, email)
-		require.NoError(t, err)
-		assert.Equal(t, email, foundUser.Email)
-	})
-
-	t.Run("does not error if user already exists", func(t *testing.T) {
-		email := "existing-setup@example.com"
-
-		// Create user first
-		err := users.CreateAdminUser(db, email, "password123")
-		require.NoError(t, err)
-
-		// Call setup function - should not panic or error
-		users.SetupAdminUserIfNotExists(db, email)
-
-		// Verify user still exists
-		foundUser, err := users.FindByEmail(db, email)
-		require.NoError(t, err)
-		assert.Equal(t, email, foundUser.Email)
-	})
-}
-
 func TestErrUserExists(t *testing.T) {
 	t.Run("ErrUserExists is defined", func(t *testing.T) {
 		assert.NotNil(t, users.ErrUserExists)

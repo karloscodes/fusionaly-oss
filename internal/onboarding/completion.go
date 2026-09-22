@@ -1,21 +1,25 @@
 package onboarding
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
-	"log/slog"
 	"gorm.io/gorm"
+	"log/slog"
 
 	"fusionaly/internal/settings"
 	"fusionaly/internal/users"
 )
 
+// ErrSetupAlreadyComplete is returned when onboarding runs after an admin exists.
+var ErrSetupAlreadyComplete = errors.New("setup is already complete")
+
 // CompletionData holds all the data needed to complete onboarding
 type CompletionData struct {
-	Email     string
-	Password  string
-	OpenAIKey string
+	Email        string
+	PasswordHash string
+	OpenAIKey    string
 }
 
 // CompletionResult contains the results of completing onboarding
@@ -32,12 +36,22 @@ func CompleteOnboarding(db *gorm.DB, logger *slog.Logger, data CompletionData) (
 	}
 
 	// Validate password
-	if data.Password == "" {
+	if data.PasswordHash == "" {
 		return nil, fmt.Errorf("password is required")
 	}
 
+	// Setup runs once. Refuse a second admin even if a request gets past the
+	// route guard.
+	required, err := IsOnboardingRequired(db)
+	if err != nil {
+		return nil, err
+	}
+	if !required {
+		return nil, ErrSetupAlreadyComplete
+	}
+
 	// Create the admin user
-	err := users.CreateAdminUser(db, data.Email, data.Password)
+	err = users.CreateAdminUserWithHash(db, data.Email, data.PasswordHash)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create admin user: %w", err)
 	}

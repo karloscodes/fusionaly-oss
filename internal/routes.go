@@ -94,16 +94,21 @@ func MountAppRoutes(srv *cartridge.Server) {
 		CORSConfig:       publicCORSConfig,
 	}
 
-	// Onboarding config
-	// No rate limiting - one-time setup flow, not sensitive auth
-	// No Sec-Fetch-Site - internal page navigation
-	onboardingConfig := &cartridge.RouteConfig{
-		EnableSecFetchSite: cartridge.Bool(false),
-	}
-
 	// Get dependencies for middleware
 	db := srv.GetDBManager().GetConnection()
 	logger := srv.GetLogger()
+
+	// Onboarding config
+	// No rate limiting - one-time setup flow, not sensitive auth
+	// No Sec-Fetch-Site - internal page navigation
+	// SetupOnly closes the wizard once an admin exists
+	onboardingConfig := &cartridge.RouteConfig{
+		EnableSecFetchSite: cartridge.Bool(false),
+		CustomMiddleware:   []fiber.Handler{middleware.SetupOnly(db, logger)},
+	}
+	onboardingCheckConfig := &cartridge.RouteConfig{
+		EnableSecFetchSite: cartridge.Bool(false),
+	}
 
 	adminConfig := &cartridge.RouteConfig{
 		CustomMiddleware: []fiber.Handler{
@@ -179,7 +184,7 @@ func MountAppRoutes(srv *cartridge.Server) {
 
 	// === ONBOARDING ROUTES (PRG pattern) ===
 	srv.Get("/setup", http.OnboardingPageAction, onboardingConfig)
-	srv.Get("/api/onboarding/check", http.OnboardingCheckAction, onboardingConfig)
+	srv.Get("/api/onboarding/check", http.OnboardingCheckAction, onboardingCheckConfig)
 	srv.Post("/setup/user", http.OnboardingUserFormAction, onboardingConfig)
 	srv.Post("/setup/password", http.OnboardingPasswordFormAction, onboardingConfig)
 	srv.Post("/setup/geolite", http.OnboardingGeoLiteFormAction, onboardingConfig)

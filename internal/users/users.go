@@ -49,16 +49,6 @@ func FindByID(db *gorm.DB, id uint) (*User, error) {
 
 // CreateAdminUser creates a new admin user with the supplied credentials. It returns ErrUserExists if the user already exists.
 func CreateAdminUser(dbConn *gorm.DB, email, password string) error {
-	// Check existence first
-	if _, err := FindByEmail(dbConn, email); err == nil {
-		return ErrUserExists
-	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return err
-	}
-
-	if email == "" {
-		return errors.New("email cannot be empty")
-	}
 	if password == "" {
 		return errors.New("password cannot be empty")
 	}
@@ -68,9 +58,27 @@ func CreateAdminUser(dbConn *gorm.DB, email, password string) error {
 		return err
 	}
 
+	return CreateAdminUserWithHash(dbConn, email, string(hashedPassword))
+}
+
+// CreateAdminUserWithHash creates a new admin user from an already hashed
+// password. It returns ErrUserExists if the user already exists.
+func CreateAdminUserWithHash(dbConn *gorm.DB, email, passwordHash string) error {
+	if email == "" {
+		return errors.New("email cannot be empty")
+	}
+	if passwordHash == "" {
+		return errors.New("password cannot be empty")
+	}
+	if _, err := FindByEmail(dbConn, email); err == nil {
+		return ErrUserExists
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return err
+	}
+
 	newUser := User{
 		Email:             email,
-		EncryptedPassword: string(hashedPassword),
+		EncryptedPassword: passwordHash,
 	}
 
 	logger := slog.Default()
@@ -99,26 +107,4 @@ func ChangePassword(dbConn *gorm.DB, email, password string) error {
 	return sqlite.PerformWrite(logger, dbConn, func(tx *gorm.DB) error {
 		return tx.Model(user).Update("encrypted_password", string(hashedPassword)).Error
 	})
-}
-
-// SetupAdminUserIfNotExists creates a default user in the database if it doesn't already exist
-func SetupAdminUserIfNotExists(dbConn *gorm.DB, email string) {
-	logger := slog.Default()
-	hashedPassword, err := crypto.GeneratePasswordHash("password")
-	if err != nil {
-		logger.Error("Failed to generate password hash", slog.Any("error", err))
-		return
-	}
-	err = sqlite.PerformWrite(logger, dbConn, func(tx *gorm.DB) error {
-		return tx.Exec(`
-            INSERT INTO users (email, encrypted_password, created_at, updated_at)
-            VALUES (?, ?, ?, ?)
-            ON CONFLICT(email) DO NOTHING
-        `, email, hashedPassword, time.Now().UTC(), time.Now().UTC()).Error
-	})
-	if err != nil {
-		logger.Error("Failed to upsert admin user", slog.String("email", email), slog.Any("error", err))
-		return
-	}
-	logger.Info("Ensured admin user exists", slog.String("email", email))
 }

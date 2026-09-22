@@ -42,3 +42,21 @@ func OnboardingCheck(db *gorm.DB, logger *slog.Logger) fiber.Handler {
 		return c.Next()
 	}
 }
+
+// SetupOnly blocks the setup wizard once an admin exists. Without it, anyone
+// could walk the wizard again and create a second admin account.
+func SetupOnly(db *gorm.DB, logger *slog.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		required, err := onboarding.IsOnboardingRequired(db)
+		if err != nil {
+			logger.Error("Failed to check if onboarding is required in middleware", slog.Any("error", err))
+			return c.Status(fiber.StatusInternalServerError).SendString("System error")
+		}
+
+		if !required {
+			return c.Redirect("/login", fiber.StatusFound)
+		}
+
+		return c.Next()
+	}
+}

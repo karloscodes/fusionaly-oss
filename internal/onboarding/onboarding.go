@@ -23,9 +23,9 @@ const (
 
 // OnboardingData holds the collected onboarding information
 type OnboardingData struct {
-	Email     string `json:"email,omitempty"`
-	Password  string `json:"password,omitempty"`
-	OpenAIKey string `json:"openai_key,omitempty"`
+	Email        string `json:"email,omitempty"`
+	PasswordHash string `json:"password_hash,omitempty"` // bcrypt; the plaintext is never stored
+	OpenAIKey    string `json:"openai_key,omitempty"`
 }
 
 // Scan implements sql.Scanner interface for OnboardingData
@@ -116,27 +116,20 @@ func GetOnboardingSession(db *gorm.DB, sessionID string) (*OnboardingSession, er
 	return &session, nil
 }
 
-// CompleteOnboardingSession marks the session as completed
-func CompleteOnboardingSession(db *gorm.DB, sessionID string) error {
-	result := db.Model(&OnboardingSession{}).
-		Where("id = ? AND completed = ?", sessionID, false).
-		Update("completed", true)
-
-	if result.Error != nil {
-		return fmt.Errorf("failed to complete onboarding session: %w", result.Error)
-	}
-
-	if result.RowsAffected == 0 {
-		return fmt.Errorf("onboarding session not found")
-	}
-
-	return nil
+// DeleteOnboardingSession removes a finished session, so the data it collected
+// (email, password hash) does not stay in the database.
+func DeleteOnboardingSession(db *gorm.DB, sessionID string) error {
+	return db.Where("id = ?", sessionID).Delete(&OnboardingSession{}).Error
 }
 
-// CleanupExpiredOnboardingSessions removes expired onboarding sessions
-func CleanupExpiredOnboardingSessions(db *gorm.DB) error {
-	result := db.Where("expires_at < ?", time.Now()).Delete(&OnboardingSession{})
-	return result.Error
+// PurgeSessionsAfterSetup deletes every onboarding session once setup is done.
+// Installs before v2.2.13 kept the admin password in plaintext in these rows.
+func PurgeSessionsAfterSetup(db *gorm.DB) error {
+	required, err := IsOnboardingRequired(db)
+	if err != nil || required {
+		return err
+	}
+	return db.Where("1 = 1").Delete(&OnboardingSession{}).Error
 }
 
 // IsOnboardingRequired checks if onboarding is required (no admin users exist)

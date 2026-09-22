@@ -104,6 +104,12 @@ func (dm *DBManager) MigrateDatabase() error {
 		return err
 	}
 
+	// Old installs kept the admin password in plaintext in onboarding sessions.
+	if err := onboarding.PurgeSessionsAfterSetup(db); err != nil {
+		dm.logger.Error("Failed to purge onboarding sessions", slog.Any("error", err))
+		return err
+	}
+
 	// feed_baselines held the old EMA baselines. Baselines are now computed from
 	// the stats tables on demand, so the table is dead weight.
 	if err := db.Migrator().DropTable("feed_baselines"); err != nil {

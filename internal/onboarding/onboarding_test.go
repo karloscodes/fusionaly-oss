@@ -33,8 +33,8 @@ func setupTestDB(t *testing.T) *gorm.DB {
 
 func TestOnboardingData_Scan_Value(t *testing.T) {
 	data := onboarding.OnboardingData{
-		Email:    "test@example.com",
-		Password: "password123",
+		Email:        "test@example.com",
+		PasswordHash: "$2a$10$hash",
 	}
 
 	// Test Value()
@@ -123,25 +123,18 @@ func TestUpdateOnboardingSession(t *testing.T) {
 	assert.Equal(t, newData.Email, session.Data.Email)
 }
 
-func TestCompleteOnboardingSession(t *testing.T) {
+func TestDeleteOnboardingSession(t *testing.T) {
 	db := setupTestDB(t)
 	sessionID := "test-session-id"
-
 	_, err := onboarding.CreateOnboardingSession(db, sessionID)
 	assert.NoError(t, err)
 
-	err = onboarding.CompleteOnboardingSession(db, sessionID)
-	assert.NoError(t, err)
+	err = onboarding.DeleteOnboardingSession(db, sessionID)
 
-	// Verify completed
-	var session onboarding.OnboardingSession
-	err = db.First(&session, "id = ?", sessionID).Error
 	assert.NoError(t, err)
-	assert.True(t, session.Completed)
-
-	// Should not be retrievable via GetOnboardingSession (which filters out completed)
-	_, err = onboarding.GetOnboardingSession(db, sessionID)
-	assert.Error(t, err)
+	var count int64
+	db.Model(&onboarding.OnboardingSession{}).Count(&count)
+	assert.Equal(t, int64(0), count)
 }
 
 func TestIsExpired(t *testing.T) {
@@ -156,36 +149,48 @@ func TestIsExpired(t *testing.T) {
 	assert.True(t, sessionExpired.IsExpired())
 }
 
-func TestCleanupExpiredOnboardingSessions(t *testing.T) {
+func TestPurgeSessionsAfterSetup(t *testing.T) {
+	t.Run("keeps sessions while setup is still running", func(t *testing.T) {
+		db := setupTestDB(t)
+		_, err := onboarding.CreateOnboardingSession(db, "in-progress")
+		assert.NoError(t, err)
+
+		err = onboarding.PurgeSessionsAfterSetup(db)
+
+		assert.NoError(t, err)
+		var count int64
+		db.Model(&onboarding.OnboardingSession{}).Count(&count)
+		assert.Equal(t, int64(1), count)
+	})
+
+	t.Run("deletes every session once an admin exists", func(t *testing.T) {
+		db := setupTestDB(t)
+		db.Create(&onboarding.OnboardingSession{ID: "legacy", Step: onboarding.StepCompleted, Completed: true, ExpiresAt: time.Now()})
+		db.Create(&users.User{Email: "admin@example.com"})
+
+		err := onboarding.PurgeSessionsAfterSetup(db)
+
+		assert.NoError(t, err)
+		var count int64
+		db.Model(&onboarding.OnboardingSession{}).Count(&count)
+		assert.Equal(t, int64(0), count)
+	})
+}
+
+func TestCompleteOnboardingAfterSetup(t *testing.T) {
 	db := setupTestDB(t)
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	db.Create(&users.User{Email: "owner@example.com"})
 
-	// Create active session
-	activeSession := onboarding.OnboardingSession{
-		ID:        "active",
-		Step:      onboarding.StepUserAccount,
-		ExpiresAt: time.Now().Add(1 * time.Hour),
-	}
-	db.Create(&activeSession)
+	_, err := onboarding.CompleteOnboarding(db, logger, onboarding.CompletionData{
+		Email:        "attacker@example.com",
+		PasswordHash: "$2a$10$hash",
+	})
 
-	// Create expired session
-	expiredSession := onboarding.OnboardingSession{
-		ID:        "expired",
-		Step:      onboarding.StepUserAccount,
-		ExpiresAt: time.Now().Add(-1 * time.Hour),
-	}
-	db.Create(&expiredSession)
-
-	err := onboarding.CleanupExpiredOnboardingSessions(db)
-	assert.NoError(t, err)
-
-	// Verify active exists
+	assert.ErrorIs(t, err, onboarding.ErrSetupAlreadyComplete)
 	var count int64
-	db.Model(&onboarding.OnboardingSession{}).Where("id = ?", "active").Count(&count)
-	assert.Equal(t, int64(1), count)
-
-	// Verify expired gone
-	db.Model(&onboarding.OnboardingSession{}).Where("id = ?", "expired").Count(&count)
-	assert.Equal(t, int64(0), count)
+	db.Model(&users.User{}).Count(&count)
+	assert.Equal(t, int64(1), count, "no second admin may be created")
 }
 
 func TestIsOnboardingRequired(t *testing.T) {
@@ -217,8 +222,8 @@ func TestGeoLiteAdvancesToOpenAIStep(t *testing.T) {
 
 	// Simulate progress through user_account and password into geolite
 	err = onboarding.UpdateOnboardingSession(db, sessionID, onboarding.StepGeoLite, onboarding.OnboardingData{
-		Email:    "admin@example.com",
-		Password: "password123",
+		Email:        "admin@example.com",
+		PasswordHash: "$2a$10$hash",
 	})
 	assert.NoError(t, err)
 
@@ -239,9 +244,9 @@ func TestCompleteOnboardingWithOpenAIKey(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
 	result, err := onboarding.CompleteOnboarding(db, logger, onboarding.CompletionData{
-		Email:     "admin@example.com",
-		Password:  "password123",
-		OpenAIKey: "sk-test-key-123",
+		Email:        "admin@example.com",
+		PasswordHash: "$2a$10$hash",
+		OpenAIKey:    "sk-test-key-123",
 	})
 	assert.NoError(t, err)
 	assert.NotZero(t, result.UserID)
@@ -257,8 +262,8 @@ func TestCompleteOnboardingWithoutOpenAIKey(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
 	result, err := onboarding.CompleteOnboarding(db, logger, onboarding.CompletionData{
-		Email:    "admin@example.com",
-		Password: "password123",
+		Email:        "admin@example.com",
+		PasswordHash: "$2a$10$hash",
 		// OpenAIKey intentionally empty (skipped step)
 	})
 	assert.NoError(t, err)

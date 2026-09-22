@@ -8,6 +8,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/karloscodes/cartridge"
+	"github.com/karloscodes/cartridge/crypto"
 	"github.com/karloscodes/cartridge/inertia"
 	"gorm.io/gorm"
 
@@ -92,22 +93,7 @@ func GetOrCreateOnboardingSession(ctx *cartridge.Context, db *gorm.DB) (*onboard
 
 // OnboardingPageAction serves the onboarding wizard page (Inertia)
 func OnboardingPageAction(ctx *cartridge.Context) error {
-	forceParam := ctx.Query("force")
-	forceSetup := forceParam == "1" || strings.ToLower(forceParam) == "true"
-
 	db := ctx.DB()
-
-	// Check if onboarding is required
-	required, err := onboarding.IsOnboardingRequired(db)
-	if err != nil {
-		ctx.Logger.Error("Failed to check if onboarding is required", slog.Any("error", err))
-		return ctx.Status(fiber.StatusInternalServerError).SendString("System error")
-	}
-
-	if !required && !forceSetup {
-		// Redirect to login if onboarding is not required
-		return ctx.FlashInfo("Setup is already complete. Please log in.").Redirect("/login", fiber.StatusFound)
-	}
 
 	// Get or create onboarding session
 	session, err := GetOrCreateOnboardingSession(ctx, db)
@@ -209,8 +195,13 @@ func OnboardingPasswordFormAction(ctx *cartridge.Context) error {
 		return ctx.FlashError("Password must be at least 8 characters long").Redirect("/setup", fiber.StatusFound)
 	}
 
-	// Update session with password and move to GeoLite step
-	session.Data.Password = password
+	// Update session with the password hash and move to GeoLite step
+	passwordHash, err := crypto.GeneratePasswordHash(password)
+	if err != nil {
+		ctx.Logger.Error("Failed to hash password", slog.Any("error", err))
+		return ctx.FlashError("Failed to save progress").Redirect("/setup", fiber.StatusFound)
+	}
+	session.Data.PasswordHash = string(passwordHash)
 	err = onboarding.UpdateOnboardingSession(db, sessionID, onboarding.StepGeoLite, session.Data)
 	if err != nil {
 		ctx.Logger.Error("Failed to update onboarding session", slog.Any("error", err))
@@ -224,9 +215,9 @@ func OnboardingPasswordFormAction(ctx *cartridge.Context) error {
 func completeOnboarding(db *gorm.DB, logger *slog.Logger, c *fiber.Ctx, sessionMgr *cartridge.SessionManager, session *onboarding.OnboardingSession) error {
 	// Prepare completion data
 	completionData := onboarding.CompletionData{
-		Email:     session.Data.Email,
-		Password:  session.Data.Password,
-		OpenAIKey: session.Data.OpenAIKey,
+		Email:        session.Data.Email,
+		PasswordHash: session.Data.PasswordHash,
+		OpenAIKey:    session.Data.OpenAIKey,
 	}
 
 	// Use onboarding context function to complete
@@ -243,10 +234,9 @@ func completeOnboarding(db *gorm.DB, logger *slog.Logger, c *fiber.Ctx, sessionM
 		}
 	}
 
-	// Mark onboarding as completed
-	err = onboarding.CompleteOnboardingSession(db, session.ID)
-	if err != nil {
-		logger.Error("Failed to mark onboarding as completed", slog.Any("error", err))
+	// Delete the session so the collected data does not stay in the database
+	if err := onboarding.DeleteOnboardingSession(db, session.ID); err != nil {
+		logger.Error("Failed to delete onboarding session", slog.Any("error", err))
 		// Don't fail the process for this
 	}
 
