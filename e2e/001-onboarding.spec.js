@@ -45,7 +45,6 @@ test.describe("Onboarding Flow - MUST RUN FIRST", () => {
 
 		// Click Continue button
 		await page.click('button[type="submit"]');
-		await page.waitForLoadState('networkidle');
 		helpers.log(`User account configured with email: ${TEST_EMAIL}`);
 
 		// Step 1.3: Password setup
@@ -59,7 +58,6 @@ test.describe("Onboarding Flow - MUST RUN FIRST", () => {
 		const passwordSubmit = page.locator('button:has-text("Continue")');
 		await passwordSubmit.waitFor({ state: 'visible', timeout: 10000 });
 		await passwordSubmit.click();
-		await page.waitForLoadState('networkidle');
 		helpers.log("Password configured");
 
 		// Step 1.4: GeoLite configuration step (skip it for testing)
@@ -70,7 +68,6 @@ test.describe("Onboarding Flow - MUST RUN FIRST", () => {
 		const geoliteSkip = page.locator('form[action="/setup/geolite"] button:has-text("Skip for Now")');
 		await geoliteSkip.waitFor({ state: 'visible', timeout: 10000 });
 		await geoliteSkip.click();
-		await page.waitForLoadState('networkidle');
 		helpers.log("GeoLite step skipped");
 
 		// Step 1.5: OpenAI configuration step (optional - skip it for testing)

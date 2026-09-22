@@ -93,7 +93,8 @@ test.describe("Subdomain Origin Validation", () => {
 		});
 		await toggleContainer.locator('input[type="checkbox"]').click({ force: true });
 		await page.click('button[type="submit"]');
-		await page.waitForLoadState("networkidle");
+		// The setting must be saved before the next page sends events
+		await expect(page.getByRole("alert")).toContainText("Website updated successfully");
 
 		// The exact same subdomain should now be accepted
 		const acceptPage = await context.newPage();

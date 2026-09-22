@@ -100,8 +100,7 @@ test.describe("Website Management Flow", () => {
 		expect(currentUrl).not.toContain("/new");
 		helpers.log("Websites list page loaded correctly");
 
-		// Verify we can see website management elements - wait for page to fully load
-		await helpers.page.waitForLoadState("networkidle");
+		// Verify we can see website management elements
 
 		// Look for the "Your Websites" heading that indicates the list section
 		await helpers.waitForElement('text=Your Websites', { timeout: 10000 });
@@ -129,7 +128,6 @@ test.describe("Website Management Flow", () => {
 		helpers.log("Websites list displayed");
 
 		// Verify the websites list section is visible
-		await helpers.page.waitForLoadState("networkidle");
 		await helpers.waitForElement('text=Your Websites', { timeout: 5000 });
 		helpers.log("Website list section found");
 	});
@@ -157,7 +155,7 @@ test.describe("Website Management Flow", () => {
 			await helpers.page.waitForURL(url => !url.href.includes("/new"), { timeout: 5000 });
 		} catch (urlError) {
 			// Expected - should stay on page with error
-			await helpers.page.waitForLoadState("networkidle", { timeout: 5000 });
+			await helpers.page.getByRole("alert").first().waitFor({ timeout: 5000 });
 		}
 
 		// This MUST show an error - no uncertainty

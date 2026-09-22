@@ -156,7 +156,6 @@ test.describe("Login Flow", () => {
 
 			// Try to submit empty form
 			await page.click('button[type="submit"]');
-			await page.waitForLoadState("networkidle");
 
 			// Should stay on login page
 			await expect(page).toHaveURL(/\/login/);
@@ -168,7 +167,6 @@ test.describe("Login Flow", () => {
 			});
 
 			await page.click('button[type="submit"]');
-			await page.waitForLoadState("networkidle");
 
 			// Should still stay on login page
 			await expect(page).toHaveURL(/\/login/);

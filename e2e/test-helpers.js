@@ -155,8 +155,8 @@ class TestHelpers {
 					await this.page.waitForLoadState("networkidle", { timeout: 5000 });
 				}
 			} else {
-				// For failed login, just wait for network idle
-				await this.page.waitForLoadState("networkidle", { timeout });
+				// A failed login redirects back to /login with an error flash
+				await this.page.getByRole("alert").first().waitFor({ timeout }).catch(() => {});
 			}
 
 			const currentUrl = this.page.url();
@@ -441,67 +441,6 @@ class TestHelpers {
 		await this.navigateTo(path, options);
 	}
 
-	/**
-	 * Complete onboarding flow with provided details
-	 */
-	async completeOnboarding(options = {}) {
-		const {
-			licenseKey = "valid-test-license-key",
-			username = "testuser",
-			email = "test@example.com",
-			password = "testpassword123",
-			openaiKey = null,
-			useGumroadEmail = false
-		} = options;
-
-		this.log("Starting complete onboarding flow");
-
-		// Step 1: License Key
-		await this.fillForm({ license_key: licenseKey }, { submitButton: 'button[type="submit"]' });
-		await this.page.waitForLoadState("networkidle");
-
-		// Step 2: User Account
-		const userFields = { username, email };
-		if (useGumroadEmail) {
-			// Check the use Gumroad email checkbox if it exists
-			try {
-				const checkbox = this.page.locator('input[name="use_gumroad_email"]');
-				await checkbox.check();
-			} catch (error) {
-				this.log("Use Gumroad email checkbox not found", "warn");
-			}
-		}
-		await this.fillForm(userFields, { submitButton: 'button[type="submit"]' });
-		await this.page.waitForLoadState("networkidle");
-
-		// Step 3: Password
-		await this.fillForm({
-			password,
-			confirm_password: password
-		}, { submitButton: 'button[type="submit"]' });
-		await this.page.waitForLoadState("networkidle");
-
-		// Step 4: OpenAI (optional)
-		if (openaiKey) {
-			await this.fillForm({ openai_api_key: openaiKey }, { submitButton: 'button[type="submit"]' });
-		} else {
-			// Try to skip or submit empty
-			const skipButton = this.page.locator('button:has-text("Skip"), button:has-text("Continue without AI")');
-			try {
-				await skipButton.click();
-			} catch (error) {
-				await this.page.click('button[type="submit"]');
-			}
-		}
-		await this.page.waitForLoadState("networkidle");
-
-		// Should be logged in and redirected
-		await this.page.waitForURL(url => !url.href.includes("/setup") && !url.href.includes("/login"), {
-			timeout: 30000
-		});
-
-		this.log("✅ Onboarding completed successfully");
-	}
 
 	/**
 	 * Reset database to fresh state (no users)

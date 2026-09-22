@@ -21,8 +21,8 @@ test.describe("Logout Flow", () => {
     await page.locator('button[type="submit"]').click();
     console.log("Submitted login form");
 
-    // Wait for response
-    await page.waitForLoadState("networkidle");
+    // Wait for the redirect after login
+    await page.waitForURL(/\/admin/, { timeout: 15000 });
     console.log("Current URL after login attempt:", page.url());
 
     // Login MUST succeed - this is not optional

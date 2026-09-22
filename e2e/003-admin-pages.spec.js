@@ -271,7 +271,9 @@ test.describe.serial("Admin Pages Accessibility Tests", () => {
 			// Submit the form
 			const saveButton = page.locator('button:has-text("Save GeoLite Settings")');
 			await saveButton.click();
-			await page.waitForLoadState("networkidle", { timeout: 10000 });
+
+			// Wait for the PRG redirect to render the flash
+			await expect(page.getByRole("alert").first()).toBeVisible({ timeout: 10000 });
 
 			// Check for success message
 			const successMessages = await helpers.checkForMessages("success");

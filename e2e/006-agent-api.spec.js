@@ -60,7 +60,8 @@ test.describe.serial("Agent API Tests", () => {
 			// Click generate button
 			const generateButton = page.locator('button:has-text("Generate API Key")');
 			await generateButton.click();
-			await page.waitForLoadState("networkidle", { timeout: 10000 });
+			// The generated key replaces the placeholder in the key field
+			await expect(page.locator("input[readonly]").first()).not.toHaveValue("No API key generated", { timeout: 10000 });
 			helpers.log("Generated new API key");
 		}
 
@@ -68,7 +69,8 @@ test.describe.serial("Agent API Tests", () => {
 		const revealButton = page.locator('button:has-text("Reveal")');
 		if (await revealButton.count() > 0) {
 			await revealButton.click();
-			await page.waitForLoadState("networkidle", { timeout: 10000 });
+			// The full key replaces the masked one once Reveal is gone.
+			await expect(revealButton).toHaveCount(0, { timeout: 10000 });
 			helpers.log("Revealed API key");
 		}
 
@@ -91,7 +93,8 @@ test.describe.serial("Agent API Tests", () => {
 			const revealButton = page.locator('button:has-text("Reveal")');
 			if (await revealButton.count() > 0) {
 				await revealButton.click();
-				await page.waitForLoadState("networkidle", { timeout: 10000 });
+				// The full key replaces the masked one once Reveal is gone.
+				await expect(revealButton).toHaveCount(0, { timeout: 10000 });
 			}
 
 			const keyInput = page.locator('input[readonly]').first();
@@ -135,7 +138,8 @@ test.describe.serial("Agent API Tests", () => {
 			const revealButton = page.locator('button:has-text("Reveal")');
 			if (await revealButton.count() > 0) {
 				await revealButton.click();
-				await page.waitForLoadState("networkidle", { timeout: 10000 });
+				// The full key replaces the masked one once Reveal is gone.
+				await expect(revealButton).toHaveCount(0, { timeout: 10000 });
 			}
 
 			const keyInput = page.locator('input[readonly]').first();
@@ -175,7 +179,8 @@ test.describe.serial("Agent API Tests", () => {
 			const revealButton = page.locator('button:has-text("Reveal")');
 			if (await revealButton.count() > 0) {
 				await revealButton.click();
-				await page.waitForLoadState("networkidle", { timeout: 10000 });
+				// The full key replaces the masked one once Reveal is gone.
+				await expect(revealButton).toHaveCount(0, { timeout: 10000 });
 			}
 
 			const keyInput = page.locator('input[readonly]').first();
@@ -218,7 +223,8 @@ test.describe.serial("Agent API Tests", () => {
 			const revealButton = page.locator('button:has-text("Reveal")');
 			if (await revealButton.count() > 0) {
 				await revealButton.click();
-				await page.waitForLoadState("networkidle", { timeout: 10000 });
+				// The full key replaces the masked one once Reveal is gone.
+				await expect(revealButton).toHaveCount(0, { timeout: 10000 });
 			}
 
 			const keyInput = page.locator('input[readonly]').first();
@@ -255,7 +261,8 @@ test.describe.serial("Agent API Tests", () => {
 		const revealButton = page.locator('button:has-text("Reveal")');
 		if (await revealButton.count() > 0) {
 			await revealButton.click();
-			await page.waitForLoadState("networkidle", { timeout: 10000 });
+			// The full key replaces the masked one once Reveal is gone.
+			await expect(revealButton).toHaveCount(0, { timeout: 10000 });
 		}
 
 		const keyInput = page.locator('input[readonly]').first();
