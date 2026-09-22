@@ -311,17 +311,13 @@ test.describe("Website Management Flow", () => {
 		// Submit the form
 		const saveButton = page.locator('button[type="submit"]');
 		await saveButton.click();
-		await page.waitForLoadState("networkidle", { timeout: 10000 });
 		helpers.log("Form submitted");
 
-		// Verify we stayed on edit page or got success message
-		const afterSubmitUrl = page.url();
-		expect(afterSubmitUrl).toContain(`/admin/websites/${websiteId}/edit`);
-
-		// Check for success flash message
-		const successMessages = await helpers.checkForMessages("success");
-		expect(successMessages.length).toBeGreaterThan(0);
-		helpers.log(`✅ Website settings saved successfully: ${successMessages[0]}`);
+		// Wait for the PRG redirect to render the flash. networkidle is not enough:
+		// it can resolve before Inertia's request starts.
+		await expect(page.getByRole("alert")).toContainText("Website updated successfully");
+		expect(page.url()).toContain(`/admin/websites/${websiteId}/edit`);
+		helpers.log("✅ Website settings saved successfully");
 	});
 });
 
