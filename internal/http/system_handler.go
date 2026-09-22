@@ -2,7 +2,6 @@ package http
 
 import (
 	"fmt"
-	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -19,63 +18,49 @@ import (
 	"github.com/karloscodes/cartridge/cache"
 )
 
-// SystemExportDatabaseAction exports the SQLite database file
+// SystemExportDatabaseAction exports a consistent snapshot of the database.
+//
+// The database runs in WAL mode, so recent commits can still be in the -wal
+// file; copying the .db file alone would miss them, and a write during the
+// copy would leave it torn. VACUUM INTO writes a complete, consistent copy.
 func SystemExportDatabaseAction(ctx *cartridge.Context) error {
-	// Type-assert to get fusionaly-specific config fields
 	cfg := ctx.Config.(*config.Config)
+	dbPath := cfg.GetDatabasePath()
 
-	// Get the full database file path from config
-	dbPath := cfg.DatabaseName
-	if dbPath == "" {
-		// Fallback to constructed path if not set
-		dbPath = filepath.Join(cfg.DatabasePath, fmt.Sprintf("%s-%s.db", cfg.AppName, cfg.Environment))
-	}
-
-	// Check if database file exists
-	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
-		ctx.Logger.Error("Database file not found", slog.String("path", dbPath))
-		return ctx.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"success": false,
-			"error":   "Database file not found",
-		})
-	}
-
-	// Open the database file
-	file, err := os.Open(dbPath)
-	if err != nil {
-		ctx.Logger.Error("Failed to open database file", slog.Any("error", err))
+	// Next to the database: same volume, and room for a copy of its size.
+	snapshot := filepath.Join(filepath.Dir(dbPath), fmt.Sprintf(".export-%d.db", time.Now().UnixNano()))
+	if err := ctx.DB().Exec("VACUUM INTO ?", snapshot).Error; err != nil {
+		os.Remove(snapshot)
+		ctx.Logger.Error("Failed to snapshot database", slog.Any("error", err))
 		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"success": false,
-			"error":   "Failed to read database file",
+			"error":   "Failed to export database",
 		})
 	}
-	defer file.Close()
 
-	// Get file info for size
-	fileInfo, err := file.Stat()
+	file, err := os.Open(snapshot)
+	// Unlink at once: the open file stays readable, and nothing is left
+	// behind even if the client disconnects mid-download.
+	os.Remove(snapshot)
 	if err != nil {
-		ctx.Logger.Error("Failed to get database file info", slog.Any("error", err))
+		ctx.Logger.Error("Failed to open database snapshot", slog.Any("error", err))
 		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"success": false,
-			"error":   "Failed to get database file info",
+			"error":   "Failed to export database",
 		})
 	}
-
-	// Set headers for file download
-	ctx.Set("Content-Type", "application/octet-stream")
-	ctx.Set("Content-Disposition", "attachment; filename=fusionaly-backup.db")
-	ctx.Set("Content-Length", string(rune(fileInfo.Size())))
-
-	ctx.Logger.Info("Database exported", slog.String("path", dbPath), slog.Int64("size", fileInfo.Size()))
-
-	// Stream the file to the response
-	_, err = io.Copy(ctx.Response().BodyWriter(), file)
+	info, err := file.Stat()
 	if err != nil {
-		ctx.Logger.Error("Failed to stream database file", slog.Any("error", err))
+		file.Close()
 		return err
 	}
 
-	return nil
+	ctx.Set("Content-Type", "application/octet-stream")
+	ctx.Set("Content-Disposition", fmt.Sprintf("attachment; filename=fusionaly-backup-%s.db", time.Now().UTC().Format("2006-01-02")))
+	ctx.Logger.Info("Database exported", slog.Int64("size", info.Size()))
+
+	// fasthttp sets Content-Length from the size and closes the file when done.
+	return ctx.SendStream(file, int(info.Size()))
 }
 
 // AdministrationIndexAction redirects to the first administration page

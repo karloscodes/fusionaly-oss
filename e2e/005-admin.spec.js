@@ -231,4 +231,17 @@ test.describe.serial("Administration Pages Tests", () => {
 
 		helpers.log("Database export button is available");
 	});
+
+	test("should export a complete SQLite snapshot, recent writes included", async ({ page }) => {
+		// A write this recent is usually still in the WAL file, not the main .db file.
+		const domain = await helpers.createTestWebsite(`export-${Date.now()}.com`);
+
+		const response = await page.request.get("/admin/api/system/export-database");
+
+		expect(response.status()).toBe(200);
+		const body = await response.body();
+		expect(body.subarray(0, 16).toString("latin1")).toBe("SQLite format 3\u0000");
+		expect(Number(response.headers()["content-length"])).toBe(body.length);
+		expect(body.includes(Buffer.from(domain))).toBe(true);
+	});
 });
