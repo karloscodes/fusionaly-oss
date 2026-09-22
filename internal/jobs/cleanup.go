@@ -4,9 +4,11 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/karloscodes/cartridge/sqlite"
+	"gorm.io/gorm"
+
 	"fusionaly/internal/config"
 	"fusionaly/internal/database"
-	"fusionaly/internal/events"
 )
 
 // CleanupJob handles cleanup of old ingested events
@@ -35,44 +37,40 @@ func (j *CleanupJob) Run() error {
 		slog.Int("retention_days", retentionDays),
 		slog.Time("cutoff_date", cutoffDate))
 
-	// Count events to be deleted first
-	var countToDelete int64
-	if err := db.Model(&events.IngestedEvent{}).
-		Where("processed = 1 AND created_at < ?", cutoffDate).
-		Count(&countToDelete).Error; err != nil {
-		j.logger.Error("Failed to count old ingested events", slog.Any("error", err))
-		return err
-	}
-
-	if countToDelete == 0 {
-		j.logger.Debug("No old ingested events to clean up")
-		return nil
-	}
-
-	// Delete in batches to avoid locking the database for too long
-	batchSize := 1000
+	// Delete in batches inside the serialized writer, so ingestion is never
+	// blocked for long. GORM drops .Limit() on a SQLite DELETE, so the batch
+	// is a subquery. Failed events (processed = 2) age out the same way.
+	const batchSize = 1000
 	totalDeleted := int64(0)
 
 	for {
-		result := db.Where("processed = 1 AND created_at < ?", cutoffDate).
-			Limit(batchSize).
-			Delete(&events.IngestedEvent{})
-
-		if result.Error != nil {
-			j.logger.Error("Failed to delete old ingested events",
-				slog.Any("error", result.Error),
-				slog.Int64("deleted_so_far", totalDeleted))
+		var deleted int64
+		err := sqlite.PerformWrite(j.logger, db, func(tx *gorm.DB) error {
+			result := tx.Exec(`DELETE FROM ingested_events WHERE id IN (
+				SELECT id FROM ingested_events WHERE processed IN (1, 2) AND created_at < ? LIMIT ?)`,
+				cutoffDate, batchSize)
+			deleted = result.RowsAffected
 			return result.Error
+		})
+		if err != nil {
+			j.logger.Error("Failed to delete old ingested events",
+				slog.Any("error", err),
+				slog.Int64("deleted_so_far", totalDeleted))
+			return err
 		}
 
-		totalDeleted += result.RowsAffected
-
-		if result.RowsAffected < int64(batchSize) {
+		totalDeleted += deleted
+		if deleted < batchSize {
 			break
 		}
 
 		// Small delay between batches to prevent database lock contention
 		time.Sleep(100 * time.Millisecond)
+	}
+
+	if totalDeleted == 0 {
+		j.logger.Debug("No old ingested events to clean up")
+		return nil
 	}
 
 	j.logger.Info("Cleaned up old ingested events",

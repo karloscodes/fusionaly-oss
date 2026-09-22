@@ -403,7 +403,7 @@ func ProcessAllTestEvents(dbManager cartridge.DBManager, logger *slog.Logger) er
 		if err != nil {
 			return err
 		}
-		if len(result.ProcessedEvents) == 0 {
+		if result.Fetched == 0 {
 			break
 		}
 		time.Sleep(100 * time.Millisecond)

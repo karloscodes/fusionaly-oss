@@ -531,9 +531,15 @@ func (s *Seeder) generateRealisticData(ctx context.Context, website *websites.We
 // processAllEvents processes all generated events (mimics a background job)
 func (s *Seeder) processAllEvents() error {
 	batchSize := 100 // Or get from config
-	_, err := events.ProcessUnprocessedEvents(s.DBManager, s.Logger, batchSize)
-	if err != nil {
-		return fmt.Errorf("failed during event processing: %w", err)
+	// Each call processes up to events.MaxEventsPerRun; loop until drained.
+	for {
+		result, err := events.ProcessUnprocessedEvents(s.DBManager, s.Logger, batchSize)
+		if err != nil {
+			return fmt.Errorf("failed during event processing: %w", err)
+		}
+		if result.Fetched == 0 {
+			break
+		}
 	}
 	s.Logger.Info("Event processing step completed")
 	return nil
