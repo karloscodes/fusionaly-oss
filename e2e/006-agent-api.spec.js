@@ -250,6 +250,35 @@ test.describe.serial("Agent API Tests", () => {
 		helpers.log("WITH (CTE) queries work correctly");
 	});
 
+	test("should answer MCP calls with the agent key and refuse them without it", async ({ page, request }) => {
+		if (!apiKey) {
+			await helpers.navigateTo("/admin/administration/agents", { timeout: 30000 });
+			const revealButton = page.locator('button:has-text("Reveal")');
+			if (await revealButton.count() > 0) {
+				await revealButton.click();
+				await page.waitForLoadState("networkidle", { timeout: 10000 });
+			}
+			apiKey = await page.locator('input[readonly]').first().inputValue();
+		}
+		const rpc = (method, params) => ({ jsonrpc: "2.0", id: 1, method, params });
+
+		const unauthorized = await request.post("/mcp", { data: rpc("tools/list", {}) });
+		expect(unauthorized.status()).toBe(401);
+
+		const headers = { Authorization: `Bearer ${apiKey}` };
+		const list = await request.post("/mcp", { headers, data: rpc("tools/list", {}) });
+		expect(list.status()).toBe(200);
+		const tools = (await list.json()).result.tools.map((t) => t.name);
+		expect(tools).toEqual(["list_websites", "whats_new", "get_schema", "query"]);
+
+		const websites = await request.post("/mcp", {
+			headers,
+			data: rpc("tools/call", { name: "list_websites", arguments: {} }),
+		});
+		const text = (await websites.json()).result.content[0].text;
+		expect(text).toContain('"domain":"localhost"');
+	});
+
 	test("should regenerate API key", async ({ page }) => {
 		helpers.log("Testing API key regeneration");
 

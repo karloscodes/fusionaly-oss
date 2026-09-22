@@ -192,6 +192,7 @@ func MountAppRoutes(srv *cartridge.Server) {
 	}
 	srv.Get("/z/api/v1/schema", http.AgentSchemaAction, agentAPIConfig)
 	srv.Post("/z/api/v1/sql", http.AgentSQLAction, agentAPIConfig)
+	srv.Post("/mcp", http.MCPAction, agentAPIConfig)
 
 	// === ONBOARDING ROUTES (PRG pattern) ===
 	srv.Get("/setup", http.OnboardingPageAction, onboardingConfig)
