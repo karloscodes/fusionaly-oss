@@ -71,10 +71,7 @@ func (f *FeedItem) SetMetadata(m map[string]any) {
 
 // AutoMigrate creates or updates the feed tables
 func AutoMigrate(db *gorm.DB) error {
-	if err := db.AutoMigrate(&FeedItem{}); err != nil {
-		return err
-	}
-	return db.AutoMigrate(&FeedBaseline{})
+	return db.AutoMigrate(&FeedItem{})
 }
 
 // GetUserFeed retrieves feed items for all websites the user has access to

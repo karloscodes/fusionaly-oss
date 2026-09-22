@@ -1,28 +1,30 @@
 package feed
 
-import "time"
+import (
+	"math"
+	"slices"
+	"time"
+
+	"gorm.io/gorm"
+)
 
 // SPC Configuration Constants
 const (
-	// Baseline learning
-	BaselineSmoothingFactor = 0.1 // EMA weight for new data (10%)
-	MinSamplesForBaseline   = 20  // Samples needed before trusting baseline
+	// BaselineWeeks is how many past same-weekday days form a baseline.
+	// Comparing a Monday with past Mondays absorbs weekly patterns (B2B sites
+	// peak on weekdays, blogs on weekends).
+	BaselineWeeks = 8
 
-	// Defaults during cold start - calibrated for analytics
-	// With mean=100 and stddev=25:
-	//   - 50% increase (150) → z=2 → warning
-	//   - 50% decrease (50) → z=-2 → warning
-	// This matches the original hardcoded thresholds while enabling learning
-	DefaultMean   = 100.0 // Default visitor count during cold start
-	DefaultStdDev = 25.0  // 25% of mean - matches original 50% spike/drop thresholds
+	// MinBaselineWeeks is how many same-weekday samples we need before we trust
+	// their mean and stddev. Younger sites fall back to the last 7 days.
+	MinBaselineWeeks = 3
 
-	// Control Chart thresholds (z-scores)
-	WarningSigma  = 2.0 // 95% confidence - spike/drop detection
-	CriticalSigma = 3.0 // 99.7% confidence - severe anomaly
+	// SpikeSigma is the z-score a day must reach to count as a spike (~95%).
+	SpikeSigma = 2.0
 
 	// ColdStartVariance is the assumed coefficient of variation (stddev/mean)
-	// before a learned baseline exists. Day-to-day analytics traffic routinely
-	// swings ±40-50% just from sampling noise. At the old 0.25 a z=2 alert
+	// while a site has fewer than MinBaselineWeeks weeks of history. Day-to-day
+	// analytics traffic routinely swings ±40-50% just from sampling noise. At the old 0.25 a z=2 alert
 	// fired on an ordinary +50% day — pure noise. At 0.45, a day must be about
 	// +90% (nearly double) before it counts as a spike, and about -90% before
 	// it counts as a drop. Combined with the absolute volume floors below, this
@@ -74,42 +76,145 @@ const (
 	MinDroppingPageVisitors = 20
 )
 
-// HourOfWeek returns 0-167 for the current hour-of-week.
-// Monday 00:00 = 0, Sunday 23:00 = 167.
-// This allows baselines to adapt to weekly patterns (e.g., weekday vs weekend traffic).
-func HourOfWeek(t time.Time) int {
-	weekday := int(t.Weekday())
-	// Convert Sunday=0 to Monday=0 based week
-	if weekday == 0 {
-		weekday = 6 // Sunday becomes 6
-	} else {
-		weekday-- // Mon=0, Tue=1, etc.
-	}
-	return weekday*24 + t.Hour()
+const dateLayout = "2006-01-02"
+
+// Metric is one daily count in a stats table, such as visitors in site_stats
+// or conversions of one goal in event_stats.
+type Metric struct {
+	Table  string // "site_stats", "event_stats", "page_stats"
+	Column string // column to sum per day
+	Filter string // optional extra condition, e.g. "event_name = ?"
+	Args   []any
 }
 
-// SPCIsSpike checks if current value is a statistical spike using z-score.
-// Returns (isSpike, severity) where severity is "warning", "critical", or "".
-func SPCIsSpike(current, mean, stddev float64) (bool, string) {
-	if stddev == 0 {
-		stddev = 1.0 // Prevent division by zero
-	}
-
-	zScore := (current - mean) / stddev
-
-	if zScore >= CriticalSigma {
-		return true, "critical"
-	}
-	if zScore >= WarningSigma {
-		return true, "warning"
-	}
-	return false, ""
+// Baseline is the typical value of a metric on one weekday.
+type Baseline struct {
+	Typical float64 // median of past days
+	Spread  float64 // robust stddev estimate (scaled MAD)
+	Total   float64 // sum over the whole lookback window; 0 means no history
 }
 
-// ZScore calculates the z-score for a value given mean and stddev.
-func ZScore(current, mean, stddev float64) float64 {
-	if stddev == 0 {
-		stddev = 1.0
+// ZScore returns how many spreads current sits above the typical value.
+func (b Baseline) ZScore(current float64) float64 {
+	return (current - b.Typical) / b.Spread
+}
+
+// IsSpike reports whether current is a statistically significant rise.
+func (b Baseline) IsSpike(current float64) bool {
+	return b.ZScore(current) >= SpikeSigma
+}
+
+// BaselineFor computes the baseline for day from the stats tables. It compares
+// day with the same weekday over the last BaselineWeeks weeks. Sites younger
+// than MinBaselineWeeks weeks fall back to the last 7 days with an assumed
+// ColdStartVariance. Nothing is stored: the stats tables are the history.
+//
+// It uses the median and MAD, not the mean and stddev, so a viral day in the
+// window cannot hide the next spike. Up to 3 of 8 samples can be outliers.
+func BaselineFor(db *gorm.DB, websiteID uint, m Metric, day time.Time) Baseline {
+	from := day.AddDate(0, 0, -7*BaselineWeeks)
+	totals := dailyTotals(db, websiteID, m, from, day)
+
+	var total float64
+	for _, v := range totals {
+		total += v
 	}
-	return (current - mean) / stddev
+
+	siteStart := firstTrackedDay(db, websiteID)
+	var sameWeekday []float64
+	for w := 1; w <= BaselineWeeks; w++ {
+		d := day.AddDate(0, 0, -7*w).Format(dateLayout)
+		if d < siteStart {
+			break
+		}
+		sameWeekday = append(sameWeekday, totals[d])
+	}
+
+	if len(sameWeekday) >= MinBaselineWeeks {
+		typical := median(sameWeekday)
+		return Baseline{Typical: typical, Spread: noiseFloor(typical, mad(sameWeekday, typical)), Total: total}
+	}
+
+	// Cold start. The last 7 days mix weekdays and weekends, so their spread
+	// measures the weekly pattern, not noise: assume ColdStartVariance instead.
+	var lastWeek []float64
+	for i := 1; i <= 7; i++ {
+		d := day.AddDate(0, 0, -i).Format(dateLayout)
+		if d < siteStart {
+			break
+		}
+		lastWeek = append(lastWeek, totals[d])
+	}
+	typical := median(lastWeek)
+	return Baseline{Typical: typical, Spread: noiseFloor(typical, typical*ColdStartVariance), Total: total}
+}
+
+// noiseFloor stops a steady metric from producing a near-zero spread, which
+// would turn any small bump into a spike. Counts vary by at least
+// sqrt(typical) (Poisson noise); the floor of 1 covers metrics that are
+// usually zero, where MAD is 0.
+func noiseFloor(typical, spread float64) float64 {
+	return math.Max(spread, math.Sqrt(math.Max(typical, 1)))
+}
+
+// median returns the middle value, or 0 for no values.
+func median(values []float64) float64 {
+	if len(values) == 0 {
+		return 0
+	}
+	sorted := slices.Clone(values)
+	slices.Sort(sorted)
+	mid := len(sorted) / 2
+	if len(sorted)%2 == 0 {
+		return (sorted[mid-1] + sorted[mid]) / 2
+	}
+	return sorted[mid]
+}
+
+// mad returns the median absolute deviation, scaled by 1.4826 so it matches
+// the stddev on normally distributed data.
+func mad(values []float64, center float64) float64 {
+	deviations := make([]float64, len(values))
+	for i, v := range values {
+		deviations[i] = math.Abs(v - center)
+	}
+	return median(deviations) * 1.4826
+}
+
+// dailyTotals returns the metric's total per day in [from, to), keyed by date.
+// Days without rows are absent, and callers read them as zero.
+func dailyTotals(db *gorm.DB, websiteID uint, m Metric, from, to time.Time) map[string]float64 {
+	type row struct {
+		Day   string
+		Total float64
+	}
+	var rows []row
+
+	q := db.Table(m.Table).
+		Select("DATE(hour) AS day, COALESCE(SUM("+m.Column+"), 0) AS total").
+		Where("website_id = ? AND DATE(hour) >= ? AND DATE(hour) < ?",
+			websiteID, from.Format(dateLayout), to.Format(dateLayout))
+	if m.Filter != "" {
+		q = q.Where(m.Filter, m.Args...)
+	}
+	q.Group("DATE(hour)").Scan(&rows)
+
+	totals := make(map[string]float64, len(rows))
+	for _, r := range rows {
+		totals[r.Day] = r.Total
+	}
+	return totals
+}
+
+// firstTrackedDay returns the first date the site received traffic. Weeks
+// before it are not zero-traffic weeks, so they stay out of the baseline.
+func firstTrackedDay(db *gorm.DB, websiteID uint) string {
+	var first *string
+	db.Table("site_stats").
+		Where("website_id = ?", websiteID).
+		Select("MIN(DATE(hour))").Scan(&first)
+	if first == nil {
+		return "9999-12-31"
+	}
+	return *first
 }

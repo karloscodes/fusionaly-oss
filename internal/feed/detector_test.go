@@ -130,6 +130,53 @@ func TestDetector_TrafficSpike(t *testing.T) {
 	assert.Contains(t, items[0].Description, "200 visitors")
 }
 
+// TestDetector_WeeklyPattern covers sites whose traffic follows the week, such as
+// a B2B tool that peaks every Monday. Yesterday is compared with the same weekday,
+// so the usual peak stays quiet and only an unusual one fires.
+func TestDetector_WeeklyPattern(t *testing.T) {
+	seedWeeks := func(db *gorm.DB, yesterday time.Time) {
+		for i := 1; i <= 56; i++ {
+			day := yesterday.AddDate(0, 0, -i)
+			visitors := 100
+			if i%7 == 0 {
+				visitors = 1000 // same weekday as yesterday
+			}
+			db.Exec(`INSERT INTO site_stats (website_id, visitors, hour) VALUES (1, ?, ?)`, visitors, day.Add(12*time.Hour))
+		}
+	}
+	spikes := func(db *gorm.DB) int64 {
+		var count int64
+		db.Model(&feed.FeedItem{}).Where("website_id = ? AND item_type = ?", 1, feed.ItemTypeTrafficSpike).Count(&count)
+		return count
+	}
+
+	t.Run("stays quiet on the usual weekly peak", func(t *testing.T) {
+		db := setupTestDB(t)
+		db.Exec("INSERT INTO websites (id, domain) VALUES (1, 'test.com')")
+		yesterday := time.Now().UTC().AddDate(0, 0, -1).Truncate(24 * time.Hour)
+		seedWeeks(db, yesterday)
+		db.Exec(`INSERT INTO site_stats (website_id, visitors, hour) VALUES (1, 1000, ?)`, yesterday.Add(12*time.Hour))
+
+		err := feed.NewDetector(db, testLogger()).DetectForWebsite(1)
+
+		require.NoError(t, err)
+		assert.Equal(t, int64(0), spikes(db))
+	})
+
+	t.Run("flags a peak well above the usual one", func(t *testing.T) {
+		db := setupTestDB(t)
+		db.Exec("INSERT INTO websites (id, domain) VALUES (1, 'test.com')")
+		yesterday := time.Now().UTC().AddDate(0, 0, -1).Truncate(24 * time.Hour)
+		seedWeeks(db, yesterday)
+		db.Exec(`INSERT INTO site_stats (website_id, visitors, hour) VALUES (1, 2000, ?)`, yesterday.Add(12*time.Hour))
+
+		err := feed.NewDetector(db, testLogger()).DetectForWebsite(1)
+
+		require.NoError(t, err)
+		assert.Equal(t, int64(1), spikes(db))
+	})
+}
+
 // TestDetector_TrafficDrop covers the retuned drop rule: a drop fires only on a
 // real-traffic site (averages >= MinDropVisitors) that falls >= MinDropPercent
 // below its typical day. Small sites and shallow dips stay silent.

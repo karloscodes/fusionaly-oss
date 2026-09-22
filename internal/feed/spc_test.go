@@ -1,284 +1,134 @@
-package feed
+package feed_test
 
 import (
+	"math"
 	"testing"
 	"time"
+
+	"fusionaly/internal/feed"
+
+	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
 )
 
-func TestSPCIsSpike(t *testing.T) {
-	t.Run("returns critical when above 3 sigma", func(t *testing.T) {
-		isSpike, severity := SPCIsSpike(10.0, 2.0, 2.0) // z = (10-2)/2 = 4
+var siteVisitors = feed.Metric{Table: "site_stats", Column: "visitors"}
 
-		if !isSpike {
-			t.Error("expected spike to be detected")
-		}
-		if severity != "critical" {
-			t.Errorf("expected critical, got %s", severity)
-		}
-	})
-
-	t.Run("returns warning when between 2 and 3 sigma", func(t *testing.T) {
-		isSpike, severity := SPCIsSpike(6.5, 2.0, 2.0) // z = (6.5-2)/2 = 2.25
-
-		if !isSpike {
-			t.Error("expected spike to be detected")
-		}
-		if severity != "warning" {
-			t.Errorf("expected warning, got %s", severity)
-		}
-	})
-
-	t.Run("returns false when within normal range", func(t *testing.T) {
-		isSpike, _ := SPCIsSpike(3.0, 2.0, 2.0) // z = (3-2)/2 = 0.5
-
-		if isSpike {
-			t.Error("expected no spike")
-		}
-	})
-
-	t.Run("handles zero stddev", func(t *testing.T) {
-		isSpike, severity := SPCIsSpike(5.0, 2.0, 0.0) // Should use 1.0
-
-		if !isSpike {
-			t.Error("expected spike with zero stddev fallback")
-		}
-		if severity != "critical" {
-			t.Errorf("expected critical, got %s", severity)
-		}
-	})
+func insertVisitors(db *gorm.DB, day time.Time, visitors int) {
+	db.Exec(`INSERT INTO site_stats (website_id, visitors, hour) VALUES (1, ?, ?)`, visitors, day.Add(12*time.Hour))
 }
 
-func TestHourOfWeek(t *testing.T) {
-	t.Run("monday midnight is 0", func(t *testing.T) {
-		// 2026-02-09 is a Monday
-		monday := time.Date(2026, 2, 9, 0, 0, 0, 0, time.UTC)
-
-		if got := HourOfWeek(monday); got != 0 {
-			t.Errorf("expected 0, got %d", got)
-		}
-	})
-
-	t.Run("monday 12:00 is 12", func(t *testing.T) {
-		monday := time.Date(2026, 2, 9, 12, 0, 0, 0, time.UTC)
-
-		if got := HourOfWeek(monday); got != 12 {
-			t.Errorf("expected 12, got %d", got)
-		}
-	})
-
-	t.Run("tuesday midnight is 24", func(t *testing.T) {
-		tuesday := time.Date(2026, 2, 10, 0, 0, 0, 0, time.UTC)
-
-		if got := HourOfWeek(tuesday); got != 24 {
-			t.Errorf("expected 24, got %d", got)
-		}
-	})
-
-	t.Run("sunday 23:00 is 167", func(t *testing.T) {
-		// 2026-02-15 is a Sunday
-		sunday := time.Date(2026, 2, 15, 23, 0, 0, 0, time.UTC)
-
-		if got := HourOfWeek(sunday); got != 167 {
-			t.Errorf("expected 167, got %d", got)
-		}
-	})
-
-	t.Run("saturday noon is 156", func(t *testing.T) {
-		// Saturday = day 5 (0-indexed from Monday), hour 12
-		// 5 * 24 + 12 = 132
-		saturday := time.Date(2026, 2, 14, 12, 0, 0, 0, time.UTC)
-
-		if got := HourOfWeek(saturday); got != 132 {
-			t.Errorf("expected 132, got %d", got)
-		}
-	})
+func yesterdayUTC() time.Time {
+	return time.Now().UTC().AddDate(0, 0, -1).Truncate(24 * time.Hour)
 }
 
-func TestZScore(t *testing.T) {
-	t.Run("calculates positive z-score", func(t *testing.T) {
-		z := ZScore(150.0, 100.0, 25.0) // (150-100)/25 = 2
-
-		if z != 2.0 {
-			t.Errorf("expected 2.0, got %f", z)
+func TestBaselineFor(t *testing.T) {
+	t.Run("compares with the same weekday once the site has 3+ weeks", func(t *testing.T) {
+		db := setupTestDB(t)
+		yesterday := yesterdayUTC()
+		weekdayValues := []int{900, 1000, 1100, 1000, 900, 1000, 1100, 1000}
+		for w, v := range weekdayValues {
+			for d := 0; d < 7; d++ {
+				day := yesterday.AddDate(0, 0, -7*(w+1)+d)
+				if d == 0 {
+					insertVisitors(db, day, v) // same weekday as yesterday
+				} else {
+					insertVisitors(db, day, 100)
+				}
+			}
 		}
+
+		b := feed.BaselineFor(db, 1, siteVisitors, yesterday)
+
+		assert.InDelta(t, 1000, b.Typical, 0.001)
+		assert.InDelta(t, 50*1.4826, b.Spread, 0.001)
 	})
 
-	t.Run("calculates negative z-score", func(t *testing.T) {
-		z := ZScore(50.0, 100.0, 25.0) // (50-100)/25 = -2
-
-		if z != -2.0 {
-			t.Errorf("expected -2.0, got %f", z)
+	t.Run("leaves out weeks before the site's first day", func(t *testing.T) {
+		db := setupTestDB(t)
+		yesterday := yesterdayUTC()
+		for i := 1; i <= 21; i++ { // exactly 3 weeks of history
+			insertVisitors(db, yesterday.AddDate(0, 0, -i), 300)
 		}
+
+		b := feed.BaselineFor(db, 1, siteVisitors, yesterday)
+
+		assert.InDelta(t, 300, b.Typical, 0.001, "zero weeks before launch must not drag the baseline down")
 	})
 
-	t.Run("handles zero stddev", func(t *testing.T) {
-		z := ZScore(5.0, 2.0, 0.0) // Should use stddev=1
-
-		if z != 3.0 {
-			t.Errorf("expected 3.0, got %f", z)
-		}
-	})
-}
-
-// =============================================================================
-// SCENARIO TESTS: Cold Start vs Learned Baseline
-// =============================================================================
-
-func TestSPC_ColdStartScenario(t *testing.T) {
-	// Scenario: New website with insufficient data
-	// System should use defaults (mean=100, stddev=25)
-	// This calibration matches original 50% spike/drop thresholds
-
-	t.Run("uses conservative defaults during cold start", func(t *testing.T) {
-		baseline := &FeedBaseline{
-			Mean:        500.0, // Website's actual mean, but we don't trust it yet
-			StdDev:      50.0,
-			SampleCount: 5, // Below MinSamplesForBaseline (20)
+	t.Run("ignores a viral day in the weekday history", func(t *testing.T) {
+		db := setupTestDB(t)
+		yesterday := yesterdayUTC()
+		weekdayValues := []int{900, 1000, 1100, 5000, 900, 1000, 1100, 1000}
+		for w, v := range weekdayValues {
+			insertVisitors(db, yesterday.AddDate(0, 0, -7*(w+1)), v)
 		}
 
-		mean, stddev := GetEffectiveBaseline(baseline)
+		b := feed.BaselineFor(db, 1, siteVisitors, yesterday)
 
-		if mean != DefaultMean {
-			t.Errorf("cold start should use default mean %f, got %f", DefaultMean, mean)
-		}
-		if stddev != DefaultStdDev {
-			t.Errorf("cold start should use default stddev %f, got %f", DefaultStdDev, stddev)
-		}
+		assert.InDelta(t, 1000, b.Typical, 0.001)
+		assert.True(t, b.IsSpike(1500), "a past viral day must not hide the next surge")
 	})
 
-	t.Run("200 visitors triggers spike during cold start", func(t *testing.T) {
-		// With defaults (mean=100, stddev=25), 200 gives z-score = (200-100)/25 = 4
-		// This should be critical (> 3 sigma)
-		baseline := &FeedBaseline{SampleCount: 5}
-		mean, stddev := GetEffectiveBaseline(baseline)
-
-		isSpike, severity := SPCIsSpike(200.0, mean, stddev)
-
-		if !isSpike || severity != "critical" {
-			t.Errorf("200 visitors during cold start should be critical, got spike=%v severity=%s", isSpike, severity)
+	t.Run("ignores a viral day during cold start", func(t *testing.T) {
+		db := setupTestDB(t)
+		yesterday := yesterdayUTC()
+		for i, v := range []int{100, 100, 1500, 100, 100, 100} {
+			insertVisitors(db, yesterday.AddDate(0, 0, -(i+1)), v)
 		}
+
+		b := feed.BaselineFor(db, 1, siteVisitors, yesterday)
+
+		assert.InDelta(t, 100, b.Typical, 0.001)
+		assert.True(t, b.IsSpike(300))
 	})
 
-	t.Run("140 visitors is within normal range during cold start", func(t *testing.T) {
-		// With defaults (mean=100, stddev=25), 140 gives z-score = (140-100)/25 = 1.6
-		// This is below warning threshold (2 sigma)
-		baseline := &FeedBaseline{SampleCount: 5}
-		mean, stddev := GetEffectiveBaseline(baseline)
-
-		isSpike, _ := SPCIsSpike(140.0, mean, stddev)
-
-		if isSpike {
-			t.Error("140 visitors during cold start should NOT trigger spike (z=1.6 < 2)")
-		}
-	})
-}
-
-func TestSPC_LearnedBaselineScenario(t *testing.T) {
-	// Scenario: Website with enough data to trust baseline
-	// Website normally gets 500 visitors ± 50
-
-	t.Run("uses learned values after enough samples", func(t *testing.T) {
-		baseline := &FeedBaseline{
-			Mean:        500.0,
-			StdDev:      50.0,
-			SampleCount: 30,
+	t.Run("falls back to the last 7 days on a young site", func(t *testing.T) {
+		db := setupTestDB(t)
+		yesterday := yesterdayUTC()
+		for i := 1; i <= 7; i++ {
+			insertVisitors(db, yesterday.AddDate(0, 0, -i), 100)
 		}
 
-		mean, stddev := GetEffectiveBaseline(baseline)
+		b := feed.BaselineFor(db, 1, siteVisitors, yesterday)
 
-		if mean != 500.0 {
-			t.Errorf("should use learned mean 500.0, got %f", mean)
-		}
-		if stddev != 50.0 {
-			t.Errorf("should use learned stddev 50.0, got %f", stddev)
-		}
+		assert.InDelta(t, 100, b.Typical, 0.001)
+		assert.InDelta(t, 100*feed.ColdStartVariance, b.Spread, 0.001)
 	})
 
-	t.Run("650 visitors is critical for stable website", func(t *testing.T) {
-		// Website normally at 500 ± 50
-		// 650 gives z-score = (650-500)/50 = 3, at critical threshold
-		baseline := &FeedBaseline{
-			Mean:        500.0,
-			StdDev:      50.0,
-			SampleCount: 30,
-		}
-		mean, stddev := GetEffectiveBaseline(baseline)
+	t.Run("averages only the days since a brand-new site started", func(t *testing.T) {
+		db := setupTestDB(t)
+		yesterday := yesterdayUTC()
+		insertVisitors(db, yesterday.AddDate(0, 0, -1), 100)
+		insertVisitors(db, yesterday.AddDate(0, 0, -2), 100)
 
-		isSpike, severity := SPCIsSpike(651.0, mean, stddev)
+		b := feed.BaselineFor(db, 1, siteVisitors, yesterday)
 
-		if !isSpike || severity != "critical" {
-			t.Errorf("651 visitors for 500±50 website should be critical, got spike=%v severity=%s", isSpike, severity)
-		}
+		assert.InDelta(t, 100, b.Typical, 0.001)
 	})
 
-	t.Run("600 visitors is warning for stable website", func(t *testing.T) {
-		// Website normally at 500 ± 50
-		// 600 gives z-score = (600-500)/50 = 2, at warning threshold
-		baseline := &FeedBaseline{
-			Mean:        500.0,
-			StdDev:      50.0,
-			SampleCount: 30,
+	t.Run("floors stddev at Poisson noise for a perfectly steady metric", func(t *testing.T) {
+		db := setupTestDB(t)
+		yesterday := yesterdayUTC()
+		for i := 1; i <= 56; i++ {
+			insertVisitors(db, yesterday.AddDate(0, 0, -i), 400)
 		}
-		mean, stddev := GetEffectiveBaseline(baseline)
 
-		isSpike, severity := SPCIsSpike(601.0, mean, stddev)
+		b := feed.BaselineFor(db, 1, siteVisitors, yesterday)
 
-		if !isSpike || severity != "warning" {
-			t.Errorf("601 visitors for 500±50 website should be warning, got spike=%v severity=%s", isSpike, severity)
-		}
+		assert.InDelta(t, math.Sqrt(400), b.Spread, 0.001)
+		assert.False(t, b.IsSpike(430), "a +30 wobble on 400/day is noise")
+		assert.True(t, b.IsSpike(441))
 	})
 
-	t.Run("550 visitors is normal for stable website", func(t *testing.T) {
-		// Website normally at 500 ± 50
-		// 550 gives z-score = (550-500)/50 = 1, within normal range
-		baseline := &FeedBaseline{
-			Mean:        500.0,
-			StdDev:      50.0,
-			SampleCount: 30,
-		}
-		mean, stddev := GetEffectiveBaseline(baseline)
+	t.Run("reports no history when the metric never happened", func(t *testing.T) {
+		db := setupTestDB(t)
+		yesterday := yesterdayUTC()
+		insertVisitors(db, yesterday.AddDate(0, 0, -3), 50)
+		signups := feed.Metric{Table: "event_stats", Column: "visitors_count", Filter: "event_name = ?", Args: []any{"signup"}}
+		db.Exec(`INSERT INTO event_stats (website_id, event_name, visitors_count, hour) VALUES (1, 'purchase', 5, ?)`, yesterday.AddDate(0, 0, -3))
 
-		isSpike, _ := SPCIsSpike(550.0, mean, stddev)
+		b := feed.BaselineFor(db, 1, signups, yesterday)
 
-		if isSpike {
-			t.Error("550 visitors for 500±50 website should be normal (z=1)")
-		}
-	})
-}
-
-func TestSPC_HighVarianceWebsite(t *testing.T) {
-	// Scenario: Website with naturally high variance
-	// E-commerce site with mean 1000 and stddev 300
-
-	t.Run("1500 visitors is normal for high-variance site", func(t *testing.T) {
-		// 1000 ± 300, so 1500 is z-score = (1500-1000)/300 = 1.67
-		baseline := &FeedBaseline{
-			Mean:        1000.0,
-			StdDev:      300.0,
-			SampleCount: 50,
-		}
-		mean, stddev := GetEffectiveBaseline(baseline)
-
-		isSpike, _ := SPCIsSpike(1500.0, mean, stddev)
-
-		if isSpike {
-			t.Error("1500 visitors for 1000±300 site should be normal (z<2)")
-		}
-	})
-
-	t.Run("2000 visitors triggers critical for high-variance site", func(t *testing.T) {
-		// 1000 ± 300, so 2000 is z-score = (2000-1000)/300 = 3.33, critical
-		baseline := &FeedBaseline{
-			Mean:        1000.0,
-			StdDev:      300.0,
-			SampleCount: 50,
-		}
-		mean, stddev := GetEffectiveBaseline(baseline)
-
-		isSpike, severity := SPCIsSpike(2000.0, mean, stddev)
-
-		if !isSpike || severity != "critical" {
-			t.Errorf("2000 visitors for 1000±300 site should be critical, got spike=%v severity=%s", isSpike, severity)
-		}
+		assert.Zero(t, b.Total, "other events must not count toward this goal")
 	})
 }

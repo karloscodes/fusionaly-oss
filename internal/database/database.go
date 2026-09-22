@@ -79,7 +79,6 @@ func (dm *DBManager) MigrateDatabase() error {
 			&onboarding.OnboardingSession{},
 			&annotations.Annotation{},
 			&feed.FeedItem{},
-			&feed.FeedBaseline{},
 			&ai.SavedQuery{},
 			&ai.AIQueryCache{},
 		)
@@ -102,6 +101,13 @@ func (dm *DBManager) MigrateDatabase() error {
 	// run on every boot; it only ever deletes drops the current rule won't produce.
 	if err := feed.CleanupLegacyDrops(db); err != nil {
 		dm.logger.Error("Failed to clean up legacy feed drops", slog.Any("error", err))
+		return err
+	}
+
+	// feed_baselines held the old EMA baselines. Baselines are now computed from
+	// the stats tables on demand, so the table is dead weight.
+	if err := db.Migrator().DropTable("feed_baselines"); err != nil {
+		dm.logger.Error("Failed to drop legacy feed_baselines table", slog.Any("error", err))
 		return err
 	}
 

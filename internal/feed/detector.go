@@ -50,7 +50,7 @@ func (d *Detector) DetectForWebsite(websiteID uint) error {
 	now := time.Now()
 	yesterday := now.AddDate(0, 0, -1).Truncate(24 * time.Hour)
 
-	// Traffic changes (compare yesterday vs average of 7 days before)
+	// Traffic changes (compare yesterday vs the same weekday in past weeks)
 	d.detectTrafficChanges(websiteID, yesterday)
 
 	// New referrers (first-time sources with significant traffic)
@@ -76,8 +76,8 @@ func (d *Detector) DetectForWebsite(websiteID uint) error {
 	return nil
 }
 
-// detectTrafficChanges uses SPC to detect statistically significant traffic changes.
-// Replaces hardcoded thresholds with adaptive z-score based detection.
+// detectTrafficChanges uses SPC to detect statistically significant traffic changes
+// against the same weekday in past weeks.
 func (d *Detector) detectTrafficChanges(websiteID uint, yesterday time.Time) {
 	// Get yesterday's visitors
 	var yesterdayVisitors int64
@@ -89,41 +89,24 @@ func (d *Detector) detectTrafficChanges(websiteID uint, yesterday time.Time) {
 		return
 	}
 
-	// Get baseline stats for this website's daily visitors
-	hourOfWeek := HourOfWeek(yesterday.Add(12 * time.Hour))
-	baseline := GetOrCreateBaseline(d.db, websiteID, "daily_visitors", hourOfWeek)
-
-	var mean, stddev float64
-	if baseline.SampleCount >= MinSamplesForBaseline {
-		// Use learned baseline
-		mean, stddev = baseline.Mean, baseline.StdDev
-	} else {
-		// Cold start: calculate from historical data
-		weekBefore := yesterday.AddDate(0, 0, -7)
-		var weekVisitors int64
-		d.db.Table("site_stats").
-			Where("website_id = ? AND DATE(hour) >= DATE(?) AND DATE(hour) < DATE(?)", websiteID, weekBefore, yesterday).
-			Select("COALESCE(SUM(visitors), 0)").Scan(&weekVisitors)
-
-		if weekVisitors == 0 {
-			return
-		}
-		mean = float64(weekVisitors) / 7
-		stddev = mean * ColdStartVariance // Wide cold-start variance to avoid flagging normal daily swings
+	baseline := BaselineFor(d.db, websiteID, Metric{Table: "site_stats", Column: "visitors"}, yesterday)
+	if baseline.Total == 0 {
+		return
 	}
+	typical := baseline.Typical
 
 	// Calculate z-score and percent change for display
-	zScore := ZScore(float64(yesterdayVisitors), mean, stddev)
+	zScore := baseline.ZScore(float64(yesterdayVisitors))
 	percentChange := 0.0
-	if mean > 0 {
-		percentChange = (float64(yesterdayVisitors) - mean) / mean * 100
+	if typical > 0 {
+		percentChange = (float64(yesterdayVisitors) - typical) / typical * 100
 	}
 
 	// Traffic spike: z-score >= 2 AND meaningful absolute volume.
 	// The volume floor keeps low-traffic sites quiet: a jump from 2 to 6
 	// visitors is statistically a "spike" but is not worth a feed item.
-	if isSpike, _ := SPCIsSpike(float64(yesterdayVisitors), mean, stddev); isSpike && yesterdayVisitors >= MinSpikeVisitors {
-		desc := formatChange(yesterdayVisitors, int64(mean), "visitors")
+	if baseline.IsSpike(float64(yesterdayVisitors)) && yesterdayVisitors >= MinSpikeVisitors {
+		desc := formatChange(yesterdayVisitors, int64(typical), "visitors")
 		item := &FeedItem{
 			WebsiteID:   websiteID,
 			ItemType:    ItemTypeTrafficSpike,
@@ -135,7 +118,7 @@ func (d *Detector) detectTrafficChanges(websiteID uint, yesterday time.Time) {
 		}
 		item.SetMetadata(map[string]any{
 			"visitors":      yesterdayVisitors,
-			"avgVisitors":   int64(mean),
+			"avgVisitors":   int64(typical),
 			"percentChange": percentChange,
 			"zScore":        zScore,
 		})
@@ -149,19 +132,19 @@ func (d *Detector) detectTrafficChanges(websiteID uint, yesterday time.Time) {
 	// average >= MinDropVisitors) AND magnitude (yesterday >= MinDropPercent below
 	// the typical day). We deliberately do NOT use a z-score: SPC is scale-free and
 	// flags an 11→1 dip on a tiny site as "significant" noise.
-	if mean >= MinDropVisitors && percentChange <= -MinDropPercent {
+	if typical >= MinDropVisitors && percentChange <= -MinDropPercent {
 		item := &FeedItem{
 			WebsiteID:   websiteID,
 			ItemType:    ItemTypeTrafficDrop,
 			Title:       "Slow day",
-			Description: fmt.Sprintf("%d visitors (vs %d avg).", yesterdayVisitors, int64(mean)),
+			Description: fmt.Sprintf("%d visitors (vs %d avg).", yesterdayVisitors, int64(typical)),
 			DetectedAt:  time.Now(),
 			PeriodStart: yesterday,
 			PeriodEnd:   yesterday.Add(24 * time.Hour),
 		}
 		item.SetMetadata(map[string]any{
 			"visitors":      yesterdayVisitors,
-			"avgVisitors":   int64(mean),
+			"avgVisitors":   int64(typical),
 			"percentChange": percentChange,
 			"zScore":        zScore,
 		})
@@ -245,37 +228,17 @@ func (d *Detector) detectGoalSpikes(websiteID uint, yesterday time.Time) {
 		Having("count >= ?", MinGoalConversions).
 		Scan(&yesterdayGoals)
 
-	hourOfWeek := HourOfWeek(yesterday.Add(12 * time.Hour))
-	weekBefore := yesterday.AddDate(0, 0, -7)
-
 	for _, goal := range yesterdayGoals {
-		// Get baseline for this goal
-		metric := "goal_" + goal.EventName
-		baseline := GetOrCreateBaseline(d.db, websiteID, metric, hourOfWeek)
-
-		var mean, stddev float64
-		if baseline.SampleCount >= MinSamplesForBaseline {
-			// Use learned baseline
-			mean, stddev = baseline.Mean, baseline.StdDev
-		} else {
-			// Cold start: calculate from historical data
-			var weekConversions int64
-			d.db.Table("event_stats").
-				Where("website_id = ? AND event_name = ? AND DATE(hour) >= DATE(?) AND DATE(hour) < DATE(?)",
-					websiteID, goal.EventName, weekBefore, yesterday).
-				Select("COALESCE(SUM(visitors_count), 0)").Scan(&weekConversions)
-
-			if weekConversions == 0 {
-				continue // No historical data, skip
-			}
-			mean = float64(weekConversions) / 7
-			stddev = mean * 0.5 // Assume 50% variance during cold start
+		metric := Metric{Table: "event_stats", Column: "visitors_count", Filter: "event_name = ?", Args: []any{goal.EventName}}
+		baseline := BaselineFor(d.db, websiteID, metric, yesterday)
+		if baseline.Total == 0 {
+			continue // First conversions ever: no history to compare against
 		}
+		typical := baseline.Typical
 
-		// Check for statistically significant spike
-		if isSpike, _ := SPCIsSpike(float64(goal.Count), mean, stddev); isSpike {
-			zScore := ZScore(float64(goal.Count), mean, stddev)
-			desc := formatGoalChange(goal.EventName, goal.Count, int64(mean))
+		if baseline.IsSpike(float64(goal.Count)) {
+			zScore := baseline.ZScore(float64(goal.Count))
+			desc := formatGoalChange(goal.EventName, goal.Count, int64(typical))
 			item := &FeedItem{
 				WebsiteID:   websiteID,
 				ItemType:    ItemTypeGoalHit,
@@ -288,7 +251,7 @@ func (d *Detector) detectGoalSpikes(websiteID uint, yesterday time.Time) {
 			item.SetMetadata(map[string]any{
 				"goalName":       goal.EventName,
 				"conversions":    goal.Count,
-				"avgConversions": mean,
+				"avgConversions": typical,
 				"zScore":         zScore,
 			})
 			if err := CreateItem(d.db, item); err != nil {
@@ -370,40 +333,13 @@ func (d *Detector) detectTrendingContent(websiteID uint, yesterday time.Time) {
 		Limit(10).
 		Scan(&yesterdayPages)
 
-	hourOfWeek := HourOfWeek(yesterday.Add(12 * time.Hour))
-	weekBefore := yesterday.AddDate(0, 0, -7)
-
 	for _, page := range yesterdayPages {
-		metric := "page_" + page.Pathname
-		baseline := GetOrCreateBaseline(d.db, websiteID, metric, hourOfWeek)
+		metric := Metric{Table: "page_stats", Column: "visitors_count", Filter: "pathname = ?", Args: []any{page.Pathname}}
+		baseline := BaselineFor(d.db, websiteID, metric, yesterday)
+		typical := baseline.Typical
 
-		var mean, stddev float64
-		var isNew bool
-
-		if baseline.SampleCount >= MinSamplesForBaseline {
-			// Use learned baseline
-			mean, stddev = baseline.Mean, baseline.StdDev
-			isNew = false
-		} else {
-			// Cold start: check historical data
-			var weekVisitors int64
-			d.db.Table("page_stats").
-				Where("website_id = ? AND pathname = ? AND DATE(hour) >= DATE(?) AND DATE(hour) < DATE(?)",
-					websiteID, page.Pathname, weekBefore, yesterday).
-				Select("COALESCE(SUM(visitors_count), 0)").Scan(&weekVisitors)
-
-			isNew = weekVisitors == 0
-			if !isNew {
-				mean = float64(weekVisitors) / 7
-				stddev = mean * 0.5 // Assume 50% variance during cold start
-			}
-		}
-
-		// Check for spike using SPC (or flag as new)
-		isTrending := false
-		if !isNew && mean > 0 {
-			isTrending, _ = SPCIsSpike(float64(page.Visitors), mean, stddev)
-		}
+		isNew := baseline.Total == 0
+		isTrending := !isNew && baseline.IsSpike(float64(page.Visitors))
 
 		if isNew || isTrending {
 			pageName := friendlyPageName(page.Pathname)
@@ -413,10 +349,10 @@ func (d *Detector) detectTrendingContent(websiteID uint, yesterday time.Time) {
 				description = fmt.Sprintf("%s: %d visitors.", pageName, page.Visitors)
 			} else {
 				title = "Popular page"
-				description = formatPageChange(pageName, page.Visitors, int64(mean))
+				description = formatPageChange(pageName, page.Visitors, int64(typical))
 			}
 
-			zScore := ZScore(float64(page.Visitors), mean, stddev)
+			zScore := baseline.ZScore(float64(page.Visitors))
 			item := &FeedItem{
 				WebsiteID:   websiteID,
 				ItemType:    ItemTypeTrendingContent,
@@ -429,7 +365,7 @@ func (d *Detector) detectTrendingContent(websiteID uint, yesterday time.Time) {
 			item.SetMetadata(map[string]any{
 				"pathname":    page.Pathname,
 				"visitors":    page.Visitors,
-				"avgVisitors": int64(mean),
+				"avgVisitors": int64(typical),
 				"isNew":       isNew,
 				"zScore":      zScore,
 			})
