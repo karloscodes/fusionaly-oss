@@ -12,71 +12,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// ReferrerMappings defines how to normalize referrer hostnames
-var ReferrerMappings = map[string][]string{
-	"Google": {
-		"google.", "www.google.", "com.google.android.googlequicksearchbox", "com.google.android.gm",
-		"news.google.com",
-	},
-	"Facebook": {
-		"facebook.com", "fb.com", "m.facebook.com", "l.facebook.com", "com.facebook.katana", "com.facebook.Facebook",
-	},
-	"Twitter": {
-		"twitter.com", "t.co", "com.twitter.android",
-	},
-	"LinkedIn": {
-		"linkedin.com", "com.linkedin.android",
-	},
-	"YouTube": {
-		"youtube.com", "youtu.be", "m.youtube.com", "com.google.android.youtube",
-	},
-	"Reddit": {
-		"reddit.com", "com.reddit.frontpage", "com.reddit.Redditswe",
-	},
-	"Instagram": {
-		"instagram.com", "com.instagram.android",
-	},
-	"Pinterest": {
-		"pinterest.com",
-	},
-	"GitHub": {
-		"github.com",
-	},
-	"Product Hunt": {
-		"producthunt.com",
-	},
-	"Hacker News": {
-		"news.ycombinator.com", "hn.algolia.com",
-	},
-	"Stack Overflow": {
-		"stackoverflow.com",
-	},
-	"Medium": {
-		"medium.com", "com.medium.reader",
-	},
-	"Bing": {
-		"bing.com",
-	},
-	"DuckDuckGo": {
-		"duckduckgo.com", "com.duckduckgo.mobile.android",
-	},
-	"Yahoo": {
-		"yahoo.com",
-	},
-	"Amazon": {
-		"amazon.", "www.amazon.",
-	},
-	"TikTok": {
-		"tiktok.com", "com.zhiliaoapp.musically",
-	},
-	"Discord": {
-		"discord.com", "discord.gg",
-	},
-	"WhatsApp": {
-		"whatsapp.com", "com.whatsapp",
-	},
-}
-
 // DirectReferrerKeywords defines patterns that should be treated as direct traffic
 var DirectReferrerKeywords = []string{
 	"", "direct / unknown", "(direct)", "unknown", events.DirectOrUnknownReferrer,
@@ -98,13 +33,8 @@ func NormalizeReferrerHostname(hostname string) string {
 		}
 	}
 
-	// Check against known mappings
-	for serviceName, patterns := range ReferrerMappings {
-		for _, pattern := range patterns {
-			if strings.Contains(lowerHostname, pattern) {
-				return serviceName
-			}
-		}
+	if name, ok := referrers.Lookup(lowerHostname); ok {
+		return name
 	}
 
 	// Clean up common prefixes for unknown hostnames
@@ -113,9 +43,7 @@ func NormalizeReferrerHostname(hostname string) string {
 	for _, prefix := range prefixes {
 		cleaned = strings.TrimPrefix(cleaned, prefix)
 	}
-
-	// Use the friendly name lookup for unknown hostnames
-	return referrers.FriendlyName(cleaned)
+	return cleaned
 }
 
 // GetTopReferrersInTimeFrame fetches top referrers from RefStat with proper normalization

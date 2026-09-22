@@ -26,7 +26,14 @@ func TestNormalizeReferrerHostname(t *testing.T) {
 		{"github.com", "GitHub"},
 		{"stackoverflow.com", "Stack Overflow"},
 		{"youtu.be", "YouTube"},
-		{"t.co", "Twitter"},
+		{"t.co", "X/Twitter"},
+
+		// Whole labels only: these contain "t.co", "reddit.com", or "google."
+		// but are not those sites
+		{"microsoft.com", "microsoft.com"},
+		{"about.com", "about.com"},
+		{"notreddit.com", "notreddit.com"},
+		{"evilgoogle.com", "evilgoogle.com"},
 
 		// Unknown hostnames should be cleaned (kept lowercase)
 		{"www.example.com", "example.com"},

@@ -28,6 +28,20 @@ func TestFriendlyName(t *testing.T) {
 		{"www.example.com", "example.com"}, // www. stripped
 		{"myblog.io", "myblog.io"},
 
+		// The longest known match wins, the same way every time
+		{"x.mail.google.com", "Gmail"},
+		{"producthunt.com", "Product Hunt"},
+		{"old.reddit.com", "Reddit"},
+
+		// Country domains and mobile apps
+		{"google.co.in", "Google"},
+		{"www.google.de", "Google"},
+		{"amazon.co.uk", "Amazon"},
+		{"google.evil.example.com", "google.evil.example.com"},
+		{"com.google.android.youtube", "YouTube"},
+		{"com.google.android.googlequicksearchbox", "Google"},
+		{"discord.gg", "Discord"},
+
 		// Case insensitive
 		{"GOOGLE.COM", "Google"},
 		{"News.Ycombinator.Com", "Hacker News"},

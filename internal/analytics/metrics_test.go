@@ -361,7 +361,7 @@ func TestMetricsFromAggregationTables(t *testing.T) {
 		require.Len(t, topReferrers, 2)
 		assert.Equal(t, "Google", topReferrers[0].Name) // google.com (normalized to Google) has 30 visitors
 		assert.Equal(t, int64(30), topReferrers[0].Count)
-		assert.Equal(t, "Twitter", topReferrers[1].Name) // twitter.com (normalized to Twitter) has 20 visitors
+		assert.Equal(t, "X/Twitter", topReferrers[1].Name) // twitter.com (normalized to Twitter) has 20 visitors
 		assert.Equal(t, int64(20), topReferrers[1].Count)
 	})
 
