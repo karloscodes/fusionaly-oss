@@ -53,7 +53,7 @@ The SDK picks the right trigger per element — click, submit, `sendBeacon`, or 
 - **Tracking** — page views, SPA navigation, clicks, forms, sections, revenue, and custom events. Automatic where it can be, one attribute where it can't.
 - **Dashboard** — visitors, sources, top pages, countries, devices, goals, and user flows.
 - **What's new** — a home feed across all your sites: traffic spikes, new referrers, milestones. Stays quiet until something real happens.
-- **Ask** — ask a question in plain English and get a chart and the SQL back. Optional; see [Ask (AI)](#ask-ai) for what it does and doesn't send.
+- **Ask from your AI client** — Claude, Codex, Cursor, or Gemini answer questions about your traffic in plain English. See [Ask from your AI client](#ask-from-your-ai-client).
 - **Annotations** — mark deployments, campaigns, and incidents on the timeline.
 - **Shareable dashboards** — public read-only links.
 - **Bot filtering & spam protection** — clean data by default.
@@ -62,11 +62,21 @@ The SDK picks the right trigger per element — click, submit, `sendBeacon`, or 
 
 - No cookies, no fingerprinting, no personal data stored.
 - Visitors are counted with a daily-rotating hash, not a stable identifier.
-- Everything stays on your server. No third parties — unless you turn on Ask.
+- Everything stays on your server. No third parties, and Fusionaly never calls an AI provider.
 
-## Ask (AI)
+## Ask from your AI client
 
-Ask is optional and stays off until you add a key. It connects to [OpenRouter](https://openrouter.ai) (bring your own key), so you can pick any model. When you ask a question, only your **database schema** and **the question you type** are sent to OpenRouter — never your visitors' data. The generated SQL is read-only.
+Ask "where did my traffic come from this week?" in the AI client you already use. Fusionaly answers the Model Context Protocol at `/mcp` with four read-only tools, and the plugin adds a skill that turns questions into the right queries.
+
+```
+/plugin marketplace add karloscodes/fusionaly-oss
+/plugin install fusionaly
+/fusionaly:connect
+```
+
+That is Claude Code. Codex, Gemini CLI, Cursor, Claude Desktop, and others are one command each: see the [plugin README](plugin/README.md). Get the agent key from **Administration > Agents**.
+
+Your client asks your server, and only the answer reaches your AI provider. The tools can't write, and they can't read accounts, settings, or keys.
 
 ## Self-hosting
 

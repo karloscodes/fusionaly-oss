@@ -16,6 +16,7 @@ import {
 	Copy,
 	Check,
 	RefreshCw,
+	Plug,
 } from "lucide-react";
 import type { FlashMessage } from "@/types";
 import { AdministrationLayout } from "@/components/administration-layout";
@@ -95,7 +96,7 @@ export const AdministrationAgentsContent: FC = () => {
 			<div>
 				<h1 className="text-2xl font-bold text-gray-900">Agent API</h1>
 				<p className="text-gray-600 mt-1">
-					Configure API access for AI agents like Claude Code
+					Ask your analytics from Claude, Cursor, or any MCP client. Read-only.
 				</p>
 			</div>
 
@@ -185,7 +186,84 @@ export const AdministrationAgentsContent: FC = () => {
 					</div>
 				</CardContent>
 			</Card>
+
+			<ConnectCard />
 		</div>
+	);
+};
+
+// connectSteps are the install commands per AI client. They install the same
+// plugin (skills + MCP) from the fusionaly-oss repo; see plugin/README.md.
+const connectSteps = [
+	{
+		client: "Claude Code",
+		note: "type these one at a time",
+		commands: [
+			"/plugin marketplace add karloscodes/fusionaly-oss",
+			"/plugin install fusionaly",
+			"/fusionaly:connect",
+		],
+	},
+	{
+		client: "Codex",
+		note: "then ask Codex to \"connect Fusionaly\"",
+		commands: [
+			"codex plugin marketplace add karloscodes/fusionaly-oss",
+			"codex plugin add fusionaly@fusionaly",
+		],
+	},
+	{
+		client: "Gemini CLI",
+		note: "asks for the URL and key",
+		commands: ["gemini extensions install https://github.com/karloscodes/fusionaly-oss"],
+	},
+];
+
+// ConnectCard shows how to connect an AI client to this server's MCP endpoint.
+const ConnectCard: FC = () => {
+	const mcpURL = `${window.location.origin}/mcp`;
+
+	return (
+		<Card className="border-black shadow-sm">
+			<CardHeader className="pb-4">
+				<CardTitle className="text-lg flex items-center gap-2">
+					<Plug className="h-5 w-5" /> Connect your AI client
+				</CardTitle>
+				<CardDescription>
+					Your client asks this server; only the answer reaches your AI provider.
+				</CardDescription>
+			</CardHeader>
+			<CardContent className="space-y-4 text-sm text-gray-700">
+				<div className="space-y-1">
+					<p className="font-medium text-gray-900">MCP server URL</p>
+					<code className="block bg-gray-100 border border-gray-200 rounded px-3 py-2 font-mono break-all">{mcpURL}</code>
+					<p>Send the API key above as <code className="font-mono">Authorization: Bearer &lt;key&gt;</code>.</p>
+				</div>
+				{connectSteps.map((step) => (
+					<div key={step.client} className="space-y-1">
+						<p className="font-medium text-gray-900">
+							{step.client} <span className="font-normal text-gray-500">({step.note})</span>
+						</p>
+						{step.commands.map((command) => (
+							<code key={command} className="block bg-gray-100 border border-gray-200 rounded px-3 py-2 font-mono break-all">
+								{command}
+							</code>
+						))}
+					</div>
+				))}
+				<p>
+					Cursor, Claude Desktop, VS Code, and other clients:{" "}
+					<a
+						href="https://github.com/karloscodes/fusionaly-oss/tree/main/plugin#install"
+						target="_blank"
+						rel="noopener noreferrer"
+						className="underline"
+					>
+						config for each client →
+					</a>
+				</p>
+			</CardContent>
+		</Card>
 	);
 };
 
