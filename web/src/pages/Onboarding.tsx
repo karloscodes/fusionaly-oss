@@ -18,21 +18,19 @@ interface OnboardingProps {
   [key: string]: unknown;
 }
 
-type Step = 'user_account' | 'password' | 'geolite' | 'openai' | 'completed';
+type Step = 'user_account' | 'password' | 'geolite' | 'completed';
 
 const stepNames: Record<Step, string> = {
   user_account: 'User Account',
   password: 'Password Setup',
   geolite: 'Location Data',
-  openai: 'AI Configuration',
   completed: 'Complete'
 };
 
 const stepProgress: Record<Step, number> = {
-  user_account: 20,
-  password: 40,
-  geolite: 60,
-  openai: 80,
+  user_account: 25,
+  password: 50,
+  geolite: 75,
   completed: 100
 };
 
@@ -169,53 +167,6 @@ export default function Onboarding() {
     </form>
   );
 
-  const renderOpenAIStep = () => (
-    <form action="/setup/openai" method="POST" className="space-y-4">
-      <div className="p-4 bg-gray-100 rounded-lg border border-gray-200">
-        <h4 className="font-medium text-gray-900 mb-2">AI-Powered Analytics (Optional)</h4>
-        <p className="text-sm text-gray-700">
-          Add an OpenRouter API key to ask questions about your analytics data in natural language.
-        </p>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="openai_key">OpenRouter API key</Label>
-        <Input
-          id="openai_key"
-          type="password"
-          name="openai_key"
-          placeholder="sk-..."
-        />
-      </div>
-
-      <p className="text-sm text-gray-600">
-        Get an API key at{' '}
-        <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-          openrouter.ai/keys
-        </a>
-      </p>
-
-      <p className="text-xs text-gray-500">
-        Ask AI is optional and uses your own OpenRouter key. It never sends your
-        visitors' data &mdash; only your database schema and the questions you type
-        are sent to OpenRouter (and the model provider you choose there).
-      </p>
-
-      <p className="text-xs text-gray-500">
-        This step is optional. You can configure AI later in Administration &rarr; AI.
-      </p>
-
-      <div className="flex gap-2">
-        <Button type="submit" name="action" value="skip" variant="outline" className="flex-1">
-          Skip for Now
-        </Button>
-        <Button type="submit" name="action" value="save" className="flex-1">
-          Save & Continue
-        </Button>
-      </div>
-    </form>
-  );
-
   const renderCompletedStep = () => (
     <div className="text-center space-y-4">
       <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
@@ -242,8 +193,6 @@ export default function Onboarding() {
         return renderPasswordStep();
       case 'geolite':
         return renderGeoLiteStep();
-      case 'openai':
-        return renderOpenAIStep();
       case 'completed':
         return renderCompletedStep();
       default:
@@ -252,7 +201,7 @@ export default function Onboarding() {
   };
 
   const getStepNumber = () => {
-    const steps: Step[] = ['user_account', 'password', 'geolite', 'openai', 'completed'];
+    const steps: Step[] = ['user_account', 'password', 'geolite', 'completed'];
     return steps.indexOf(currentStep) + 1;
   };
 

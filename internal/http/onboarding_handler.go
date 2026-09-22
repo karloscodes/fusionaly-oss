@@ -217,7 +217,6 @@ func completeOnboarding(db *gorm.DB, logger *slog.Logger, c *fiber.Ctx, sessionM
 	completionData := onboarding.CompletionData{
 		Email:        session.Data.Email,
 		PasswordHash: session.Data.PasswordHash,
-		OpenAIKey:    session.Data.OpenAIKey,
 	}
 
 	// Use onboarding context function to complete
@@ -298,52 +297,9 @@ func OnboardingGeoLiteFormAction(ctx *cartridge.Context) error {
 		}
 	}
 
-	// Move to the optional OpenAI step (instead of completing here)
-	err = onboarding.UpdateOnboardingSession(db, sessionID, onboarding.StepOpenAI, session.Data)
-	if err != nil {
-		ctx.Logger.Error("Failed to update onboarding session", slog.Any("error", err))
-		return ctx.FlashError("Failed to save progress").Redirect("/setup", fiber.StatusFound)
-	}
-
-	return ctx.Redirect("/setup", fiber.StatusFound)
-}
-
-// OnboardingOpenAIFormAction handles the optional OpenAI key form submission (PRG pattern)
-func OnboardingOpenAIFormAction(ctx *cartridge.Context) error {
-	// Get session ID from cookie
-	sessionID := ctx.Cookies(onboardingSessionCookieName)
-	if sessionID == "" {
-		return ctx.FlashError("No active onboarding session").Redirect("/setup", fiber.StatusFound)
-	}
-
-	db := ctx.DB()
-
-	// Get onboarding session
-	session, err := onboarding.GetOnboardingSession(db, sessionID)
-	if err != nil {
-		ctx.Logger.Error("Failed to get onboarding session", slog.Any("error", err))
-		return ctx.FlashError("Invalid or expired onboarding session").Redirect("/setup", fiber.StatusFound)
-	}
-
-	// Validate current step
-	if session.Step != onboarding.StepOpenAI {
-		return ctx.FlashError("Invalid step").Redirect("/setup", fiber.StatusFound)
-	}
-
-	// OpenAI key is optional - save it only if the user provided one and did not skip
-	var in struct {
-		Action    string `json:"action" form:"action"`
-		OpenAIKey string `json:"openai_key" form:"openai_key"`
-	}
-	_ = ctx.Bind(&in)
-
-	action := in.Action
-	openAIKey := strings.TrimSpace(in.OpenAIKey)
-	if action != "skip" && openAIKey != "" {
-		session.Data.OpenAIKey = openAIKey
-	}
-
-	// Complete the onboarding by creating the user (saves the key if present)
+	// GeoLite is the last step: create the admin and log in. The optional
+	// OpenRouter key step is gone with Lens hidden; the key can still be set in
+	// Administration > AI when the Lens flag is on.
 	err = completeOnboarding(db, ctx.Logger, ctx.Ctx, ctx.Session, session)
 	if err != nil {
 		ctx.Logger.Error("Failed to complete onboarding", slog.Any("error", err))

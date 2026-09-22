@@ -213,67 +213,18 @@ func TestIsOnboardingRequired(t *testing.T) {
 	assert.False(t, required)
 }
 
-func TestGeoLiteAdvancesToOpenAIStep(t *testing.T) {
-	db := setupTestDB(t)
-	sessionID := "test-session-id"
-
-	_, err := onboarding.CreateOnboardingSession(db, sessionID)
-	assert.NoError(t, err)
-
-	// Simulate progress through user_account and password into geolite
-	err = onboarding.UpdateOnboardingSession(db, sessionID, onboarding.StepGeoLite, onboarding.OnboardingData{
-		Email:        "admin@example.com",
-		PasswordHash: "$2a$10$hash",
-	})
-	assert.NoError(t, err)
-
-	// After geolite, the flow advances to the optional OpenAI step (not directly completed)
-	session, err := onboarding.GetOnboardingSession(db, sessionID)
-	assert.NoError(t, err)
-	err = onboarding.UpdateOnboardingSession(db, sessionID, onboarding.StepOpenAI, session.Data)
-	assert.NoError(t, err)
-
-	session, err = onboarding.GetOnboardingSession(db, sessionID)
-	assert.NoError(t, err)
-	assert.Equal(t, onboarding.StepOpenAI, session.Step)
-	assert.NotEqual(t, onboarding.StepCompleted, session.Step)
-}
-
-func TestCompleteOnboardingWithOpenAIKey(t *testing.T) {
+func TestCompleteOnboarding(t *testing.T) {
 	db := setupTestDB(t)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
 	result, err := onboarding.CompleteOnboarding(db, logger, onboarding.CompletionData{
 		Email:        "admin@example.com",
 		PasswordHash: "$2a$10$hash",
-		OpenAIKey:    "sk-test-key-123",
 	})
+
 	assert.NoError(t, err)
 	assert.NotZero(t, result.UserID)
-
-	// Key should be saved via settings
-	key, err := settings.GetOpenAIKey(db)
+	user, err := users.FindByEmail(db, "admin@example.com")
 	assert.NoError(t, err)
-	assert.Equal(t, "sk-test-key-123", key)
-}
-
-func TestCompleteOnboardingWithoutOpenAIKey(t *testing.T) {
-	db := setupTestDB(t)
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-
-	result, err := onboarding.CompleteOnboarding(db, logger, onboarding.CompletionData{
-		Email:        "admin@example.com",
-		PasswordHash: "$2a$10$hash",
-		// OpenAIKey intentionally empty (skipped step)
-	})
-	assert.NoError(t, err)
-	assert.NotZero(t, result.UserID)
-
-	// No key should be saved when skipped/empty
-	key, err := settings.GetOpenAIKey(db)
-	if err == nil {
-		assert.Empty(t, key)
-	} else {
-		assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
-	}
+	assert.Equal(t, "$2a$10$hash", user.EncryptedPassword, "the stored hash is used as is")
 }

@@ -200,7 +200,6 @@ func MountAppRoutes(srv *cartridge.Server) {
 	srv.Post("/setup/user", http.OnboardingUserFormAction, onboardingConfig)
 	srv.Post("/setup/password", http.OnboardingPasswordFormAction, onboardingConfig)
 	srv.Post("/setup/geolite", http.OnboardingGeoLiteFormAction, onboardingConfig)
-	srv.Post("/setup/openai", http.OnboardingOpenAIFormAction, onboardingConfig)
 
 	// === AUTHENTICATION ROUTES ===
 	// Login needs rate limiting to prevent brute force attacks

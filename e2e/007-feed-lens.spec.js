@@ -57,6 +57,24 @@ test.describe.serial("Feed Home and AI Lens", () => {
 		helpers.log("'What's new' activity area is visible");
 	});
 
+	test("Lens tabs stay hidden unless the fusionaly:lens flag is on", async ({ page }) => {
+		const domain = `lens-flag-${Date.now()}.com`;
+		await helpers.createTestWebsite(domain);
+		await helpers.navigateTo("/admin/websites");
+		const href = await page.getByRole("link", { name: domain, exact: true }).getAttribute("href");
+		const websiteId = href.match(/\/admin\/websites\/(\d+)/)[1];
+		const lensTab = page.locator(`nav a[href="/admin/websites/${websiteId}/lens"]`);
+
+		await helpers.navigateTo(`/admin/websites/${websiteId}/dashboard`);
+		await expect(lensTab).toHaveCount(0);
+
+		await page.evaluate(() => localStorage.setItem("fusionaly:lens", "on"));
+		await page.reload();
+		await expect(lensTab.first()).toBeVisible();
+
+		await page.evaluate(() => localStorage.removeItem("fusionaly:lens"));
+	});
+
 	test("Lens page shows the add-your-OpenRouter-key empty state when no key is configured", async ({ page }) => {
 		helpers.log("Testing the Lens no-key empty state");
 

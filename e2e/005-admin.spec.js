@@ -46,7 +46,8 @@ test.describe.serial("Administration Pages Tests", () => {
 		const systemLink = await page.locator('aside:has-text("Administration") a:has-text("System")');
 
 		await expect(ingestionLink).toBeVisible();
-		await expect(aiLink).toBeVisible();
+		// The AI tab is hidden with Lens unless the fusionaly:lens flag is on
+		await expect(aiLink).toHaveCount(0);
 		await expect(accountLink).toBeVisible();
 		await expect(systemLink).toBeVisible();
 

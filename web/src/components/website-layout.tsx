@@ -3,6 +3,7 @@ import { Link, router } from "@inertiajs/react";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Settings, ChevronDown, Check, AlertTriangle } from "lucide-react";
 import { ThemeSwitcher } from "@/components/theme-switcher";
+import { isLensEnabled } from "@/lib/feature-flags";
 
 interface Website {
 	id: number;
@@ -23,10 +24,11 @@ interface SystemHealth {
 }
 
 // Define website-scoped sub-navigation
+// Lens ("Ask") is hidden unless the fusionaly:lens flag is on (see feature-flags).
 const getWebsiteNavRoutes = (websiteId: number) => [
 	{ path: `/admin/websites/${websiteId}/dashboard`, name: "Dashboard" },
 	{ path: `/admin/websites/${websiteId}/events`, name: "Events" },
-	{ path: `/admin/websites/${websiteId}/lens`, name: "Ask", badge: "AI" },
+	...(isLensEnabled() ? [{ path: `/admin/websites/${websiteId}/lens`, name: "Ask", badge: "AI" }] : []),
 ];
 
 // Get the current page type from path (dashboard, events, lens, edit)
