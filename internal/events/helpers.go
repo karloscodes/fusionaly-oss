@@ -5,7 +5,6 @@ import (
 	"net"
 	"strings"
 
-	"log/slog"
 
 	"fusionaly/internal/pkg/geoip"
 	ua "fusionaly/internal/pkg/user_agent"
@@ -177,51 +176,25 @@ func getOSFromParsedUA(ua ua.UserAgent) string {
 	return UnknownOS
 }
 
-// GetCountryFromIP resolves an IP address to a lowercase ISO country code or UnknownCountry.
+// GetCountryFromIP resolves an IP address to a lowercase ISO country code or
+// UnknownCountry. GeoIP is optional, so a missing database is not an error. The
+// address is never logged.
 func GetCountryFromIP(ipAddress string) string {
-	// Get logger from context
-	logger := slog.Default()
-	logger.Debug("Attempting to get country from IP",
-		slog.String("ip_address", ipAddress))
-
-	geoDB := geoip.GetGeoDB()
-	if geoDB == nil {
-		logger.Error("GeoIP database is nil - not initialized properly")
-		return UnknownCountry
-	}
-
 	ip := net.ParseIP(ipAddress)
 	if ip == nil {
-		logger.Error("Failed to parse IP address",
-			slog.String("ip_address", ipAddress))
 		return UnknownCountry
 	}
 
-	logger.Debug("Looking up country for IP",
-		slog.String("ip_address", ipAddress),
-		slog.String("parsed_ip", ip.String()))
-
-	record, err := geoDB.Country(ip)
-	if err != nil {
-		logger.Error("Error looking up country for IP",
-			slog.String("ip_address", ipAddress),
-			slog.Any("error", err))
+	record, err := geoip.Country(ip)
+	if err != nil || record == nil {
 		return UnknownCountry
 	}
 
-	if record.Country.IsoCode == "" || record.Country.IsoCode == "--" {
-		logger.Debug("Country code not found or invalid",
-			slog.String("ip_address", ipAddress),
-			slog.String("iso_code", record.Country.IsoCode))
+	code := record.Country.IsoCode
+	if code == "" || code == "--" {
 		return UnknownCountry
 	}
-
-	logger.Debug("Successfully resolved IP to country",
-		slog.String("ip_address", ipAddress),
-		slog.String("country_code", record.Country.IsoCode),
-		slog.String("country_name", record.Country.Names["en"]))
-
-	return strings.ToLower(record.Country.IsoCode)
+	return strings.ToLower(code)
 }
 
 // ExtractCustomEventKey extracts a key from custom event metadata JSON

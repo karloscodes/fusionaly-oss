@@ -130,7 +130,7 @@ func (j *GeoLiteUpdaterJob) downloadAndUpdate(licenseKey string) error {
 
 	// Download the database
 	downloadURL := fmt.Sprintf(MaxMindDownloadURL, licenseKey)
-	resp, err := http.Get(downloadURL)
+	resp, err := geoliteClient.Get(downloadURL)
 	if err != nil {
 		return fmt.Errorf("failed to download GeoLite database: %w", err)
 	}
@@ -166,6 +166,10 @@ func (j *GeoLiteUpdaterJob) downloadAndUpdate(licenseKey string) error {
 	return nil
 }
 
+// geoliteClient bounds the download. The database is ~6 MB; a stalled
+// connection must not hold the job forever.
+var geoliteClient = &http.Client{Timeout: 5 * time.Minute}
+
 // extractMMDB extracts the .mmdb file from the tar.gz archive
 func (j *GeoLiteUpdaterJob) extractMMDB(tarGzFile *os.File, destPath string) error {
 	gzr, err := gzip.NewReader(tarGzFile)
@@ -187,19 +191,7 @@ func (j *GeoLiteUpdaterJob) extractMMDB(tarGzFile *os.File, destPath string) err
 
 		// Look for the .mmdb file
 		if strings.HasSuffix(header.Name, ".mmdb") {
-			// Create the destination file
-			outFile, err := os.Create(destPath)
-			if err != nil {
-				return fmt.Errorf("failed to create output file: %w", err)
-			}
-			defer outFile.Close()
-
-			// Copy the content
-			if _, err := io.Copy(outFile, tr); err != nil {
-				return fmt.Errorf("failed to extract file: %w", err)
-			}
-
-			return nil
+			return writeAtomically(destPath, tr)
 		}
 	}
 
@@ -292,4 +284,33 @@ func GetGeoLiteStatus(dbManager *database.DBManager) (configured bool, dbExists 
 	}
 
 	return
+}
+
+// writeAtomically writes r to a temp file next to destPath, then renames it
+// over destPath. The running reader memory-maps the old file, so rewriting it
+// in place could crash the process (SIGBUS); after the rename the old reader
+// keeps the old inode until ReloadGeoDB closes it. A crash mid-write leaves
+// the old database intact.
+func writeAtomically(destPath string, r io.Reader) error {
+	tmp, err := os.CreateTemp(filepath.Dir(destPath), filepath.Base(destPath)+".*.tmp")
+	if err != nil {
+		return fmt.Errorf("failed to create temp file: %w", err)
+	}
+	defer os.Remove(tmp.Name()) // no-op after a successful rename
+
+	if _, err := io.Copy(tmp, r); err != nil {
+		tmp.Close()
+		return fmt.Errorf("failed to extract file: %w", err)
+	}
+	if err := tmp.Sync(); err != nil {
+		tmp.Close()
+		return fmt.Errorf("failed to flush file: %w", err)
+	}
+	if err := tmp.Close(); err != nil {
+		return fmt.Errorf("failed to close file: %w", err)
+	}
+	if err := os.Chmod(tmp.Name(), 0o644); err != nil {
+		return fmt.Errorf("failed to set permissions: %w", err)
+	}
+	return os.Rename(tmp.Name(), destPath)
 }

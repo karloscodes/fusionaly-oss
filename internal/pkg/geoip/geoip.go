@@ -114,21 +114,30 @@ func InitGeoDB() *geoip2.Reader {
 	return db
 }
 
-// GetGeoDB returns the GeoLite2 database reader, initializing it if necessary.
-func GetGeoDB() *geoip2.Reader {
+// Country looks up the country of an IP address. It returns nil and no error
+// when no GeoLite2 database is configured. The read lock is held for the whole
+// lookup: the reader is memory-mapped, and ReloadGeoDB must not unmap it while
+// a lookup is still reading it.
+func Country(ip net.IP) (*geoip2.Country, error) {
 	once.Do(func() {
 		mu.Lock()
 		geoDB = InitGeoDB()
 		mu.Unlock()
 	})
+
 	mu.RLock()
 	defer mu.RUnlock()
-	return geoDB
+	if geoDB == nil {
+		return nil, nil
+	}
+	return geoDB.Country(ip)
 }
 
 // ReloadGeoDB reloads the GeoLite2 database from disk.
-// Call this after downloading a new database file.
+// Call this after downloading a new database file. The write lock waits for
+// lookups in progress, so Close never unmaps a reader that is in use.
 func ReloadGeoDB() {
+	once.Do(func() {}) // a later Country call must not re-open over this one
 	mu.Lock()
 	defer mu.Unlock()
 
