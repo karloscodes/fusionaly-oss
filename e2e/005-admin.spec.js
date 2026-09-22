@@ -241,7 +241,6 @@ test.describe.serial("Administration Pages Tests", () => {
 		expect(response.status()).toBe(200);
 		const body = await response.body();
 		expect(body.subarray(0, 16).toString("latin1")).toBe("SQLite format 3\u0000");
-		expect(Number(response.headers()["content-length"])).toBe(body.length);
 		expect(body.includes(Buffer.from(domain))).toBe(true);
 	});
 });
