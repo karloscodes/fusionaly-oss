@@ -8,6 +8,7 @@ import {
   Copy,
   Check,
   ChevronDown,
+  Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +23,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AdminLayout } from "@/components/admin-layout";
@@ -283,7 +285,14 @@ function SiteCard({ site, color, onShowScript, onDelete }: SiteCardProps & { col
               <MoreHorizontal className="h-4 w-4" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-44">
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem asChild>
+              <Link href={`/admin/websites/${site.id}/edit`}>
+                <Settings className="h-4 w-4 mr-2" />
+                Website settings
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => onDelete(site)} className="text-red-600 focus:text-red-600">
               <Trash2 className="h-4 w-4 mr-2" />
               Delete site
@@ -587,9 +596,9 @@ export const Home = () => {
         {/* Visitor calendar with its three numbers */}
         <VisitorCalendar data={calendarData} total={totalVisitors} />
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
           {/* What's new: the activity feed */}
-          <section className="lg:col-span-2 bg-white border border-black rounded-xl">
+          <section className="lg:col-span-2 bg-white border border-black rounded-xl flex flex-col">
             <div className="px-4 sm:px-5 py-4 border-b border-gray-200 flex flex-col gap-3">
               <div>
                 <h2 className="text-base font-semibold text-gray-900 flex flex-wrap items-baseline gap-x-2.5">
@@ -645,11 +654,11 @@ export const Home = () => {
             </div>
 
             {filteredFeedItems.length === 0 ? (
-              <p className="text-sm text-gray-500 p-5">
+              <p className="flex-1 text-sm text-gray-500 p-5">
                 {feedItems.length === 0 ? "Nothing yet." : "Nothing matches these filters."}
               </p>
             ) : (
-              <div>
+              <div className="flex-1">
                 {groupOrder.map((label) => {
                   const items = groupedItems[label];
                   if (!items || items.length === 0) return null;
@@ -687,7 +696,7 @@ export const Home = () => {
           </section>
 
           {/* Your sites */}
-          <aside className="flex flex-col gap-3" aria-label="Your sites">
+          <aside className="flex flex-col gap-3 self-start" aria-label="Your sites">
             <div className="flex items-baseline gap-2.5">
               <h2 className="text-base font-semibold text-gray-900">Your sites</h2>
               <span className="font-mono text-xs text-gray-500">{websites.length}</span>
