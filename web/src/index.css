@@ -1,6 +1,37 @@
 @import "tailwindcss";
 @config "../tailwind.config.ts";
 
+/* Geist, shipped with the app (SIL Open Font License, see assets/fonts/Geist-OFL.txt).
+   Self-hosted on purpose: a Fusionaly install never calls a font CDN. */
+@font-face {
+  font-family: "Geist";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./assets/fonts/geist-sans-latin-400-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Geist";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("./assets/fonts/geist-sans-latin-500-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Geist";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("./assets/fonts/geist-sans-latin-600-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Geist";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("./assets/fonts/geist-sans-latin-700-normal.woff2") format("woff2");
+}
+
 @layer base {
   /* Light (default). White, black, and neutral (zinc) grays with no blue
      tint; the brand cyan is the one accent. Channels are "R G B" so
@@ -34,6 +65,8 @@
     --c-flow: #3b82f6, #6366f1, #8b5cf6, #a855f7, #c084fc, #d946ef;
     /* Monospace stack the terminal-style themes opt into via --c-font. */
     --c-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    /* Body font for Light and Dark; terminal themes swap in --c-mono via --c-font. */
+    --c-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 
     /* Data-table proportion bar: a faint tint of the accent. The terminal
        themes override this below to tint from their own gray-200. */
@@ -162,9 +195,9 @@
     min-height: calc(100vh + 60px);
     background-color: rgb(var(--c-white));
     color: rgb(var(--c-gray-900));
-    /* Light/Dark leave --c-font unset → inherit Tailwind's sans; terminal-style
+    /* Light/Dark leave --c-font unset → Geist (--c-sans); terminal-style
        themes set --c-font to the mono stack. Pure data, no per-theme CSS rule. */
-    font-family: var(--c-font, inherit);
+    font-family: var(--c-font, var(--c-sans));
   }
 
   /* On-brand focus ring. shadcn components opt out (focus-visible:outline-none)
