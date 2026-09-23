@@ -79,21 +79,17 @@ func MountAppRoutes(srv *cartridge.Server) {
 	// ============================================
 
 	// Public API config (event ingestion)
-	// Rate limiting + CORS + a permissive Sec-Fetch-Site check. The SDK posts
-	// from customer sites (cross-site), so ingestion opts out of the strict
-	// server-wide check and runs its own after CORS, so 403s carry CORS headers.
-	// The check still rejects requests without the header (curl, scripts).
+	// Rate limiting + CORS. The SDK posts from customer sites (cross-site), so
+	// ingestion opts out of the strict server-wide Sec-Fetch-Site check. It has
+	// no Sec-Fetch-Site check of its own: some real browsers send no header
+	// (Safari before 16.4, older WebViews, privacy extensions), and a script
+	// can set the header anyway, so the check only drops real visitors.
 	publicAPIConfig := &cartridge.RouteConfig{
 		EnableCORS:         true,
 		EnableSecFetchSite: cartridge.Bool(false),
 		WriteConcurrency:   false,
-		CustomMiddleware: []fiber.Handler{
-			publicRateLimiter,
-			cartridgemiddleware.SecFetchSiteMiddleware(cartridgemiddleware.SecFetchSiteConfig{
-				AllowedValues: []string{"cross-site", "same-site", "same-origin"},
-			}),
-		},
-		CORSConfig: publicCORSConfig,
+		CustomMiddleware:   []fiber.Handler{publicRateLimiter},
+		CORSConfig:         publicCORSConfig,
 	}
 
 	// SDK delivery config

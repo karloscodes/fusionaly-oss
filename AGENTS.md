@@ -245,8 +245,8 @@ JSON APIs (`ctx.JSON()`) are ONLY allowed for:
 ### Public Endpoints (event ingestion, SDK)
 - Rate limiting: 70 req/min per IP (production only)
 - CORS: Permissive for cross-origin tracking
-- Sec-Fetch-Site validation: Only allows browser-initiated requests (cross-site, same-site, same-origin)
-- Rejects direct requests (curl, Postman, scripts without browser context)
+- Origin check: `Origin` or `Referer` must match a registered website
+- No Sec-Fetch-Site check: some real browsers send no header (Safari before 16.4, older WebViews), and a script can set it anyway
 
 ### Auth Endpoints (login)
 - Rate limiting: 10 req/min per IP (brute force protection)
@@ -287,7 +287,7 @@ JSON APIs (`ctx.JSON()`) are ONLY allowed for:
 - **CSRF protection**: Enabled via Cartridge middleware
 - **Rate limiting**: Public API endpoints protected (70 req/min)
 - **Auth rate limiting**: Login endpoints (10 req/min)
-- **Sec-Fetch-Site**: Validates browser requests on event ingestion (rejects curl/scripts)
+- **Sec-Fetch-Site**: Strict server-wide check against CSRF on admin routes. Event ingestion opts out (see Route Protection)
 - **User signatures**: Hash-based visitor identification instead of cookies
 
 ---

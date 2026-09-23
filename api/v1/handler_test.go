@@ -356,18 +356,15 @@ func TestCreateEventPublicAPIHandler(t *testing.T) {
 		assert.Equal(t, int64(0), count, "Expected no events in the ingest database")
 	})
 
-	t.Run("rejects request without Sec-Fetch-Site header (server-to-server)", func(t *testing.T) {
-		// Sec-Fetch-Site validation runs in ALL environments (no bypasses)
-		// This ensures scripts/curl/bots cannot send fake analytics data
+	t.Run("accepts events from browsers that send no Sec-Fetch-Site header", func(t *testing.T) {
+		// Safari before 16.4, older WebViews, and some privacy extensions send
+		// no Sec-Fetch-Site header. The Origin check still applies.
 		dbManager, _ := testsupport.SetupTestDBManager(t)
 		db := dbManager.GetConnection()
 		testsupport.CleanAllTables(db)
-
 		website := testsupport.CreateTestWebsite(db, "example.com")
 		require.NotZero(t, website.ID, "Website ID should not be zero")
-
 		app := testsupport.CreateMinimalTestApp(t, db)
-
 		payload := map[string]interface{}{
 			"url":           "https://example.com/test",
 			"referrer":      "https://referer.com",
@@ -377,32 +374,22 @@ func TestCreateEventPublicAPIHandler(t *testing.T) {
 			"eventMetadata": map[string]interface{}{},
 			"userAgent":     "Mozilla/5.0 (Test Agent)",
 		}
-
 		jsonPayload, err := json.Marshal(payload)
 		require.NoError(t, err)
-
 		req := httptest.NewRequest("POST", "/x/api/v1/events", bytes.NewReader(jsonPayload))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("User-Agent", "Test-Agent")
 		req.Header.Set("Origin", "https://example.com")
 		req.Header.Set("X-Forwarded-For", "127.0.0.1")
-		// No Sec-Fetch-Site header - simulating server-to-server request
 
 		resp, err := app.Test(req, 30000)
+
 		require.NoError(t, err)
-
-		assert.Equal(t, http.StatusForbidden, resp.StatusCode)
-
-		body, err := io.ReadAll(resp.Body)
+		assert.Equal(t, http.StatusAccepted, resp.StatusCode)
+		var count int64
+		err = db.Model(&events.IngestedEvent{}).Count(&count).Error
 		require.NoError(t, err)
-
-		var respBody map[string]interface{}
-		err = json.Unmarshal(body, &respBody)
-		require.NoError(t, err)
-
-		// Cartridge's SecFetchSite middleware response format
-		assert.Equal(t, "forbidden", respBody["error"])
-		assert.Equal(t, "browser requests only", respBody["message"])
+		assert.Equal(t, int64(1), count, "Expected the event in the ingest database")
 	})
 }
 
