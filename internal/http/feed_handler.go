@@ -1,6 +1,7 @@
 package http
 
 import (
+	"fusionaly/internal/analytics"
 	"log/slog"
 	"time"
 
@@ -44,14 +45,22 @@ func HomeFeedAction(ctx *cartridge.Context) error {
 		websiteRows = []websiteRow{}
 	}
 
+	// Site cards: visitors per day for the last 15 full days (a 14-day
+	// sparkline plus yesterday against the days before it).
+	daily, err := analytics.DailyVisitorsForWebsites(db, websiteIDs, 15, time.Now())
+	if err != nil {
+		ctx.Logger.Error("Failed to get daily visitors per site", slog.Any("error", err))
+	}
+
 	websites := make([]map[string]any, 0, len(websiteRows))
 	websiteMap := make(map[uint]string) // For feed enrichment
 	for _, w := range websiteRows {
 		websites = append(websites, map[string]any{
-			"id":          w.ID,
-			"domain":      w.Domain,
-			"created_at":  w.CreatedAt,
-			"event_count": w.EventCount,
+			"id":             w.ID,
+			"domain":         w.Domain,
+			"created_at":     w.CreatedAt,
+			"event_count":    w.EventCount,
+			"daily_visitors": daily[w.ID],
 		})
 		websiteMap[w.ID] = w.Domain
 	}

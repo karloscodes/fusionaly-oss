@@ -1,6 +1,7 @@
 package http
 
 import (
+	"fusionaly/internal/feed"
 	"net/url"
 	"time"
 
@@ -103,6 +104,14 @@ func WebsiteDashboardAction(ctx *cartridge.Context) error {
 	props["websites"] = websitesData
 	props["annotations"] = annotationsList
 	props["share_token"] = website.ShareToken
+
+	// "What's new": this site's latest activity feed items from the past week.
+	whatsNew, err := feed.RecentForWebsite(db, uint(websiteId), time.Now().UTC().AddDate(0, 0, -7), 5)
+	if err != nil {
+		ctx.Logger.Error("Failed to fetch feed items", slog.Any("error", err))
+		whatsNew = []feed.FeedItem{}
+	}
+	props["whats_new"] = whatsNew
 
 	props["comparison"] = inertia.Defer(func() interface{} {
 		return analytics.FetchComparisonMetrics(db, timeFrame, websiteId, metrics, ctx.Logger)
