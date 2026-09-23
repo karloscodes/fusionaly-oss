@@ -83,6 +83,13 @@ func CreateEventPublicAPIHandler(ctx *cartridge.Context) error {
 			return respondDatabaseBusy(ctx.Ctx)
 		}
 
+		if errors.Is(err, events.ErrInvalidURL) {
+			return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{
+				"error": "Invalid url - send the full page URL, e.g. https://example.com/pricing",
+				"code":  "INVALID_URL",
+			})
+		}
+
 		return ctx.Status(http.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to collect event",
 			"code":  "COLLECTION_ERROR",

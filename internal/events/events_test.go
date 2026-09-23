@@ -975,7 +975,7 @@ func TestCollectEventEdgeCases(t *testing.T) {
 				RawUrl:      "", // Empty URL
 			},
 			expectedError: true,
-			errorContains: "empty URL provided",
+			errorContains: "invalid event URL: empty",
 		},
 		{
 			name: "Invalid URL",
@@ -988,7 +988,7 @@ func TestCollectEventEdgeCases(t *testing.T) {
 				RawUrl:      "not-a-valid-url",
 			},
 			expectedError: true,
-			errorContains: "URL missing hostname",
+			errorContains: "invalid event URL: no hostname",
 		},
 		{
 			name: "URL without hostname",
@@ -1001,7 +1001,7 @@ func TestCollectEventEdgeCases(t *testing.T) {
 				RawUrl:      "/just/a/path",
 			},
 			expectedError: true,
-			errorContains: "URL missing hostname",
+			errorContains: "invalid event URL: no hostname",
 		},
 		{
 			name: "Localhost - should be skipped",
@@ -1065,7 +1065,7 @@ func TestCollectEventEdgeCases(t *testing.T) {
 			err := events.CollectEvent(dbManager, logger, &tc.input)
 
 			if tc.expectedError {
-				assert.Error(t, err)
+				assert.ErrorIs(t, err, events.ErrInvalidURL)
 				if tc.errorContains != "" {
 					assert.Contains(t, err.Error(), tc.errorContains)
 				}

@@ -109,6 +109,10 @@ func CollectEvent(dbManager cartridge.DBManager, logger *slog.Logger, input *Col
 // HTTP layer turns it into a 503 with Retry-After, so callers can retry.
 var ErrStorageBusy = errors.New("event storage busy")
 
+// ErrInvalidURL marks an event whose url is missing, unparsable, or has no
+// hostname. The client sent a bad request; retrying it cannot succeed.
+var ErrInvalidURL = errors.New("invalid event URL")
+
 // classifyWriteError tags busy errors so callers test them with errors.Is,
 // and passes everything else through untouched.
 func classifyWriteError(err error) error {
@@ -146,20 +150,20 @@ func parseInputURL(urlStr string, logger *slog.Logger) (*urlData, error) {
 	// Check if URL is empty
 	if urlStr == "" {
 		logger.Error("Empty URL provided")
-		return nil, fmt.Errorf("empty URL provided")
+		return nil, fmt.Errorf("%w: empty", ErrInvalidURL)
 	}
 
 	parsedURL, err := url.Parse(urlStr)
 	if err != nil {
 		logger.Error("Failed to parse URL", slog.String("url", urlStr), slog.Any("error", err))
-		return nil, fmt.Errorf("invalid URL: %w", err)
+		return nil, fmt.Errorf("%w: %v", ErrInvalidURL, err)
 	}
 
 	// Ensure the URL has a hostname
 	hostname := parsedURL.Hostname()
 	if hostname == "" {
 		logger.Error("URL missing hostname", slog.String("url", urlStr))
-		return nil, fmt.Errorf("URL missing hostname")
+		return nil, fmt.Errorf("%w: no hostname", ErrInvalidURL)
 	}
 
 	pathname := parsedURL.Path

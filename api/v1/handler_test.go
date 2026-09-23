@@ -783,3 +783,32 @@ func TestIngestionAcceptsEveryBrowser(t *testing.T) {
 		assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 	})
 }
+
+func TestIngestionRejectsBadBodies(t *testing.T) {
+	bodies := map[string]string{
+		"an empty body":      `{}`,
+		"a url without host": `{"url":"/pricing","eventType":1}`,
+		"a url that is text": `{"url":"not a url","eventType":1}`,
+	}
+
+	for name, body := range bodies {
+		t.Run("answers 400 for "+name, func(t *testing.T) {
+			dbManager, _ := testsupport.SetupTestDBManager(t)
+			db := dbManager.GetConnection()
+			testsupport.CleanAllTables(db)
+			testsupport.CreateTestWebsite(db, "example.com")
+			app := testsupport.CreateMinimalTestApp(t, db)
+			req := httptest.NewRequest("POST", "/x/api/v1/events", strings.NewReader(body))
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Origin", "https://example.com")
+
+			resp, err := app.Test(req, 30000)
+
+			require.NoError(t, err)
+			assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+			var count int64
+			require.NoError(t, db.Model(&events.IngestedEvent{}).Count(&count).Error)
+			assert.Equal(t, int64(0), count, "Expected no stored event")
+		})
+	}
+}
