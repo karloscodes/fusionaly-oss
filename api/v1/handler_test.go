@@ -100,7 +100,7 @@ func TestCreateEventPublicAPIHandler(t *testing.T) {
 		req.Header.Set("User-Agent", "Test-Agent")
 		req.Header.Set("Origin", "https://example.com")
 		req.Header.Set("X-Forwarded-For", "127.0.0.1")
-		req.Header.Set("Sec-Fetch-Site", "cross-site") // Required for browser-only validation
+		req.Header.Set("Sec-Fetch-Site", "cross-site")
 
 		resp, err := app.Test(req, 30000)
 		require.NoError(t, err)
@@ -166,7 +166,7 @@ func TestCreateEventPublicAPIHandler(t *testing.T) {
 		req.Header.Set("User-Agent", "Test-Agent")
 		req.Header.Set("Origin", "https://blog.example.com")
 		req.Header.Set("X-Forwarded-For", "127.0.0.1")
-		req.Header.Set("Sec-Fetch-Site", "cross-site") // Required for browser-only validation
+		req.Header.Set("Sec-Fetch-Site", "cross-site")
 
 		resp, err := app.Test(req, 30000)
 		require.NoError(t, err)
@@ -215,7 +215,7 @@ func TestCreateEventPublicAPIHandler(t *testing.T) {
 		req.Header.Set("User-Agent", "Test-Agent")
 		req.Header.Set("Origin", "https://app.example.com")
 		req.Header.Set("X-Forwarded-For", "127.0.0.1")
-		req.Header.Set("Sec-Fetch-Site", "cross-site") // Required for browser-only validation
+		req.Header.Set("Sec-Fetch-Site", "cross-site")
 
 		resp, err := app.Test(req, 30000)
 		require.NoError(t, err)
@@ -263,7 +263,7 @@ func TestCreateEventPublicAPIHandler(t *testing.T) {
 		req.Header.Set("User-Agent", "Test-Agent")
 		req.Header.Set("Origin", "https://app.example.com")
 		req.Header.Set("X-Forwarded-For", "127.0.0.1")
-		req.Header.Set("Sec-Fetch-Site", "cross-site") // Required for browser-only validation
+		req.Header.Set("Sec-Fetch-Site", "cross-site")
 
 		resp, err := app.Test(req, 30000)
 		require.NoError(t, err)
@@ -302,7 +302,7 @@ func TestCreateEventPublicAPIHandler(t *testing.T) {
 		req.Header.Set("User-Agent", "Test-Agent")
 		req.Header.Set("Origin", "https://nonexistent-domain.com")
 		req.Header.Set("X-Forwarded-For", "127.0.0.1")
-		req.Header.Set("Sec-Fetch-Site", "cross-site") // Required for browser-only validation
+		req.Header.Set("Sec-Fetch-Site", "cross-site")
 
 		resp, err := app.Test(req, 30000)
 		require.NoError(t, err)
@@ -343,7 +343,7 @@ func TestCreateEventPublicAPIHandler(t *testing.T) {
 		req.Header.Set("User-Agent", "Test-Agent")
 		// No Origin header set
 		req.Header.Set("X-Forwarded-For", "127.0.0.1")
-		req.Header.Set("Sec-Fetch-Site", "cross-site") // Required for browser-only validation
+		req.Header.Set("Sec-Fetch-Site", "cross-site")
 
 		resp, err := app.Test(req, 30000)
 		require.NoError(t, err)
@@ -354,42 +354,6 @@ func TestCreateEventPublicAPIHandler(t *testing.T) {
 		err = dbManager.GetConnection().Model(&events.IngestedEvent{}).Count(&count).Error
 		require.NoError(t, err)
 		assert.Equal(t, int64(0), count, "Expected no events in the ingest database")
-	})
-
-	t.Run("accepts events from browsers that send no Sec-Fetch-Site header", func(t *testing.T) {
-		// Safari before 16.4, older WebViews, and some privacy extensions send
-		// no Sec-Fetch-Site header. The Origin check still applies.
-		dbManager, _ := testsupport.SetupTestDBManager(t)
-		db := dbManager.GetConnection()
-		testsupport.CleanAllTables(db)
-		website := testsupport.CreateTestWebsite(db, "example.com")
-		require.NotZero(t, website.ID, "Website ID should not be zero")
-		app := testsupport.CreateMinimalTestApp(t, db)
-		payload := map[string]interface{}{
-			"url":           "https://example.com/test",
-			"referrer":      "https://referer.com",
-			"timestamp":     time.Now(),
-			"eventType":     events.EventTypePageView,
-			"eventKey":      "",
-			"eventMetadata": map[string]interface{}{},
-			"userAgent":     "Mozilla/5.0 (Test Agent)",
-		}
-		jsonPayload, err := json.Marshal(payload)
-		require.NoError(t, err)
-		req := httptest.NewRequest("POST", "/x/api/v1/events", bytes.NewReader(jsonPayload))
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("User-Agent", "Test-Agent")
-		req.Header.Set("Origin", "https://example.com")
-		req.Header.Set("X-Forwarded-For", "127.0.0.1")
-
-		resp, err := app.Test(req, 30000)
-
-		require.NoError(t, err)
-		assert.Equal(t, http.StatusAccepted, resp.StatusCode)
-		var count int64
-		err = db.Model(&events.IngestedEvent{}).Count(&count).Error
-		require.NoError(t, err)
-		assert.Equal(t, int64(1), count, "Expected the event in the ingest database")
 	})
 }
 
@@ -754,5 +718,68 @@ func TestGetVisitorInfoHandler(t *testing.T) {
 		event := eventsRaw[0].(map[string]interface{})
 		assert.Equal(t, "example.com/ingested", event["url"])
 		assert.Equal(t, float64(events.EventTypePageView), event["eventType"])
+	})
+}
+
+// Real browsers must never get a 403 from ingestion because of Sec-Fetch-Site.
+// Safari before 16.4, older WebViews, and some privacy extensions send no
+// header. This check came back twice (45e0b6b removed it, 942bf73 restored it)
+// and dropped real visitors both times. Admin routes keep the strict check.
+func TestIngestionAcceptsEveryBrowser(t *testing.T) {
+	secFetchSites := []string{"", "cross-site", "same-site", "same-origin", "none"}
+	routes := []string{"/x/api/v1/events", "/x/api/v1/events/beacon"}
+
+	for _, route := range routes {
+		for _, secFetchSite := range secFetchSites {
+			name := secFetchSite
+			if name == "" {
+				name = "no header"
+			}
+			t.Run(route+" with Sec-Fetch-Site "+name, func(t *testing.T) {
+				dbManager, _ := testsupport.SetupTestDBManager(t)
+				db := dbManager.GetConnection()
+				testsupport.CleanAllTables(db)
+				testsupport.CreateTestWebsite(db, "example.com")
+				app := testsupport.CreateMinimalTestApp(t, db)
+				payload, err := json.Marshal(map[string]interface{}{
+					"url":       "https://example.com/pricing",
+					"timestamp": time.Now(),
+					"eventType": events.EventTypePageView,
+					"userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 15_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.6 Mobile/15E148 Safari/604.1",
+				})
+				require.NoError(t, err)
+				req := httptest.NewRequest("POST", route, bytes.NewReader(payload))
+				req.Header.Set("Content-Type", "application/json")
+				req.Header.Set("Origin", "https://example.com")
+				req.Header.Set("X-Forwarded-For", "127.0.0.1")
+				if secFetchSite != "" {
+					req.Header.Set("Sec-Fetch-Site", secFetchSite)
+				}
+
+				resp, err := app.Test(req, 30000)
+
+				require.NoError(t, err)
+				assert.Equal(t, http.StatusAccepted, resp.StatusCode)
+				var count int64
+				require.NoError(t, db.Model(&events.IngestedEvent{}).Count(&count).Error)
+				assert.Equal(t, int64(1), count, "Expected the event in the ingest database")
+			})
+		}
+	}
+
+	t.Run("admin routes still reject cross-site POSTs", func(t *testing.T) {
+		dbManager, _ := testsupport.SetupTestDBManager(t)
+		db := dbManager.GetConnection()
+		testsupport.CleanAllTables(db)
+		app := testsupport.CreateMinimalTestApp(t, db)
+		req := httptest.NewRequest("POST", "/admin/websites", strings.NewReader(`{"domain":"evil.com"}`))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Origin", "https://example.com")
+		req.Header.Set("Sec-Fetch-Site", "cross-site")
+
+		resp, err := app.Test(req, 30000)
+
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 	})
 }

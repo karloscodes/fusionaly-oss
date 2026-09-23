@@ -427,10 +427,8 @@ func CreateMinimalTestApp(t *testing.T, db *gorm.DB) *fiber.App {
 	cfg.StaticDirectory = appConfig.PublicDirectory
 	cfg.StaticPrefix = appConfig.PublicAssetsUrlPrefix
 	cfg.TemplatesDirectory = appConfig.PublicDirectory
-	// Enable SecFetchSite validation in tests to match production behavior
-	// This blocks requests without Sec-Fetch-Site header (server-to-server requests)
-	cfg.EnableSecFetchSite = true
-	cfg.SecFetchSiteAllowedValues = []string{"cross-site", "same-site", "same-origin"}
+	// Keep cartridge's Sec-Fetch-Site defaults, as internal/app.go does, so
+	// tests run the same checks as production.
 
 	srv, err := cartridge.NewServer(cfg)
 	require.NoError(t, err)
