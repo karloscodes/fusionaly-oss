@@ -2,43 +2,42 @@
 @config "../tailwind.config.ts";
 
 @layer base {
-  /* Light (default). Values equal Tailwind's stock neutrals, so the Light
-     theme is pixel-identical to before themes existed. Channels are "R G B"
-     so Tailwind's rgb(var(--c-x) / <alpha-value>) keeps opacity modifiers. */
+  /* Light (default). White, black, and neutral (zinc) grays with no blue
+     tint; the brand cyan is the one accent. Channels are "R G B" so
+     Tailwind's rgb(var(--c-x) / <alpha-value>) keeps opacity modifiers. */
   :root {
     --radius: 0.5rem;
 
     --c-white: 255 255 255;
     --c-black: 0 0 0;
-    --c-gray-50: 249 250 251;
-    --c-gray-100: 243 244 246;
-    --c-gray-200: 229 231 235;
-    --c-gray-300: 209 213 219;
-    --c-gray-400: 156 163 175;
-    --c-gray-500: 107 114 128;
-    --c-gray-600: 75 85 99;
-    --c-gray-700: 55 65 81;
-    --c-gray-800: 31 41 55;
-    --c-gray-900: 17 24 39;
+    --c-gray-50: 250 250 250;
+    --c-gray-100: 244 244 245;
+    --c-gray-200: 228 228 231;
+    --c-gray-300: 212 212 216;
+    --c-gray-400: 161 161 170;
+    --c-gray-500: 113 113 122;
+    --c-gray-600: 82 82 91;
+    --c-gray-700: 63 63 70;
+    --c-gray-800: 39 39 42;
+    --c-gray-900: 24 24 27;
 
     /* Chart tokens. A theme is pure data — define these (+ a switcher entry)
        and charts adapt with no component changes. --c-chart-line is the
        secondary (revenue) line; --c-bar(/-deep) optionally override the bar
        fill with a gradient (omit to use the metric color); --c-bar-radius is
        the bar corner radius in px. */
-    --c-chart-line: 75 85 99;
-    --c-accent: 0 214 120; /* signature data color — heat map + chart bars (brand green) */
+    --c-chart-line: 82 82 91;
+    --c-accent: 0 209 255; /* brand cyan — heat map, chart bars, wordmark */
+    --c-bar: var(--c-accent); /* every metric draws in the accent */
     --c-bar-radius: 4;
     --c-radius-scale: 1; /* 1 = stock rounding; a theme sets 0 to square corners */
     --c-flow: #3b82f6, #6366f1, #8b5cf6, #a855f7, #c084fc, #d946ef;
     /* Monospace stack the terminal-style themes opt into via --c-font. */
     --c-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 
-    /* Data-table proportion bar. Light keeps the original faint blue
-       (bg-blue-50/50) it shipped with before themes existed; the
-       dark/terminal themes override this below to tint from their own
-       gray-200 so the bar adapts to a dark surface instead of washing out. */
-    --databar: rgb(239 246 255 / 0.5);
+    /* Data-table proportion bar: a faint tint of the accent. The terminal
+       themes override this below to tint from their own gray-200. */
+    --databar: rgb(var(--c-accent) / 0.16);
   }
 
   /* Non-light themes derive the proportion bar from their themed gray-200.
@@ -69,8 +68,10 @@
     --c-gray-900: 230 237 243;
 
     --c-chart-line: 139 148 158; /* calm gray, not near-white */
-    --c-accent: 0 214 120; /* brand green */
+    --c-accent: 0 209 255; /* brand cyan */
+    --c-bar: var(--c-accent);
     --c-bar-radius: 4;
+    --databar: rgb(var(--c-accent) / 0.13);
   }
 
   /* Phosphor (omarchy/btop terminal). Near-black green-tinted surface, pale-green ink,
