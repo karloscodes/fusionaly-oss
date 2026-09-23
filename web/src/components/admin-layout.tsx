@@ -2,6 +2,7 @@ import { ReactNode, useState, useEffect } from "react";
 import { Link, router } from "@inertiajs/react";
 import { AlertTriangle } from "lucide-react";
 import { ThemeSwitcher } from "@/components/theme-switcher";
+import { CommandSearch } from "@/components/command-search";
 
 interface AdminLayoutProps {
 	children: ReactNode;
@@ -12,7 +13,7 @@ interface AdminLayoutProps {
 // Fusionaly Logo Component - Text wordmark with green underscore
 const FusionalyLogo = () => (
 	<span className="text-lg font-semibold font-mono">
-		fusionaly<span className="text-[#00D678]">_</span>
+		fusionaly<span className="text-[rgb(var(--c-accent))]">_</span>
 	</span>
 );
 
@@ -59,6 +60,7 @@ export function AdminLayout({ children, currentPath, badge }: AdminLayoutProps) 
 						</div>
 
 						<div className="flex items-center space-x-4">
+							<CommandSearch />
 							<ThemeSwitcher />
 							{health && !health.healthy && (
 								<Link

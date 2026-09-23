@@ -1,8 +1,9 @@
 import { ReactNode, useState, useEffect, useRef } from "react";
 import { Link, router } from "@inertiajs/react";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Settings, ChevronDown, Check, AlertTriangle } from "lucide-react";
+import { Settings, ChevronDown, Check, AlertTriangle } from "lucide-react";
 import { ThemeSwitcher } from "@/components/theme-switcher";
+import { CommandSearch } from "@/components/command-search";
 import { isLensEnabled } from "@/lib/feature-flags";
 
 interface Website {
@@ -104,13 +105,13 @@ export function WebsiteLayout({
 					<div className="flex h-14 items-center justify-between">
 						{/* Left side: Back + Website name + Sub-nav */}
 						<div className="flex items-center space-x-4">
-							{/* Back to websites list */}
+							{/* Wordmark: back to Home */}
 							<Link
 								href="/admin"
-								className="flex items-center text-gray-500 hover:text-gray-900 transition-colors"
-								title="Back to websites"
+								className="font-mono font-extrabold text-base tracking-tight text-gray-900"
+								title="Home"
 							>
-								<ArrowLeft className="w-4 h-4" />
+								fusionaly<span className="text-[rgb(var(--c-accent))]">_</span>
 							</Link>
 
 							{/* Website domain with dropdown selector and settings icon */}
@@ -119,10 +120,11 @@ export function WebsiteLayout({
 								<div className="relative" ref={dropdownRef}>
 									<button
 										onClick={() => websites.length > 1 && setIsDropdownOpen(!isDropdownOpen)}
-										className={`flex items-center gap-1.5 text-sm font-semibold text-gray-900 ${
-											websites.length > 1 ? "hover:text-black cursor-pointer" : ""
+										className={`flex items-center gap-2 h-8 px-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm font-medium text-gray-900 ${
+											websites.length > 1 ? "hover:border-gray-400 cursor-pointer" : ""
 										}`}
 									>
+										<span className="w-2 h-2 rounded-full bg-emerald-500" aria-hidden="true" />
 										<span>{websiteDomain}</span>
 										{websites.length > 1 && (
 											<ChevronDown className={`w-3.5 h-3.5 transition-transform ${isDropdownOpen ? "rotate-180" : ""}`} />
@@ -173,15 +175,12 @@ export function WebsiteLayout({
 								</Link>
 							</div>
 
-							{/* Separator */}
-							<span className="text-gray-500/30 hidden sm:inline">|</span>
-
 							{/* Sub-navigation with active underline */}
 							{navRoutes.map((route) => (
 								<Link
 									key={route.path}
 									href={route.path}
-									className="relative text-sm font-medium transition-colors hover:text-gray-600 py-4 text-gray-900 hidden sm:block"
+									className={`relative text-sm transition-colors hover:text-gray-900 py-4 hidden sm:block ${isCurrentPath(route.path) ? "text-gray-900 font-semibold" : "text-gray-500"}`}
 								>
 									<span className="relative inline-flex items-center">
 										{route.name}
@@ -194,16 +193,17 @@ export function WebsiteLayout({
 											</Badge>
 										)}
 									</span>
-									{/* Active indicator - black underline */}
+									{/* Active indicator - accent underline */}
 									{isCurrentPath(route.path) && (
-										<span className="absolute bottom-0 left-0 right-0 h-0.5 bg-black" />
+										<span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[rgb(var(--c-accent))]" />
 									)}
 								</Link>
 							))}
 						</div>
 
-						{/* Right side: Theme + Health warning + Settings + Logout */}
+						{/* Right side: Search + Theme + Health warning + Settings + Logout */}
 						<div className="flex items-center space-x-4">
+							<CommandSearch websiteId={websiteId} websites={websites} />
 							<ThemeSwitcher />
 							{/* System health warning indicator */}
 							{health && !health.healthy && (
@@ -221,9 +221,9 @@ export function WebsiteLayout({
 								className="relative text-sm font-medium transition-colors hover:text-gray-600 py-4 text-gray-900"
 							>
 								Settings
-								{/* Active indicator - black underline */}
+								{/* Active indicator - accent underline */}
 								{currentPath?.startsWith("/admin/administration") && (
-									<span className="absolute bottom-0 left-0 right-0 h-0.5 bg-black" />
+									<span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[rgb(var(--c-accent))]" />
 								)}
 							</Link>
 							<a

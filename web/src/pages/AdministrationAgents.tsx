@@ -12,12 +12,10 @@ import { Button } from "@/components/ui/button";
 import { FlashMessageDisplay } from "@/components/ui/flash-message";
 import { Input } from "@/components/ui/input";
 import {
-	Key,
 	Copy,
 	Check,
 	RefreshCw,
-	Plug,
-} from "lucide-react";
+	} from "lucide-react";
 import type { FlashMessage } from "@/types";
 import { AdministrationLayout } from "@/components/administration-layout";
 
@@ -103,11 +101,11 @@ export const AdministrationAgentsContent: FC = () => {
 			<FlashMessageDisplay flash={displayFlash} error={error} />
 
 			{/* Agent API Key */}
-			<Card className="border-black shadow-sm">
+			<Card className="border-black">
 				<CardHeader className="pb-4">
 					<div className="flex justify-between items-center">
 						<CardTitle className="text-lg flex items-center gap-2">
-							<Key className="h-5 w-5" /> API Key
+							API Key
 						</CardTitle>
 					</div>
 					<CardDescription>
@@ -224,10 +222,10 @@ const ConnectCard: FC = () => {
 	const mcpURL = `${window.location.origin}/mcp`;
 
 	return (
-		<Card className="border-black shadow-sm">
+		<Card className="border-black">
 			<CardHeader className="pb-4">
 				<CardTitle className="text-lg flex items-center gap-2">
-					<Plug className="h-5 w-5" /> Connect your AI client
+					Connect your AI client
 				</CardTitle>
 				<CardDescription>
 					Your client asks this server; only the answer reaches your AI provider.

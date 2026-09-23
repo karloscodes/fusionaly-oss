@@ -3,7 +3,8 @@ import type { KeyboardEvent } from "react";
 import { usePage, router } from "@inertiajs/react";
 import { EventsTable } from "../components/events-table";
 import type { EventsResponse } from "@/types";
-import { Zap, Search, X, Layers } from "lucide-react";
+import { Search, X, Layers } from "lucide-react";
+import { tabClass } from "@/lib/tab-class";
 import { PageHeader } from "@/components/ui/page-header";
 import { formatNumber } from "@/lib/utils";
 import { WebsiteLayout } from "@/components/website-layout";
@@ -139,7 +140,7 @@ export function Events() {
 				<div className="flex flex-col gap-4">
 					<PageHeader
 						title="Events"
-						icon={Zap}
+						description="Every page view and event, newest first."
 					/>
 
 				{/* Filters Bar */}
@@ -158,11 +159,7 @@ export function Events() {
 									key={range.value}
 									type="button"
 									onClick={() => handleQuickFilter("range", range.value)}
-									className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
-										filters.range === range.value
-											? "bg-gray-900 text-white"
-											: "bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-									}`}
+									className={`${tabClass(filters.range === range.value)}`}
 								>
 									{range.label}
 								</button>
@@ -176,33 +173,21 @@ export function Events() {
 							<button
 								type="button"
 								onClick={() => handleQuickFilter("type", "")}
-								className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-									filters.type === ""
-										? "bg-gray-900 text-white"
-										: "bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-								}`}
+								className={`${tabClass(filters.type === "")}`}
 							>
 								All
 							</button>
 							<button
 								type="button"
 								onClick={() => handleQuickFilter("type", "page")}
-								className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-									filters.type === "page"
-										? "bg-gray-900 text-white"
-										: "bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-								}`}
+								className={`${tabClass(filters.type === "page")}`}
 							>
 								Pages
 							</button>
 							<button
 								type="button"
 								onClick={() => handleQuickFilter("type", "event")}
-								className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-									filters.type === "event"
-										? "bg-gray-900 text-white"
-										: "bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-								}`}
+								className={`${tabClass(filters.type === "event")}`}
 							>
 								Events
 							</button>
@@ -220,7 +205,7 @@ export function Events() {
 									value={filters.referrer}
 									onChange={(e) => handleFilterChange("referrer", e.target.value)}
 									onKeyPress={handleKeyPress}
-									className="w-full sm:w-28 lg:w-32 pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent placeholder:text-gray-400"
+									className="w-full sm:w-28 lg:w-32 pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent placeholder:text-gray-400"
 								/>
 							</div>
 							<div className="relative flex-1 sm:flex-none">
@@ -231,7 +216,7 @@ export function Events() {
 									value={filters.event_key}
 									onChange={(e) => handleFilterChange("event_key", e.target.value)}
 									onKeyPress={handleKeyPress}
-									className="w-full sm:w-28 lg:w-32 pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent placeholder:text-gray-400"
+									className="w-full sm:w-28 lg:w-32 pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent placeholder:text-gray-400"
 								/>
 							</div>
 						</div>
@@ -241,11 +226,7 @@ export function Events() {
 						<button
 							type="button"
 							onClick={toggleSessionGrouping}
-							className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-								groupBySessions
-									? "bg-gray-900 text-white"
-									: "bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-							}`}
+							className={`${tabClass(groupBySessions)} gap-1.5`}
 							title={groupBySessions ? "Grouped by sessions" : "Group by sessions"}
 						>
 							<Layers className="h-3.5 w-3.5" />
@@ -266,7 +247,7 @@ export function Events() {
 				</div>
 
 				{/* Events Table Card */}
-				<div className="bg-white border border-black rounded-lg overflow-hidden">
+				<div className="bg-white border border-black rounded-xl overflow-hidden">
 					<div className="p-4">
 						<EventsTable
 							events={eventsData?.events ?? []}

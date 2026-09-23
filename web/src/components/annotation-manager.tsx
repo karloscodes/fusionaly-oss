@@ -16,12 +16,13 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover";
+import { tabClass } from "@/lib/tab-class";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
-import { Pencil, Trash2, Flag, Calendar as CalendarIcon } from "lucide-react";
+import { Pencil, Trash2, Calendar as CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Annotation } from "@/types";
 
@@ -356,10 +357,9 @@ export const AnnotationManager = ({ websiteId, initialDate, open, onOpenChange }
 	return (
 		<Dialog open={isOpen} onOpenChange={setIsOpen}>
 			<DialogTrigger asChild>
-				<Button variant="outline" size="sm" className="gap-1">
-					<Flag className="w-4 h-4" />
-					Add Annotation
-				</Button>
+				<button type="button" className={tabClass(false)}>
+					+ Annotate
+				</button>
 			</DialogTrigger>
 			<DialogContent>
 				<DialogHeader>

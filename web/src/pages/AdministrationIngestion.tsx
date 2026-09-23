@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { FlashMessageDisplay } from "@/components/ui/flash-message";
 import { Textarea } from "@/components/ui/textarea";
-import { Info, ExternalLink, Filter } from "lucide-react";
+import { Info, ExternalLink, } from "lucide-react";
 import type { FlashMessage } from "@/types";
 import { AdministrationLayout } from "@/components/administration-layout";
 
@@ -110,11 +110,11 @@ export const AdministrationIngestionContent: FC = () => {
 			/>
 
 			<form onSubmit={handleSubmit}>
-				<Card className="border-black shadow-sm">
+				<Card className="border-black">
 					<CardHeader className="pb-4">
 						<div className="flex justify-between items-center">
 							<CardTitle className="text-lg flex items-center gap-2">
-								<Filter className="h-5 w-5" /> IP Address Exclusion
+								IP Address Exclusion
 							</CardTitle>
 						</div>
 						<CardDescription>

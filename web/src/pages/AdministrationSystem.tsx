@@ -14,12 +14,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-	Database,
 	FileText,
 	Download,
 	Trash2,
 	RefreshCw,
-	Globe,
 	AlertTriangle,
 } from "lucide-react";
 import type { FlashMessage } from "@/types";
@@ -172,11 +170,11 @@ export const AdministrationSystemContent: FC = () => {
 			<FlashMessageDisplay flash={displayFlash} error={error} />
 
 			{/* GeoLite Configuration */}
-			<Card className="border-black shadow-sm">
+			<Card className="border-black">
 				<CardHeader className="pb-4">
 					<div className="flex justify-between items-center">
 						<CardTitle className="text-lg flex items-center gap-2">
-							<Globe className="h-5 w-5" /> GeoLite Configuration
+							GeoLite Configuration
 						</CardTitle>
 					</div>
 					<CardDescription>
@@ -287,11 +285,11 @@ export const AdministrationSystemContent: FC = () => {
 			</Card>
 
 			{/* Cache Management */}
-			<Card className="border-black shadow-sm">
+			<Card className="border-black">
 				<CardHeader className="pb-4">
 					<div className="flex justify-between items-center">
 						<CardTitle className="text-lg flex items-center gap-2">
-							<Trash2 className="h-5 w-5" /> Cache Management
+							Cache Management
 						</CardTitle>
 					</div>
 					<CardDescription>
@@ -313,11 +311,11 @@ export const AdministrationSystemContent: FC = () => {
 			</Card>
 
 			{/* Database Export */}
-			<Card className="border-black shadow-sm">
+			<Card className="border-black">
 				<CardHeader className="pb-4">
 					<div className="flex justify-between items-center">
 						<CardTitle className="text-lg flex items-center gap-2">
-							<Database className="h-5 w-5" /> Database Export
+							Database Export
 						</CardTitle>
 					</div>
 					<CardDescription>
@@ -353,11 +351,11 @@ export const AdministrationSystemContent: FC = () => {
 			</Card>
 
 			{/* Application Logs */}
-			<Card className="border-black shadow-sm">
+			<Card className="border-black">
 				<CardHeader className="pb-4">
 					<div className="flex justify-between items-center">
 						<CardTitle className="text-lg flex items-center gap-2">
-							<FileText className="h-5 w-5" /> Application Logs
+							Application Logs
 						</CardTitle>
 						<div className="flex gap-2">
 							<Button

@@ -51,11 +51,11 @@ export function AdministrationAI({ settings, flash, error }: AdministrationAIPro
         <FlashMessageDisplay flash={flash} error={error} />
 
         <form onSubmit={handleSettingsSubmit}>
-          <Card className="border-black shadow-sm">
+          <Card className="border-black">
             <CardHeader className="pb-4">
               <div className="flex justify-between items-center">
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <Key className="h-5 w-5" /> OpenRouter API key
+                  OpenRouter API key
                 </CardTitle>
               </div>
               <CardDescription>

@@ -133,19 +133,19 @@ export function EventsTable({ events, isLoading = false, groupBySessions = false
 			<Table>
 				<TableHeader>
 					<TableRow className="bg-gray-50 border-b border-gray-200">
-						<TableHead className="w-[110px] py-2 px-4 text-gray-800 font-semibold whitespace-nowrap">
+						<TableHead className="w-[110px] py-2 px-4 text-[10.5px] uppercase tracking-[0.08em] text-gray-500 font-semibold whitespace-nowrap">
 							Time
 						</TableHead>
-						<TableHead className="w-[160px] py-2 px-4 text-gray-800 font-semibold whitespace-nowrap">
+						<TableHead className="w-[160px] py-2 px-4 text-[10.5px] uppercase tracking-[0.08em] text-gray-500 font-semibold whitespace-nowrap">
 							User
 						</TableHead>
-						<TableHead className="py-2 px-4 text-gray-800 font-semibold whitespace-nowrap">
+						<TableHead className="py-2 px-4 text-[10.5px] uppercase tracking-[0.08em] text-gray-500 font-semibold whitespace-nowrap">
 							URL
 						</TableHead>
-						<TableHead className="w-[180px] py-2 px-4 text-gray-800 font-semibold whitespace-nowrap">
+						<TableHead className="w-[180px] py-2 px-4 text-[10.5px] uppercase tracking-[0.08em] text-gray-500 font-semibold whitespace-nowrap">
 							Referrer
 						</TableHead>
-						<TableHead className="w-[180px] py-2 px-4 text-gray-800 font-semibold whitespace-nowrap">
+						<TableHead className="w-[180px] py-2 px-4 text-[10.5px] uppercase tracking-[0.08em] text-gray-500 font-semibold whitespace-nowrap">
 							Event Key
 						</TableHead>
 						<TableHead className="w-[110px] py-2 px-4 text-gray-800 font-semibold text-center whitespace-nowrap">

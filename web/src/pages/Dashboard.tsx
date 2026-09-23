@@ -36,7 +36,7 @@ const Dashboard = ({ current_website_id, website_domain, websites, ...props }: D
 			currentPath={`/admin/websites/${websiteId}/dashboard`}
 			websites={websites}
 		>
-			<DashboardComponent {...props} current_website_id={current_website_id} />
+			<DashboardComponent {...props} current_website_id={current_website_id} website_domain={website_domain} />
 		</WebsiteLayout>
 	);
 };

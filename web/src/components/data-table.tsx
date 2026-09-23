@@ -109,7 +109,7 @@ const DataTable = ({
 			) : (
 				<>
 					{/* Column Headers */}
-					<div className="flex justify-between text-xs font-medium text-gray-500 py-2">
+					<div className="flex justify-between text-[10.5px] font-semibold uppercase tracking-[0.08em] text-gray-500 py-2">
 						<span className="truncate mr-4 overflow-hidden flex-1 min-w-0">
 							{columns[0].label}
 						</span>
@@ -138,7 +138,7 @@ const DataTable = ({
 					</div>
 
 					{/* Data list */}
-					<div className="space-y-0.5 flex-grow overflow-y-hidden">
+					<div className="space-y-1 flex-grow overflow-y-hidden">
 						{currentItems.map((item) => (
 							<div
 								key={`${item.name}-${item.count}`}
@@ -146,14 +146,14 @@ const DataTable = ({
 							>
 								<div className="flex-1 relative min-w-0 pr-2">
 					<div
-						className="absolute inset-0 bg-[var(--databar)]"
+						className="absolute inset-0 rounded bg-[var(--databar)]"
 										style={{
 											width: `${maxCount > 0 ? (item.count / maxCount) * 100 : 0}%`,
 										}}
 									/>
-									<div className="relative py-2 px-2 overflow-hidden">
+									<div className="relative py-1.5 px-2.5 overflow-hidden">
 										<span
-											className="truncate block text-sm font-medium w-full"
+											className="truncate block text-[13px] w-full"
 											title={item.name}
 										>
 											{columns[0].render ? columns[0].render(item) : item.name}
@@ -161,7 +161,7 @@ const DataTable = ({
 									</div>
 								</div>
 
-								<div className="flex items-center gap-3 sm:gap-6 tabular-nums text-sm py-2 px-2 ml-auto">
+								<div className="flex items-center gap-3 sm:gap-6 tabular-nums text-[13px] py-1.5 px-2 ml-auto">
 									{columns.slice(1).map((column) => {
 										const alignment =
 											column.align === "left"
@@ -184,14 +184,14 @@ const DataTable = ({
 										return (
 											<span
 												key={column.name}
-												className={`font-medium ${width} ${alignment} ${hideOnMobile}`}
+												className={`font-semibold ${width} ${alignment} ${hideOnMobile}`}
 											>
 												{displayValue as ReactNode}
 											</span>
 										);
 									})}
 									{showPercentage && (
-										<span className="w-12 text-right font-medium">
+										<span className="w-12 text-right font-mono text-xs text-gray-500">
 											{((item.count / denominator) * 100).toFixed(1)}%
 										</span>
 									)}
@@ -214,7 +214,7 @@ const DataTable = ({
 						>
 							<ChevronLeft className="w-3.5 h-3.5" />
 						</button>
-						<span className="text-gray-600 font-medium text-xs flex items-center justify-center h-full">
+						<span className="text-gray-500 font-mono text-xs flex items-center justify-center h-full">
 							{currentPage} of {totalPages}
 						</span>
 						<button

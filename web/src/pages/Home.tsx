@@ -1,24 +1,13 @@
 import { useState } from "react";
 import { usePage, Link, router } from "@inertiajs/react";
-import { formatDistanceToNow } from "date-fns";
 import {
-  TrendingUp,
-  TrendingDown,
-  Globe,
-  Target,
-  Trophy,
-  AlertTriangle,
   Plus,
   MoreHorizontal,
   Code,
   Trash2,
   Copy,
   Check,
-  FileText,
-  CalendarDays,
-  Calendar,
-  Users,
-  HelpCircle,
+  ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,13 +24,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { AdminLayout } from "@/components/admin-layout";
+import { itemTypeGlyphs, feedTime } from "@/components/feed-item-style";
 import { cn } from "@/lib/utils";
 
 interface FeedItem {
@@ -52,12 +36,50 @@ interface FeedItem {
   description: string;
   detectedAt: string;
   websiteDomain: string;
+  metadata?: string;
+}
+
+// Filter groups for the feed, by item type.
+const TYPE_GROUPS: { key: string; label: string; types: string[] }[] = [
+  { key: "traffic", label: "Traffic", types: ["traffic_spike", "traffic_drop"] },
+  { key: "sources", label: "Sources", types: ["new_referrer", "best_sources"] },
+  { key: "pages", label: "Pages", types: ["trending_content", "dropping_pages", "page_problem"] },
+  { key: "goals", label: "Goals", types: ["goal_hit", "milestone"] },
+  { key: "summaries", label: "Summaries", types: ["daily_summary", "monthly_summary"] },
+];
+
+function parseMetadata(raw?: string): Record<string, unknown> | null {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
 }
 
 interface Website {
   id: number;
   domain: string;
   event_count?: number;
+  daily_visitors?: number[]; // last 15 full days, oldest first
+}
+
+// Each site keeps one color for its dot in the feed and on its card.
+const SITE_COLORS = ["rgb(var(--c-accent))", "#2563eb", "#7c3aed", "#d97706", "#db2777", "#059669"];
+const siteColor = (websites: Website[], id: number) =>
+  SITE_COLORS[Math.max(0, websites.findIndex((w) => w.id === id)) % SITE_COLORS.length];
+
+// Bold the lead of a feed description, as in the design: a leading number
+// ("412 visitors…") or the name before a colon ("/pricing: 64 visitors").
+function Description({ text }: { text: string }) {
+  const m = text.match(/^([\d,.]+|[^\s:]+(?=:))(.*)$/);
+  if (!m) return <>{text}</>;
+  return (
+    <>
+      <b className="font-mono text-[12.5px] font-semibold text-gray-900">{m[1]}</b>
+      {m[2]}
+    </>
+  );
 }
 
 interface CalendarDay {
@@ -73,33 +95,18 @@ interface HomeProps {
   [key: string]: any;
 }
 
-const itemTypeIcons: Record<string, React.ElementType> = {
-  traffic_spike: TrendingUp,
-  traffic_drop: TrendingDown,
-  new_referrer: Globe,
-  goal_hit: Target,
-  milestone: Trophy,
-  page_problem: AlertTriangle,
-  trending_content: FileText,
-  daily_summary: CalendarDays,
-  monthly_summary: Calendar,
-  dropping_pages: TrendingDown,
-  best_sources: Users,
-};
-
-const itemTypeColors: Record<string, string> = {
-  traffic_spike: "text-green-700 bg-green-100",
-  traffic_drop: "text-red-700 bg-red-100",
-  new_referrer: "text-blue-700 bg-blue-100",
-  goal_hit: "text-purple-700 bg-purple-100",
-  milestone: "text-amber-700 bg-amber-100",
-  page_problem: "text-orange-700 bg-orange-100",
-  trending_content: "text-indigo-700 bg-indigo-100",
-  daily_summary: "text-slate-700 bg-slate-100",
-  monthly_summary: "text-slate-700 bg-slate-100",
-  dropping_pages: "text-orange-700 bg-orange-100",
-  best_sources: "text-emerald-700 bg-emerald-100",
-};
+// The date under each group label: "May 23", "May 22", "May 16–21".
+function groupDate(label: string): string {
+  const day = (offset: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() - offset);
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  };
+  if (label === "Today") return day(0);
+  if (label === "Yesterday") return day(1);
+  if (label === "Last 7 days") return `${day(7)}–${day(2).split(" ")[1]}`;
+  return "";
+}
 
 function groupByDate(items: FeedItem[]): Record<string, FeedItem[]> {
   const groups: Record<string, FeedItem[]> = {};
@@ -132,28 +139,73 @@ function groupByDate(items: FeedItem[]): Record<string, FeedItem[]> {
   return groups;
 }
 
-function FeedItemRow({ item }: { item: FeedItem }) {
-  const Icon = itemTypeIcons[item.itemType] || AlertTriangle;
-  const colorClass = itemTypeColors[item.itemType] || "text-gray-600 bg-gray-100";
+function FeedItemRow({ item, color }: { item: FeedItem; color: string }) {
+  const g = itemTypeGlyphs[item.itemType] || { glyph: "•", tone: "text-gray-900" };
+  const meta = item.itemType === "monthly_summary" ? parseMetadata(item.metadata) : null;
+  const topPages = (meta?.topPages as { pathname: string; visitors: number }[] | undefined) || [];
+  const topSources = (meta?.topSources as { hostname: string; visitors: number }[] | undefined) || [];
 
   return (
     <Link
       href={`/admin/websites/${item.websiteId}/dashboard`}
-      className="flex items-center gap-3 py-3 -mx-2 px-2 rounded-lg hover:bg-gray-50 transition-colors"
+      className="group grid grid-cols-[30px_1fr_auto] gap-3.5 items-start py-3 px-2.5 -mx-2.5 rounded-lg hover:bg-gray-50 transition-colors"
     >
-      <div className={cn("p-2 rounded flex items-center justify-center", colorClass)}>
-        <Icon className="w-4 h-4" />
-      </div>
+      <span
+        className={cn("w-[30px] h-[30px] rounded flex items-center justify-center font-mono text-sm font-bold bg-[var(--databar)]", g.tone)}
+        aria-hidden="true"
+      >
+        {g.glyph}
+      </span>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-900">{item.websiteDomain}</span>
-          <span className="text-xs text-gray-500">
-            {formatDistanceToNow(new Date(item.detectedAt), { addSuffix: true })}
+        <p className="text-sm font-semibold text-gray-900">{item.title}</p>
+        <p className="text-[13.5px] text-gray-500 mt-0.5"><Description text={item.description} /></p>
+        {(topPages.length > 0 || topSources.length > 0) && (
+          <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-lg border border-gray-200 bg-white px-3.5 py-3">
+            {[
+              { title: "Top pages", rows: topPages.slice(0, 3).map((p) => [p.pathname, p.visitors] as const) },
+              { title: "Top sources", rows: topSources.slice(0, 3).map((p) => [p.hostname, p.visitors] as const) },
+            ].map((col) => col.rows.length > 0 && (
+              <div key={col.title}>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-1">{col.title}</p>
+                {col.rows.map(([name, n]) => (
+                  <div key={name} className="flex justify-between gap-2 text-xs py-0.5">
+                    <span className="truncate text-gray-900">{name}</span>
+                    <span className="font-mono text-gray-500">{formatCount(n)}</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+        <p className="mt-1.5 flex flex-wrap items-center gap-x-2.5 font-mono text-[11.5px] text-gray-500">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="w-[7px] h-[7px] rounded-full" style={{ background: color }} aria-hidden="true" />
+            {item.websiteDomain}
           </span>
-        </div>
-        <p className="text-sm text-gray-900 mt-0.5">{item.description}</p>
+          <span aria-hidden="true">·</span>
+          <span>{feedTime(item.detectedAt)}</span>
+          <span aria-hidden="true">·</span>
+          <span>{item.itemType}</span>
+        </p>
       </div>
+      <span className="text-gray-400 group-hover:text-gray-900 pt-1.5" aria-hidden="true">→</span>
     </Link>
+  );
+}
+
+function FilterChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={cn(
+        "h-7 px-3 text-xs font-medium border rounded-full whitespace-nowrap transition-colors",
+        active ? "bg-black text-white border-black" : "bg-white text-gray-500 border-gray-200 hover:text-gray-900 hover:border-gray-400"
+      )}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -175,54 +227,64 @@ interface SiteCardProps {
   onDelete: (site: Website) => void;
 }
 
-function SiteCard({ site, onShowScript, onDelete }: SiteCardProps) {
-  const eventCount = site.event_count || 0;
-  const isActive = eventCount > 0;
+function SiteCard({ site, color, onShowScript, onDelete }: SiteCardProps & { color: string }) {
+  const days = site.daily_visitors || [];
+  const yesterday = days.length ? days[days.length - 1] : 0;
+  const before = days.slice(0, -1);
+  const usual = before.length ? before.reduce((a, b) => a + b, 0) / before.length : 0;
+  const change = usual > 0 ? Math.round(((yesterday - usual) / usual) * 100) : null;
+  const spark = days.slice(-14);
+  const sparkMax = Math.max(...spark, 1);
 
   return (
-    <div className="group relative bg-white border border-black rounded-lg hover:shadow-md transition-all">
-      <Link href={`/admin/websites/${site.id}/dashboard`} className="block p-4">
-        <div className="flex items-start gap-3">
-          <img
-            src={`https://www.google.com/s2/favicons?domain=${site.domain}&sz=32`}
-            alt=""
-            className="w-8 h-8 rounded-lg bg-gray-100 p-1"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.style.display = "none";
-            }}
-          />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-gray-900 truncate">{site.domain}</p>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <span className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-green-500" : "bg-gray-300"}`} />
-              <span className="text-xs text-gray-600">{formatCount(eventCount)} events</span>
-            </div>
+    <div className="group relative bg-white border border-black rounded-xl">
+      <Link href={`/admin/websites/${site.id}/dashboard`} className="block px-4 pt-4 pb-3.5">
+        <div className="flex items-center gap-2 pr-16">
+          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} aria-hidden="true" />
+          <span className="truncate text-[14.5px] font-semibold text-gray-900">{site.domain}</span>
+        </div>
+        <div className="mt-3 flex items-end justify-between gap-3">
+          <div>
+            <p className="text-2xl font-bold leading-none tracking-tight text-gray-900">{yesterday.toLocaleString()}</p>
+            <p className="mt-1 font-mono text-[11.5px] text-gray-500">visitors yesterday</p>
           </div>
+          {spark.some((v) => v > 0) && (
+            <div className="flex items-end gap-0.5 h-8" aria-hidden="true">
+              {spark.map((v, i) => (
+                <span key={i} className="w-[5px] rounded-[1px] bg-[rgb(var(--c-accent))]" style={{ height: Math.max(2, Math.round((v / sparkMax) * 32)) }} />
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="mt-3 flex justify-between gap-2 font-mono text-[11.5px] text-gray-500">
+          <span className={change === null ? "" : change >= 0 ? "text-emerald-600" : "text-rose-500"}>
+            {change === null ? `${formatCount(site.event_count || 0)} events` : `${change >= 0 ? "+" : "−"}${Math.abs(change)}% vs usual`}
+          </span>
+          <span className="group-hover:text-gray-900">Open dashboard →</span>
         </div>
       </Link>
 
-      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="absolute top-3 right-3 flex items-center gap-0.5">
+        <button
+          type="button"
+          onClick={() => onShowScript(site)}
+          className="w-[30px] h-[30px] grid place-items-center rounded text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+          aria-label={`Show tracking script for ${site.domain}`}
+        >
+          <Code className="h-4 w-4" />
+        </button>
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 w-7 p-0 bg-white/80 hover:bg-white shadow-sm"
-              onClick={(e) => e.preventDefault()}
+            <button
+              type="button"
+              className="w-[30px] h-[30px] grid place-items-center rounded text-gray-500 hover:text-gray-900 hover:bg-gray-100 opacity-0 group-hover:opacity-100 focus:opacity-100"
+              aria-label={`More actions for ${site.domain}`}
             >
-              <MoreHorizontal className="h-4 w-4 text-gray-600" />
-            </Button>
+              <MoreHorizontal className="h-4 w-4" />
+            </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem onClick={() => onShowScript(site)}>
-              <Code className="h-4 w-4 mr-2" />
-              Get tracking script
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => onDelete(site)}
-              className="text-red-600 focus:text-red-600"
-            >
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuItem onClick={() => onDelete(site)} className="text-red-600 focus:text-red-600">
               <Trash2 className="h-4 w-4 mr-2" />
               Delete site
             </DropdownMenuItem>
@@ -330,61 +392,108 @@ function VisitorCalendar({
     y: number;
   } | null>(null);
 
-  const cellSize = 10;
-  const cellGap = 2;
+  // Three numbers next to the grid: busiest day, daily average, this week.
+  const realDays = days.filter((d) => d.count >= 0);
+  const busiest = realDays.reduce((a, b) => (b.count > a.count ? b : a), realDays[0]);
+  const sumOf = (list: { count: number }[]) => list.reduce((acc, d) => acc + d.count, 0);
+  const thisWeek = sumOf(realDays.slice(-7));
+  const lastWeek = sumOf(realDays.slice(-14, -7));
+  const weekChange = lastWeek > 0 ? Math.round(((thisWeek - lastWeek) / lastWeek) * 100) : null;
+  const stats = [
+    {
+      label: "Busiest day",
+      value: busiest && busiest.count > 0 ? busiest.count.toLocaleString() : "—",
+      note: busiest && busiest.count > 0 ? busiest.date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "no visitors yet",
+      tone: "neutral",
+    },
+    {
+      label: "Daily average",
+      value: Math.round(sumOf(realDays) / Math.max(realDays.length, 1)).toLocaleString(),
+      note: "visitors per day",
+      tone: "neutral",
+    },
+    {
+      label: "This week",
+      value: thisWeek.toLocaleString(),
+      note: weekChange === null ? "no data last week" : `${weekChange >= 0 ? "+" : ""}${weekChange}% vs last week`,
+      tone: weekChange === null ? "neutral" : weekChange >= 0 ? "up" : "down",
+    },
+  ];
+
+  // Design: 13px cells with 3px gaps, weekday labels on the left.
+  const cellSize = 13;
+  const cellGap = 3;
   const weekWidth = cellSize + cellGap;
+  const weekdayLabels = ["", "Mon", "", "Wed", "", "Fri", ""];
 
   return (
-    <div className="bg-white border border-black rounded-lg p-4 w-fit">
-      <div className="flex items-center gap-8 mb-2">
-        <h3 className="text-sm font-medium text-gray-900">
-          {total.toLocaleString()} visitors in the last year
-        </h3>
-        <div className="flex items-center gap-1 text-xs text-gray-500">
-          <span>Less</span>
-          {legendColors.map((c, i) => (
-            <div key={i} className="w-[10px] h-[10px] rounded-sm" style={{ backgroundColor: c }} />
-          ))}
-          <span>More</span>
-        </div>
+    <section className="bg-white border border-black rounded-xl p-4 sm:p-5">
+      <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+        <h2 className="text-base font-semibold text-gray-900">Visitors, last 12 months</h2>
+        <span className="font-mono text-xs text-gray-500">all sites · {total.toLocaleString()} total</span>
       </div>
 
-      {/* Month labels row */}
-      <div className="relative h-4 mb-1">
-        {monthLabels.map((m, i) => (
-          <span
-            key={i}
-            className="absolute text-xs text-gray-500"
-            style={{ left: m.weekIndex * weekWidth }}
-          >
-            {m.label}
-          </span>
-        ))}
-      </div>
+      <div className="mt-3.5 flex flex-col lg:flex-row gap-7 lg:items-start">
+        <div className="min-w-0 flex-1">
+          <div className="overflow-x-auto pb-1">
+            <div className="w-max">
+              {/* Month labels */}
+              <div className="relative h-4 ml-8 font-mono text-[10px] text-gray-500">
+                {monthLabels.map((m, i) => (
+                  <span key={i} className="absolute" style={{ left: m.weekIndex * weekWidth }}>
+                    {m.label}
+                  </span>
+                ))}
+              </div>
 
-      {/* Calendar grid */}
-      <div className="flex gap-[2px]">
-        {weeks.map((week, weekIndex) => (
-          <div key={weekIndex} className="flex flex-col gap-[2px]">
-            {week.map((day, dayIndex) => (
-              <div
-                key={dayIndex}
-                className={cn(
-                  "w-[10px] h-[10px] rounded-sm",
-                  day.count >= 0 && "cursor-pointer"
-                )}
-                style={{ backgroundColor: cellColor(day.count) }}
-                onMouseEnter={(e) => {
-                  if (day.count >= 0) {
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    setHoveredDay({ ...day, x: rect.left, y: rect.top });
-                  }
-                }}
-                onMouseLeave={() => setHoveredDay(null)}
-              />
-            ))}
+              <div className="flex gap-[3px]">
+                {/* Weekday labels */}
+                <div className="flex flex-col gap-[3px] w-[29px] font-mono text-[10px] leading-[13px] text-gray-500">
+                  {weekdayLabels.map((d, i) => (
+                    <span key={i} style={{ height: cellSize }}>{d}</span>
+                  ))}
+                </div>
+                {weeks.map((week, weekIndex) => (
+                  <div key={weekIndex} className="flex flex-col gap-[3px]">
+                    {week.map((day, dayIndex) => (
+                      <div
+                        key={dayIndex}
+                        className={cn("rounded-[2px]", day.count >= 0 && "cursor-pointer")}
+                        style={{ width: cellSize, height: cellSize, backgroundColor: cellColor(day.count) }}
+                        onMouseEnter={(e) => {
+                          if (day.count >= 0) {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setHoveredDay({ ...day, x: rect.left, y: rect.top });
+                          }
+                        }}
+                        onMouseLeave={() => setHoveredDay(null)}
+                      />
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-        ))}
+
+          {/* Legend */}
+          <div className="mt-2.5 flex items-center gap-[3px] font-mono text-[10.5px] text-gray-500">
+            <span className="mr-1">less</span>
+            {legendColors.map((c, i) => (
+              <span key={i} className="w-[11px] h-[11px] rounded-[2px]" style={{ backgroundColor: c }} />
+            ))}
+            <span className="ml-1">more</span>
+          </div>
+        </div>
+
+        <dl className="grid grid-cols-3 lg:grid-cols-1 gap-3.5 lg:w-[220px] shrink-0">
+          {stats.map((st) => (
+            <div key={st.label} className="border-l border-gray-200 pl-3.5">
+              <dt className="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">{st.label}</dt>
+              <dd className="text-xl font-bold tracking-tight text-gray-900">{st.value}</dd>
+              <dd className={cn("font-mono text-[11.5px]", st.tone === "up" ? "text-emerald-600" : st.tone === "down" ? "text-rose-500" : "text-gray-500")}>{st.note}</dd>
+            </div>
+          ))}
+        </dl>
       </div>
 
       {/* Tooltip */}
@@ -397,7 +506,7 @@ function VisitorCalendar({
           {hoveredDay.date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
         </div>
       )}
-    </div>
+    </section>
   );
 }
 
@@ -414,12 +523,30 @@ export const Home = () => {
   const [selectedWebsiteForIntegration, setSelectedWebsiteForIntegration] = useState<Website | null>(null);
   const [copiedScript, setCopiedScript] = useState(false);
   const [filterSiteId, setFilterSiteId] = useState<number | null>(null);
+  const [filterType, setFilterType] = useState<string | null>(null);
   const FEED_PAGE_SIZE = 25;
   const [visibleCount, setVisibleCount] = useState(FEED_PAGE_SIZE);
 
-  const filteredFeedItems = filterSiteId
-    ? feedItems.filter((item) => item.websiteId === filterSiteId)
-    : feedItems;
+  const typeGroup = TYPE_GROUPS.find((g) => g.key === filterType);
+  const filteredFeedItems = feedItems.filter(
+    (item) =>
+      (!filterSiteId || item.websiteId === filterSiteId) &&
+      (!typeGroup || typeGroup.types.includes(item.itemType))
+  );
+  const visitorsYesterday = websites.reduce((acc, w) => acc + (w.daily_visitors?.[w.daily_visitors.length - 1] ?? 0), 0);
+  const newToday = (groupByDate(feedItems)["Today"] || []).length;
+
+  // Busiest sites first on the cards (by visitors over the last 15 days).
+  const recentVisitors = (w: Website) => (w.daily_visitors || []).reduce((a, b) => a + b, 0);
+  const sitesByTraffic = [...websites].sort((a, b) => recentVisitors(b) - recentVisitors(a));
+
+  // Site chips only for sites that have something in the feed.
+  const sitesInFeed = websites.filter((site) => feedItems.some((item) => item.websiteId === site.id));
+  const pickFilter = (site: number | null, type: string | null) => {
+    setFilterSiteId(site);
+    setFilterType(type);
+    setVisibleCount(FEED_PAGE_SIZE);
+  };
   const visibleFeedItems = filteredFeedItems.slice(0, visibleCount);
   const hasMoreItems = visibleCount < filteredFeedItems.length;
   const remainingCount = filteredFeedItems.length - visibleCount;
@@ -440,156 +567,169 @@ export const Home = () => {
 
   return (
     <AdminLayout currentPath="/admin">
-      <div className="py-6">
-        {/* Your Sites Section */}
-        <section className="mb-10">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-              <Globe className="w-5 h-5" />
-              Your sites
-            </h2>
-            <Link
-              href="/admin/websites/new"
-              className="text-sm px-3 py-1.5 bg-black text-white rounded hover:bg-gray-800 flex items-center gap-1 font-medium transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Add site
-            </Link>
+      <div className="py-6 flex flex-col gap-6">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Home</h1>
+            <p className="text-sm text-gray-500 mt-1">
+              {websites.length} {websites.length === 1 ? "site" : "sites"} · {visitorsYesterday.toLocaleString()} visitors yesterday · {newToday} new {newToday === 1 ? "item" : "items"} today
+            </p>
           </div>
+          <Link
+            href="/admin/websites/new"
+            className="text-sm px-3 py-2 bg-black text-white rounded hover:bg-gray-800 flex items-center gap-1 font-medium transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Add site
+          </Link>
+        </div>
 
-          {websites.length === 0 ? (
-            <div className="text-center py-12 bg-white rounded-lg border border-black">
-              <Globe className="w-10 h-10 text-gray-400 mx-auto mb-3" />
-              <p className="text-sm text-gray-600 mb-4">No websites yet</p>
-              <Link
-                href="/admin/websites/new"
-                className="inline-flex items-center px-4 py-2 bg-black text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors"
-              >
-                Add your first site
-              </Link>
+        {/* Visitor calendar with its three numbers */}
+        <VisitorCalendar data={calendarData} total={totalVisitors} />
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          {/* What's new: the activity feed */}
+          <section className="lg:col-span-2 bg-white border border-black rounded-xl">
+            <div className="px-4 sm:px-5 py-4 border-b border-gray-200 flex flex-col gap-3">
+              <div>
+                <h2 className="text-base font-semibold text-gray-900 flex flex-wrap items-baseline gap-x-2.5">
+                  What's new <span className="font-mono text-xs font-normal text-gray-500">updated daily from yesterday's data</span>
+                </h2>
+                <p className="text-[13px] text-gray-500 mt-0.5">
+                  Spikes, new referrers, milestones. Small sites stay quiet until something real happens.
+                </p>
+              </div>
+              {feedItems.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter the feed">
+                  {sitesInFeed.length > 1 && (
+                    <>
+                      <DropdownMenu modal={false}>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            className={cn(
+                              "h-7 px-3 inline-flex items-center gap-1.5 text-xs font-medium border rounded-full whitespace-nowrap transition-colors",
+                              filterSiteId ? "bg-black text-white border-black" : "bg-white text-gray-900 border-gray-200 hover:border-gray-400"
+                            )}
+                          >
+                            {sitesInFeed.find((w) => w.id === filterSiteId)?.domain ?? "All sites"}
+                            <ChevronDown className="w-3 h-3" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="max-h-72 overflow-y-auto">
+                          <DropdownMenuItem onClick={() => pickFilter(null, filterType)} className={!filterSiteId ? "font-semibold" : ""}>
+                            All sites
+                          </DropdownMenuItem>
+                          {sitesInFeed.map((site) => (
+                            <DropdownMenuItem
+                              key={site.id}
+                              onClick={() => pickFilter(site.id, filterType)}
+                              className={filterSiteId === site.id ? "font-semibold" : ""}
+                            >
+                              {site.domain}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      <span className="w-px h-5 bg-gray-200 mx-1" aria-hidden="true" />
+                    </>
+                  )}
+                  <FilterChip active={!filterType} onClick={() => pickFilter(filterSiteId, null)}>Everything</FilterChip>
+                  {TYPE_GROUPS.map((g) => (
+                    <FilterChip key={g.key} active={filterType === g.key} onClick={() => pickFilter(filterSiteId, g.key)}>
+                      {g.label}
+                    </FilterChip>
+                  ))}
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {websites.map((site) => (
+
+            {filteredFeedItems.length === 0 ? (
+              <p className="text-sm text-gray-500 p-5">
+                {feedItems.length === 0 ? "Nothing yet." : "Nothing matches these filters."}
+              </p>
+            ) : (
+              <div>
+                {groupOrder.map((label) => {
+                  const items = groupedItems[label];
+                  if (!items || items.length === 0) return null;
+
+                  return (
+                    <div key={label} className="grid grid-cols-1 sm:grid-cols-[110px_1fr] border-b border-gray-200 last:border-b-0">
+                      <h3 className="px-4 sm:px-5 pt-4 font-mono text-[11px] font-semibold text-gray-500 uppercase tracking-[0.08em]">
+                        {label}
+                        {groupDate(label) && <span className="block mt-0.5 font-normal normal-case tracking-normal">{groupDate(label)}</span>}
+                      </h3>
+                      <div className="px-4 sm:pl-0 sm:pr-5 py-1">
+                        {items.map((item) => (
+                          <FeedItemRow key={item.id} item={item} color={siteColor(websites, item.websiteId)} />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="flex items-center justify-between gap-3 border-t border-gray-200 px-4 sm:px-5 py-3 text-xs text-gray-500">
+              <span>
+                {visibleFeedItems.length} of {filteredFeedItems.length} items
+              </span>
+              {hasMoreItems && (
+                <button
+                  onClick={() => setVisibleCount((prev) => prev + FEED_PAGE_SIZE)}
+                  className="text-sm px-3 py-1.5 border rounded text-gray-900 hover:bg-gray-50 transition-colors"
+                >
+                  Load more ({remainingCount})
+                </button>
+              )}
+            </div>
+          </section>
+
+          {/* Your sites */}
+          <aside className="flex flex-col gap-3" aria-label="Your sites">
+            <div className="flex items-baseline gap-2.5">
+              <h2 className="text-base font-semibold text-gray-900">Your sites</h2>
+              <span className="font-mono text-xs text-gray-500">{websites.length}</span>
+            </div>
+            {websites.length === 0 ? (
+              <div className="text-center py-10 px-4 bg-white border border-black rounded-xl">
+                <p className="text-sm text-gray-600 mb-4">No websites yet</p>
+                <Link
+                  href="/admin/websites/new"
+                  className="inline-flex items-center px-4 py-2 bg-black text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors"
+                >
+                  Add your first site
+                </Link>
+              </div>
+            ) : (
+              sitesByTraffic.map((site) => (
                 <SiteCard
                   key={site.id}
                   site={site}
+                  color={siteColor(websites, site.id)}
                   onShowScript={(s) => {
                     setSelectedWebsiteForIntegration(s);
                     setShowIntegrationHelp(true);
                   }}
                   onDelete={setWebsiteToDelete}
                 />
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* Visitor Calendar (always shown — every site has visitors) */}
-        <section className="mb-10">
-          <VisitorCalendar data={calendarData} total={totalVisitors} />
-        </section>
-
-        {/* What's New Section */}
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                <TrendingUp className="w-5 h-5" />
-                What's new
-              </h2>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button className="text-gray-400 hover:text-gray-900">
-                      <HelpCircle className="w-4 h-4" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" className="max-w-xs">
-                    <p>
-                      Surfaces what matters: traffic spikes, new referrers, milestones. Small
-                      sites stay quiet until something real happens. No noise.
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-            {websites.length > 1 && feedItems.length > 0 && (
-              <DropdownMenu modal={false}>
-                <DropdownMenuTrigger asChild>
-                  <button className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1">
-                    {filterSiteId
-                      ? websites.find((w) => w.id === filterSiteId)?.domain
-                      : "All sites"}
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onClick={() => {
-                      setFilterSiteId(null);
-                      setVisibleCount(FEED_PAGE_SIZE);
-                    }}
-                    className={!filterSiteId ? "font-medium" : ""}
-                  >
-                    All sites
-                  </DropdownMenuItem>
-                  {websites.map((site) => (
-                    <DropdownMenuItem
-                      key={site.id}
-                      onClick={() => {
-                        setFilterSiteId(site.id);
-                        setVisibleCount(FEED_PAGE_SIZE);
-                      }}
-                      className={filterSiteId === site.id ? "font-medium" : ""}
-                    >
-                      {site.domain}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              ))
             )}
-          </div>
-
-          {feedItems.length === 0 ? (
-            <p className="text-sm text-gray-500 py-4">Nothing yet.</p>
-          ) : (
-            <div className="space-y-6">
-              {groupOrder.map((label) => {
-                const items = groupedItems[label];
-                if (!items || items.length === 0) return null;
-
-                return (
-                  <div key={label}>
-                    <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                      {label}
-                    </h3>
-                    <div>
-                      {items.map((item) => (
-                        <FeedItemRow key={item.id} item={item} />
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-              {hasMoreItems && (
-                <button
-                  onClick={() => setVisibleCount((prev) => prev + FEED_PAGE_SIZE)}
-                  className="text-sm text-gray-500 hover:text-gray-900 transition-colors"
-                >
-                  Load more ({remainingCount})
-                </button>
-              )}
+            <Link
+              href="/admin/websites/new"
+              className="flex items-center justify-center gap-1 min-h-[64px] rounded-xl border border-dashed border-gray-300 text-[13.5px] font-medium text-gray-500 hover:text-gray-900 hover:border-gray-500 transition-colors"
+            >
+              + Add site
+            </Link>
+            <div className="rounded-xl border border-gray-200 px-4 py-3.5 text-[12.5px] text-gray-500">
+              <p>One script per site:</p>
+              <code className="mt-1.5 block font-mono text-[11.5px] text-gray-900 break-all">
+                {`<script defer src="${window.location.origin}/y/api/v1/sdk.js"></script>`}
+              </code>
             </div>
-          )}
-        </section>
+          </aside>
+        </div>
       </div>
 
       {/* Delete Dialog */}

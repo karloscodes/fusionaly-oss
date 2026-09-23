@@ -11,7 +11,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { FlashMessageDisplay } from "@/components/ui/flash-message";
 import { Input } from "@/components/ui/input";
-import { Key } from "lucide-react";
 import type { FlashMessage } from "@/types";
 import { AdministrationLayout } from "@/components/administration-layout";
 
@@ -74,11 +73,11 @@ export const AdministrationAccountContent: FC = () => {
 			<FlashMessageDisplay flash={flash} error={error} />
 
 			{/* Password Change Section */}
-			<Card className="border-black shadow-sm">
+			<Card className="border-black">
 				<CardHeader className="pb-4">
 					<div className="flex justify-between items-center">
 						<CardTitle className="text-lg flex items-center gap-2">
-							<Key className="h-5 w-5" /> Change Password
+							Change Password
 						</CardTitle>
 					</div>
 					<CardDescription>

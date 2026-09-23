@@ -1,17 +1,22 @@
 import { formatNumber } from "@/lib/utils";
-import { Users, DollarSign, Percent, TrendingUp, TrendingDown, Minus } from "lucide-react";
 
 interface MetricData {
 	label: string;
 	value: string | number;
 	trend?: number; // Percentage change from previous period
-	icon: React.ReactNode;
+	series?: number[]; // Values over the selected range, drawn as a sparkline
+	lowerIsBetter?: boolean; // e.g. bounce rate: a drop is good news
 }
 
 interface HeroMetricsBarProps {
 	metrics: MetricData[];
 	trendLoading?: boolean; // Show skeleton for trend indicators
+	highlight?: number; // Index of the metric the chart shows; its sparkline takes the accent
 }
+
+// The sparkline shows the last SPARK_POINTS values of the range.
+const SPARK_POINTS = 14;
+const SPARK_HEIGHT = 28;
 
 const TrendSkeleton = () => (
 	<span className="flex items-center gap-1 animate-pulse">
@@ -20,7 +25,8 @@ const TrendSkeleton = () => (
 	</span>
 );
 
-const TrendIndicator = ({ trend, loading }: { trend?: number; loading?: boolean }) => {
+// "+18.2%" in mono, green for good news and red for bad news.
+const TrendIndicator = ({ trend, loading, lowerIsBetter }: { trend?: number; loading?: boolean; lowerIsBetter?: boolean }) => {
 	if (loading) {
 		return <TrendSkeleton />;
 	}
@@ -29,52 +35,59 @@ const TrendIndicator = ({ trend, loading }: { trend?: number; loading?: boolean 
 		return null;
 	}
 
-	const isPositive = trend > 0;
-	const isNeutral = trend === 0;
-	const absChange = Math.abs(trend);
-
-	if (isNeutral) {
-		return (
-			<span className="flex items-center gap-1 text-xs text-gray-500">
-				<Minus className="w-3 h-3" />
-				<span>0%</span>
-			</span>
-		);
+	if (trend === 0) {
+		return <span className="font-mono text-xs text-gray-500">0%</span>;
 	}
 
+	const good = lowerIsBetter ? trend < 0 : trend > 0;
 	return (
-		<span className={`flex items-center gap-1 text-xs ${isPositive ? 'text-emerald-600' : 'text-rose-500'}`}>
-			{isPositive ? (
-				<TrendingUp className="w-3 h-3" />
-			) : (
-				<TrendingDown className="w-3 h-3" />
-			)}
-			<span>{absChange.toFixed(1)}%</span>
+		<span className={`font-mono text-xs ${good ? "text-emerald-600" : "text-rose-500"}`}>
+			{trend > 0 ? "+" : "−"}
+			{Math.abs(trend).toFixed(1)}%
 		</span>
 	);
 };
 
-export const HeroMetricsBar = ({ metrics, trendLoading }: HeroMetricsBarProps) => {
+const Sparkline = ({ series, highlighted }: { series: number[]; highlighted: boolean }) => {
+	const points = series.slice(-SPARK_POINTS);
+	const max = Math.max(...points, 1);
 	return (
-		<div className="bg-white rounded-lg border border-black shadow-sm">
+		<div className="hidden sm:flex items-end gap-0.5 shrink-0" style={{ height: SPARK_HEIGHT }} aria-hidden="true">
+			{points.map((v, i) => (
+				<span
+					key={i}
+					className="w-1 rounded-sm"
+					style={{
+						height: Math.max(2, Math.round((v / max) * SPARK_HEIGHT)),
+						background: highlighted ? "rgb(var(--c-accent))" : "rgb(var(--c-gray-400) / 0.55)",
+					}}
+				/>
+			))}
+		</div>
+	);
+};
+
+export const HeroMetricsBar = ({ metrics, trendLoading, highlight }: HeroMetricsBarProps) => {
+	return (
+		<div className="bg-white rounded-xl border border-black">
 			<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
 				{metrics.map((metric, index) => (
 					<div
 						key={index}
-						className="px-3 sm:px-4 py-3 sm:py-4 flex flex-col gap-1.5 sm:gap-2 border-gray-200 border-r last:border-r-0 [&:nth-child(2n)]:border-r-0 md:[&:nth-child(2n)]:border-r md:[&:nth-child(3n)]:border-r-0 lg:[&:nth-child(3n)]:border-r lg:last:border-r-0 [&:nth-child(n+3)]:border-t md:[&:nth-child(n+3)]:border-t-0 md:[&:nth-child(n+4)]:border-t lg:[&:nth-child(n+4)]:border-t-0"
+						className="px-3 sm:px-4 py-3 sm:py-4 flex items-end justify-between gap-2 min-w-0 border-gray-200 border-r last:border-r-0 [&:nth-child(2n)]:border-r-0 md:[&:nth-child(2n)]:border-r md:[&:nth-child(3n)]:border-r-0 lg:[&:nth-child(3n)]:border-r lg:last:border-r-0 [&:nth-child(n+3)]:border-t md:[&:nth-child(n+3)]:border-t-0 md:[&:nth-child(n+4)]:border-t lg:[&:nth-child(n+4)]:border-t-0"
 					>
-						<div className="flex items-center justify-between">
-							<span className="text-xs font-medium text-gray-600 uppercase tracking-wide">
+						<div className="flex flex-col gap-1 min-w-0">
+							<span className="text-[11px] font-semibold uppercase tracking-[0.08em] whitespace-nowrap text-gray-500">
 								{metric.label}
 							</span>
-							<div className="text-gray-600">{metric.icon}</div>
-						</div>
-						<div className="flex items-end justify-between gap-2">
-							<span className="text-xl sm:text-2xl font-bold text-black">
+							<span className="text-xl sm:text-[26px] leading-tight font-bold tracking-tight text-black whitespace-nowrap">
 								{typeof metric.value === 'number' ? formatNumber(metric.value) : metric.value}
 							</span>
-							<TrendIndicator trend={metric.trend} loading={trendLoading} />
+							<TrendIndicator trend={metric.trend} loading={trendLoading} lowerIsBetter={metric.lowerIsBetter} />
 						</div>
+						{metric.series && metric.series.length > 1 && (
+							<Sparkline series={metric.series} highlighted={index === highlight} />
+						)}
 					</div>
 				))}
 			</div>
@@ -86,18 +99,13 @@ export const HeroMetricsBar = ({ metrics, trendLoading }: HeroMetricsBarProps) =
 export const createMetric = (
 	label: string,
 	value: string | number,
-	icon: React.ReactNode,
-	trend?: number
+	trend?: number,
+	series?: number[],
+	lowerIsBetter?: boolean
 ): MetricData => ({
 	label,
 	value,
 	trend,
-	icon,
+	series,
+	lowerIsBetter,
 });
-
-// Export common icons for convenience
-export const MetricIcons = {
-	Users,
-	DollarSign,
-	Percent,
-};

@@ -1,5 +1,5 @@
 import { PageHeader } from '@/components/ui/page-header';
-import { AlertTriangle } from 'lucide-react';
+import { } from 'lucide-react';
 
 export function NotFound() {
   return (
@@ -7,7 +7,6 @@ export function NotFound() {
       <div className="flex flex-col gap-4 max-w-7xl mx-auto">
         <PageHeader
           title="Page Not Found"
-          icon={AlertTriangle}
         />
 
         <div className="text-center py-12">

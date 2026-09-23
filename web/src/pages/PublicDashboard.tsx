@@ -13,7 +13,7 @@ const FUSIONALY_URL = "https://fusionaly.com";
 // small here as quiet attribution.
 const FusionalyWordmark = () => (
   <span className="font-mono font-semibold text-gray-900">
-    fusionaly<span className="text-[#00D678]">_</span>
+    fusionaly<span className="text-[rgb(var(--c-accent))]">_</span>
   </span>
 );
 

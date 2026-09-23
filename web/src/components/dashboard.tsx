@@ -7,28 +7,18 @@ import {
 	ResponsiveContainer,
 	CartesianGrid,
 	ComposedChart,
-	Line,
 	ReferenceLine,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FlashMessageDisplay } from "@/components/ui/flash-message";
 import {
-	Users,
-	Zap,
-	LayoutDashboard,
-	Percent,
-	Mouse,
-	DollarSign,
-	FileText,
-	Clock,
-	Globe,
-	Smartphone,
 	Check,
-	GitBranch,
 	Share2,
 	Copy,
 } from "lucide-react";
+import { tabClass } from "@/lib/tab-class";
 import { HeroMetricsBar, createMetric } from "@/components/hero-metrics-bar";
+import { WhatsNewCard, type WhatsNewItem } from "@/components/whats-new-card";
 import { useChartColors } from "@/lib/use-chart-colors";
 import DataTable from "./data-table";
 import type {
@@ -42,7 +32,7 @@ import { timeRanges } from "../types";
 import { TimeRangeSelector } from "@/components/time-range-selector";
 import { ReferrersCard } from "@/components/referrers-card";
 import { AnnotationManager, AnnotationDetailDialog } from "@/components/annotation-manager";
-import { VisitorFlowSankey } from "@/components/user-flow-sankey";
+import { VisitorFlows } from "@/components/visitor-flows";
 import {
 	TooltipProvider,
 	TooltipTrigger,
@@ -51,7 +41,6 @@ import {
 } from "@/components/ui/tooltip";
 import { formatNumber } from "@/lib/utils";
 import { convertRangeToDateRange } from "@/utils/date-range-converter";
-import { Checkbox } from "./ui/checkbox";
 import { usePage, Deferred } from "@inertiajs/react";
 
 // --- Helper Functions ---
@@ -82,6 +71,8 @@ export interface DashboardComponentProps extends Partial<AnalyticsData> {
 	error?: string | null;
 	annotations?: Annotation[];
 	is_public_view?: boolean;
+	whats_new?: WhatsNewItem[];
+	website_domain?: string;
 	user_flow?: UserFlowLink[];
 	/** Share token for public dashboard URL (null if not shared) */
 	share_token?: string | null;
@@ -116,9 +107,8 @@ export const Dashboard = (props: DashboardComponentProps) => {
 	const [pagesTab, setPagesTab] = useState("pages");
 	const [data, setData] = useState<AnalyticsData | null>(null);
 	const [activeChart, setActiveChart] = useState<
-		"views" | "visitors"
-	>("visitors"); // Toggle between charts
-	const [showRevenueLine, setShowRevenueLine] = useState(true); // Control revenue line visibility
+		"views" | "visitors" | "revenue"
+	>("visitors"); // Which metric the chart shows
 	const [tooltipOpen, setTooltipOpen] = useState(false);
 
 	// Theme-aware neutral colors for the chart (gridlines, axis text, revenue
@@ -396,33 +386,13 @@ export const Dashboard = (props: DashboardComponentProps) => {
 	);
 
 	// Calculate maximum value for y-axis domain
+	// The y axis tops out at a round number, labelled at 0, half and top, as in the design.
 	const getMaxValue = () => {
-		if (!hasData) return 5; // Default for empty charts
+		if (!hasData) return 4;
 		const dataKey = getActiveDataKey();
 		const maxValue = Math.max(...chartData.map((item) => item[dataKey] || 0));
-
-		// More intelligent scaling:
-		// For small values (1-3), use 0-4 with ticks at every integer
-		// For medium values, use a reasonable max to get natural tick spacing
-		// For larger values, use percentage-based padding
-		if (maxValue <= 3) {
-			return 4; // Show 0, 1, 2, 3, 4
-		}
-		if (maxValue <= 10) {
-			return Math.ceil(maxValue) + (Math.ceil(maxValue) % 2 === 0 ? 2 : 1); // Make sure we end with an even number of ticks
-		}
-		// For larger values, use percentage padding
-		return Math.ceil(maxValue * 1.1);
-	};
-
-	// Get the appropriate tick count for the Y-axis
-	const getTickCount = () => {
-		const dataKey = getActiveDataKey();
-		const maxValue = Math.max(...chartData.map((item) => item[dataKey] || 0));
-
-		if (maxValue <= 3) return 5; // 0, 1, 2, 3, 4
-		if (maxValue <= 10) return 6; // Reasonable number of ticks for small ranges
-		return undefined; // Let Recharts decide for larger values
+		const step = maxValue <= 10 ? 2 : maxValue <= 100 ? 10 : Math.pow(10, Math.floor(Math.log10(maxValue)));
+		return Math.ceil(maxValue / step) * step;
 	};
 
 	// Define colors for different chart types
@@ -434,6 +404,7 @@ export const Dashboard = (props: DashboardComponentProps) => {
 					hover: "#E5E7EB", // Light gray
 				};
 			case "visitors":
+			case "revenue":
 				return {
 					default: "#00D1FF",
 					hover: "#E5E7EB", // Light gray
@@ -448,6 +419,8 @@ export const Dashboard = (props: DashboardComponentProps) => {
 				return "views";
 			case "visitors":
 				return "visitors";
+			case "revenue":
+				return "revenue";
 		}
 	};
 
@@ -458,27 +431,11 @@ export const Dashboard = (props: DashboardComponentProps) => {
 				return "Page Views";
 			case "visitors":
 				return "Visitors";
+			case "revenue":
+				return "Revenue";
 		}
 	};
 
-	// Revenue line: a calm secondary color (--c-chart-line per theme) so it
-	// doesn't out-shout the primary bars.
-	const getRevenueLineColor = () => {
-		return chartColors.line;
-	};
-
-	// Get the revenue axis domain with a reasonable minimum
-	const getRevenueAxisDomain = () => {
-		const maxRevenue = Math.max(...chartData.map((item) => item.revenue || 0));
-
-		// If all revenue is 0, don't show the axis at all by using a very small range
-		if (maxRevenue === 0) {
-			return [0, 1000]; // $10 range so the line doesn't dominate the chart
-		}
-
-		// Otherwise, use a reasonable range with padding
-		return [0, Math.max(maxRevenue * 1.1, 1000)];
-	};
 
 	// Find matching chart data point for an annotation date
 	const findAnnotationChartMatch = (annotationDate: string): string | null => {
@@ -544,7 +501,7 @@ export const Dashboard = (props: DashboardComponentProps) => {
 		return (
 			<ComposedChart
 				data={chartData}
-				margin={{ top: 60, right: isMobile ? 10 : 20, bottom: 80, left: isMobile ? 0 : 20 }}
+				margin={{ top: 28, right: isMobile ? 10 : 20, bottom: 8, left: isMobile ? 0 : 4 }}
 				barGap={isMobile ? 2 : 8}
 				barCategoryGap={isMobile ? 4 : 16}
 				barSize={isMobile ? 12 : 36}
@@ -564,42 +521,28 @@ export const Dashboard = (props: DashboardComponentProps) => {
 					horizontal={true}
 					vertical={false}
 					stroke={chartColors.grid}
-					strokeDasharray="3 4"
-					opacity={0.2}
+					opacity={0.6}
 				/>
 				<XAxis
 					dataKey="formattedDate"
 					strokeWidth={1}
-					tick={{ fill: chartColors.axisText, fontSize: isMobile ? 9 : 10, textAnchor: "end" }}
+					tick={{ fill: chartColors.axisText, fontSize: isMobile ? 9 : 11, fontFamily: "var(--c-mono)" }}
 					axisLine={{ stroke: chartColors.grid }}
-					tickLine={{ stroke: chartColors.grid }}
-					dy={10}
-					interval={isMobile ? "equidistantPreserveStart" : "preserveStartEnd"}
-					angle={-45}
+					tickLine={false}
+					dy={8}
+					interval={Math.max(0, Math.ceil(chartData.length / (isMobile ? 4 : 6)) - 1)}
 				/>
 				<YAxis
 					strokeWidth={1}
-					tick={{ fill: chartColors.axisText, fontSize: isMobile ? 9 : 10 }}
-					axisLine={{ stroke: chartColors.grid }}
-					tickLine={{ stroke: chartColors.grid }}
-					dx={-10}
-					width={isMobile ? 30 : 60}
+					tick={{ fill: chartColors.axisText, fontSize: isMobile ? 9 : 11, fontFamily: "var(--c-mono)" }}
+					axisLine={false}
+					tickLine={false}
+					dx={-4}
+					width={isMobile ? 30 : 44}
 					domain={[0, getMaxValue()]}
 					allowDecimals={false}
-					tickCount={getTickCount()}
-				/>
-				<YAxis
-					yAxisId="right"
-					orientation="right"
-					strokeWidth={1}
-					tick={{ fill: chartColors.axisText, fontSize: isMobile ? 9 : 10 }}
-					axisLine={{ stroke: chartColors.grid }}
-					tickLine={{ stroke: chartColors.grid }}
-					dx={10}
-					width={isMobile ? 35 : 60}
-					domain={getRevenueAxisDomain()}
-					allowDecimals={true}
-					tickFormatter={(value) => `$${(value / 100).toFixed(0)}`}
+					ticks={[0, getMaxValue() / 2, getMaxValue()]}
+					tickFormatter={activeChart === "revenue" ? (value) => `$${Math.round(value / 100)}` : undefined}
 				/>
 				<RechartsTooltip
 					content={({ active, payload, label }) => {
@@ -643,18 +586,6 @@ export const Dashboard = (props: DashboardComponentProps) => {
 					animationEasing="ease-out"
 					style={{ cursor: props.current_website_id ? "pointer" : "default" }}
 				/>
-				{showRevenueLine && data.revenue && (
-					<Line
-						type="linear"
-						dataKey="revenue"
-						name="Revenue"
-						stroke={getRevenueLineColor()}
-						strokeWidth={isMobile ? 1.5 : 2}
-						dot={isMobile ? false : { fill: getRevenueLineColor(), r: 3 }}
-						activeDot={{ r: isMobile ? 4 : 6, fill: getRevenueLineColor() }}
-						yAxisId="right"
-					/>
-				)}
 				{/* Render annotation markers */}
 				{annotationsWithChartMatch.map((annotation, index) => (
 					<ReferenceLine
@@ -704,18 +635,56 @@ export const Dashboard = (props: DashboardComponentProps) => {
 		);
 	};
 
+	const rangeLabel = timeRanges.flatMap((group) => group.ranges).find((r) => r.value === timeRange)?.label;
+
+	// Metrics bar: each metric gets its series for the sparkline; the metric
+	// the chart shows is highlighted.
+	const countsOf = (points?: { count: number }[]) => (points || []).map((p) => p.count);
+	const metricsHighlight = { visitors: 0, views: 1, revenue: 5 }[activeChart];
+
+	// Chart tabs as in the design; Revenue shows once the site tracks revenue.
+	const tracksRevenue = (data.conversion_goals?.length ?? 0) > 0 || (data.revenue || []).some((p) => p.count > 0);
+	const chartTabs: { key: "visitors" | "views" | "revenue"; label: string }[] = [
+		{ key: "visitors", label: "Visitors" },
+		{ key: "views", label: "Page Views" },
+		...(tracksRevenue ? [{ key: "revenue" as const, label: "Revenue" }] : []),
+	];
+	const chartTotal =
+		activeChart === "revenue"
+			? `revenue: $${formatNumber(Math.round(chartData.reduce((acc, d) => acc + d.revenue, 0) / 100))}`
+			: activeChart === "views"
+				? `page views: ${formatNumber(totalViews)}`
+				: `visitors: ${formatNumber(totalVisitors)}`;
+	const heroMetrics = (withTrends: boolean) => [
+		createMetric("Visitors", totalVisitors, withTrends ? data.comparison?.visitors_change : undefined, countsOf(data.visitors)),
+		createMetric("Page Views", totalViews, withTrends ? data.comparison?.views_change : undefined, countsOf(data.page_views)),
+		createMetric("Sessions", totalSessions, withTrends ? data.comparison?.sessions_change : undefined, countsOf(data.sessions)),
+		createMetric("Bounce Rate", `${(data.bounce_rate * 100).toFixed(0)}%`, withTrends ? data.comparison?.bounce_rate_change : undefined, undefined, true),
+		createMetric("Avg Time", formatSessionDuration(data.visits_duration), withTrends ? data.comparison?.avg_time_change : undefined),
+		createMetric("Revenue", `$${data.revenue_metrics ? formatNumber(Math.round(data.revenue_metrics.total_revenue)) : '0'}`, withTrends ? data.comparison?.revenue_change : undefined, countsOf(data.revenue)),
+	];
+
 	return (
 		<div className="min-h-screen bg-white py-4">
 			<FlashMessageDisplay flash={props.flash} error={props.error} />
 
 			<div className="flex flex-col gap-6">
-				<div className="flex flex-wrap justify-between items-center gap-4">
-					<div className="flex items-center gap-3">
-						<h1 className="font-bold text-gray-900 flex items-center text-2xl">
-							<LayoutDashboard className="w-6 h-6 mr-2 inline" />
-							Dashboard
-						</h1>
-						{/* Share Dashboard - next to title, hidden in public view */}
+				<div className="flex flex-wrap justify-between items-end gap-4">
+					<div>
+						<h1 className="font-bold text-gray-900 text-2xl">Dashboard</h1>
+						<p className="text-sm text-gray-500 mt-1">
+							{[props.website_domain, rangeLabel, "compared with the previous period"].filter(Boolean).join(" · ")}
+						</p>
+					</div>
+					<div className="flex flex-wrap items-center gap-3">
+						{!props.is_public_view && (
+							<TimeRangeSelector
+								timeRanges={timeRanges}
+								currentTimeRange={timeRange}
+								websiteId={selectedWebsiteId}
+							/>
+						)}
+						{/* Share Dashboard, hidden in public view */}
 						{!props.is_public_view && (
 							<>
 								{props.share_token ? (
@@ -728,7 +697,7 @@ export const Dashboard = (props: DashboardComponentProps) => {
 												setShareCopied(true);
 												setTimeout(() => setShareCopied(false), 2000);
 											}}
-											className="px-3 py-1.5 text-sm border rounded bg-black text-white flex items-center"
+											className="px-3 py-2 text-sm border rounded flex items-center text-gray-900 hover:bg-gray-50"
 										>
 											{shareCopied ? (
 												<><Check className="h-4 w-4 mr-1" /> Copied</>
@@ -749,7 +718,7 @@ export const Dashboard = (props: DashboardComponentProps) => {
 									<form action={`/admin/websites/${selectedWebsiteId}/share/enable`} method="POST">
 										<button
 											type="submit"
-											className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 flex items-center"
+											className="px-3 py-2 text-sm border rounded flex items-center text-gray-900 hover:bg-gray-50"
 										>
 											<Share2 className="h-4 w-4 mr-1" />
 											Share
@@ -759,86 +728,36 @@ export const Dashboard = (props: DashboardComponentProps) => {
 							</>
 						)}
 					</div>
-					{!props.is_public_view && (
-						<TimeRangeSelector
-							timeRanges={timeRanges}
-							currentTimeRange={timeRange}
-							websiteId={selectedWebsiteId}
-						/>
-					)}
 				</div>
 
 				{/* Hero Metrics Bar */}
 				<Deferred
 					data="comparison"
-					fallback={
-						<HeroMetricsBar
-							trendLoading={true}
-							metrics={[
-								createMetric("Visitors", totalVisitors, <Users className="w-4 h-4" />),
-								createMetric("Page Views", totalViews, <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-									<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-									<circle cx="12" cy="12" r="3" />
-								</svg>),
-								createMetric("Sessions", totalSessions, <Mouse className="w-4 h-4" />),
-								createMetric("Bounce Rate", `${(data.bounce_rate * 100).toFixed(0)}%`, <Percent className="w-4 h-4" />),
-								createMetric("Avg Time", formatSessionDuration(data.visits_duration), <Clock className="w-4 h-4" />),
-								createMetric("Revenue", `$${data.revenue_metrics ? formatNumber(Math.round(data.revenue_metrics.total_revenue)) : '0'}`, <DollarSign className="w-4 h-4" />),
-							]}
-						/>
-					}
+					fallback={<HeroMetricsBar trendLoading={true} highlight={metricsHighlight} metrics={heroMetrics(false)} />}
 				>
-					<HeroMetricsBar
-						metrics={[
-							createMetric("Visitors", totalVisitors, <Users className="w-4 h-4" />, data.comparison?.visitors_change),
-							createMetric("Page Views", totalViews, <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-								<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-								<circle cx="12" cy="12" r="3" />
-							</svg>, data.comparison?.views_change),
-							createMetric("Sessions", totalSessions, <Mouse className="w-4 h-4" />, data.comparison?.sessions_change),
-							createMetric("Bounce Rate", `${(data.bounce_rate * 100).toFixed(0)}%`, <Percent className="w-4 h-4" />, data.comparison?.bounce_rate_change),
-							createMetric("Avg Time", formatSessionDuration(data.visits_duration), <Clock className="w-4 h-4" />, data.comparison?.avg_time_change),
-							createMetric("Revenue", `$${data.revenue_metrics ? formatNumber(Math.round(data.revenue_metrics.total_revenue)) : '0'}`, <DollarSign className="w-4 h-4" />, data.comparison?.revenue_change),
-						]}
-					/>
+					<HeroMetricsBar highlight={metricsHighlight} metrics={heroMetrics(true)} />
 				</Deferred>
 
-				{/* Main chart with internal toggles and restored height */}
-				<Card className="rounded-lg border border-black">
+				{/* Chart, with "What's new" beside it when the page has feed items */}
+				<div className={props.whats_new ? "grid grid-cols-1 lg:grid-cols-3 gap-4" : ""}>
+				<Card className={`rounded-xl border border-black ${props.whats_new ? "lg:col-span-2" : ""}`}>
 					<CardContent className="p-4 sm:p-6">
-						<div className="mb-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-							<div className="flex flex-wrap gap-2">
-								<button
-									type="button"
-									onClick={() => setActiveChart("visitors")}
-									className={`w-24 sm:w-28 py-1.5 sm:py-2 text-xs sm:text-sm border rounded text-center ${activeChart === "visitors" ? "bg-black text-white" : "bg-white text-black"}`}
-								>
-									Visitors
-								</button>
-								<button
-									type="button"
-									onClick={() => setActiveChart("views")}
-									className={`w-24 sm:w-28 py-1.5 sm:py-2 text-xs sm:text-sm border rounded text-center ${activeChart === "views" ? "bg-black text-white" : "bg-white text-black"}`}
-								>
-									Page Views
-								</button>
-								{data.conversion_goals && data.conversion_goals.length > 0 && (
-									<div className="flex items-center space-x-2 sm:space-x-3 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors">
-										<Checkbox
-											id="show-revenue"
-											checked={showRevenueLine}
-											onCheckedChange={(checked) => setShowRevenueLine(checked === true)}
-											className="data-[state=checked]:bg-black data-[state=checked]:border-black"
-										/>
-										<label
-											htmlFor="show-revenue"
-											className="text-sm font-medium text-gray-900 cursor-pointer select-none"
-										>
-											Revenue
-										</label>
-									</div>
-								)}
+						<div className="mb-4 flex flex-wrap items-center gap-3">
+							<div className="flex flex-wrap gap-2" role="group" aria-label="Chart metric">
+								{chartTabs.map((tab) => (
+									<button
+										key={tab.key}
+										type="button"
+										aria-pressed={activeChart === tab.key}
+										onClick={() => setActiveChart(tab.key)}
+										className={tabClass(activeChart === tab.key)}
+									>
+										{tab.label}
+									</button>
+								))}
 							</div>
+							<span className="hidden sm:block flex-1" />
+							<span className="font-mono text-xs text-gray-500">{chartTotal}</span>
 							{props.current_website_id && !props.is_public_view && (
 								<AnnotationManager
 									websiteId={props.current_website_id}
@@ -851,7 +770,7 @@ export const Dashboard = (props: DashboardComponentProps) => {
 								/>
 							)}
 						</div>
-						<div className="h-[300px] sm:h-[450px]">
+						<div className="h-[260px] sm:h-[300px]">
 							{" "}
 							{/* Restored height to 450px */}
 							<ResponsiveContainer width="100%" height="100%">
@@ -860,36 +779,37 @@ export const Dashboard = (props: DashboardComponentProps) => {
 						</div>
 					</CardContent>
 				</Card>
+				{props.whats_new && <WhatsNewCard items={props.whats_new} />}
+				</div>
 
 				{/* Two-column grid for Pages and Referrers */}
 				<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 					{/* Page Analytics Card - Left Column */}
-					<Card className="rounded-lg border border-black">
+					<Card className="rounded-xl border border-black">
 						<CardContent className="p-4 sm:p-6">
 							<div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
 								<div className="flex items-center gap-2">
-									<FileText className="w-4 h-4" />
-									<span>Pages</span>
+									<h2 className="text-base font-semibold text-gray-900">Pages</h2>
 								</div>
 								<div className="flex flex-wrap gap-1 sm:gap-2">
 									<button
 										type="button"
 										onClick={() => setPagesTab("pages")}
-										className={`px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border rounded ${pagesTab === "pages" ? "bg-black text-white" : "bg-white text-black"}`}
+										className={tabClass(pagesTab === "pages")}
 									>
 										Top Pages
 									</button>
 									<button
 										type="button"
 										onClick={() => setPagesTab("entry")}
-										className={`px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border rounded ${pagesTab === "entry" ? "bg-black text-white" : "bg-white text-black"}`}
+										className={tabClass(pagesTab === "entry")}
 									>
 										Entry Pages
 									</button>
 									<button
 										type="button"
 										onClick={() => setPagesTab("exit")}
-										className={`px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border rounded ${pagesTab === "exit" ? "bg-black text-white" : "bg-white text-black"}`}
+										className={tabClass(pagesTab === "exit")}
 									>
 										Exit Pages
 									</button>
@@ -943,12 +863,11 @@ export const Dashboard = (props: DashboardComponentProps) => {
 				{/* Two-column grid for Countries and Device Analytics */}
 				<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 					{/* Countries Card - Left Column */}
-					<Card className="rounded-lg border border-black">
+					<Card className="rounded-xl border border-black">
 						<CardContent className="p-4 sm:p-6">
 							<div className="flex justify-between items-center mb-4">
 								<div className="flex items-center gap-2">
-									<Globe className="w-4 h-4" />
-									<span>Countries</span>
+									<h2 className="text-base font-semibold text-gray-900">Countries</h2>
 								</div>
 							</div>
 							<div className="h-[320px] sm:h-[380px] flex flex-col">
@@ -967,32 +886,31 @@ export const Dashboard = (props: DashboardComponentProps) => {
 					</Card>
 
 					{/* Device Analytics Card - Right Column */}
-					<Card className="rounded-lg border border-black">
+					<Card className="rounded-xl border border-black">
 						<CardContent className="p-4 sm:p-6">
 							<div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
 								<div className="flex items-center gap-2">
-									<Smartphone className="w-4 h-4" />
-									<span>Device Analytics</span>
+									<h2 className="text-base font-semibold text-gray-900">Device Analytics</h2>
 								</div>
 								<div className="flex flex-wrap gap-1 sm:gap-2">
 									<button
 										type="button"
 										onClick={() => setDeviceTab("devices")}
-										className={`px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border rounded ${deviceTab === "devices" ? "bg-black text-white" : "bg-white text-black"}`}
+										className={tabClass(deviceTab === "devices")}
 									>
 										Devices
 									</button>
 									<button
 										type="button"
 										onClick={() => setDeviceTab("browsers")}
-										className={`px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border rounded ${deviceTab === "browsers" ? "bg-black text-white" : "bg-white text-black"}`}
+										className={tabClass(deviceTab === "browsers")}
 									>
 										Browsers
 									</button>
 									<button
 										type="button"
 										onClick={() => setDeviceTab("os")}
-										className={`px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border rounded ${deviceTab === "os" ? "bg-black text-white" : "bg-white text-black"}`}
+										className={tabClass(deviceTab === "os")}
 									>
 										OSs
 									</button>
@@ -1046,12 +964,11 @@ export const Dashboard = (props: DashboardComponentProps) => {
 				</div>
 
 				{/* Full-width Events Card */}
-				<Card className="rounded-lg border border-black">
+				<Card className="rounded-xl border border-black">
 					<CardContent className="p-4 sm:p-6">
 						<div className="flex justify-between items-center mb-4">
 							<div className="flex items-center gap-2">
-								<Zap className="w-4 h-4" />
-								<span>Events</span>
+								<h2 className="text-base font-semibold text-gray-900">Events and goals</h2>
 								{selectedWebsiteId && (
 									<TooltipProvider>
 										<ShadcnTooltip open={tooltipOpen} onOpenChange={setTooltipOpen}>
@@ -1079,12 +996,13 @@ export const Dashboard = (props: DashboardComponentProps) => {
 										</ShadcnTooltip>
 									</TooltipProvider>
 								)}
+								<code className="hidden sm:inline text-xs text-gray-500">data-fusionaly-event-name="…"</code>
 							</div>
 						</div>
 						<div className="h-[320px] sm:h-[380px] flex flex-col">
 				<DataTable
 					data={data.top_custom_events}
-					showPercentage={true}
+					showPercentage={false}
 					totalVisitors={data.total_custom_events || totalVisitors}
 					pageSize={8}
 				columns={[
@@ -1096,23 +1014,19 @@ export const Dashboard = (props: DashboardComponentProps) => {
 												<span className="truncate" title={item.name}>
 													{item.name}
 												</span>
-												{item.name === "revenue:purchased" && (
-													<DollarSign className="w-3 h-3 text-green-600 flex-shrink-0" />
-												)}
 							</span>
 						)
 					},
 					{
 						name: "goal",
-						label: "",
+						label: "Goal",
 						align: "center",
-						widthClass: "w-12",
+						widthClass: "w-16",
 						hideOnMobile: true,
 						render: (item) => {
 							const isGoal = data.conversion_goals && data.conversion_goals.includes(item.name);
 							return isGoal ? (
-								<span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border border-gray-800 text-gray-900 bg-white whitespace-nowrap">
-									<Check className="w-3 h-3" />
+								<span className="inline-block px-2 py-px rounded-full text-[11px] font-semibold leading-4 border border-emerald-600 text-emerald-600 whitespace-nowrap">
 									Goal
 								</span>
 							) : null;
@@ -1127,10 +1041,8 @@ export const Dashboard = (props: DashboardComponentProps) => {
 						hideOnMobile: true,
 						render: (item) => {
 							const amount = eventRevenueTotals[item.name] || 0;
-							if (amount <= 0) {
-								return "—";
-							}
-							return `$${formatNumber(Math.round(amount))}`;
+							const text = amount <= 0 ? "—" : `$${formatNumber(Math.round(amount))}`;
+							return <span className="font-normal">{text}</span>;
 						},
 					},
 					{
@@ -1141,10 +1053,11 @@ export const Dashboard = (props: DashboardComponentProps) => {
 						hideOnMobile: true,
 						render: (item) => {
 							const rate = eventConversionRates[item.name];
-							if (rate === undefined) {
-								return "—";
-							}
-							return `${rate.toFixed(1)}%`;
+							return (
+								<span className="font-mono text-xs font-normal text-gray-500">
+									{rate === undefined ? "—" : `${rate.toFixed(1)}%`}
+								</span>
+							);
 						},
 					},
 								]}
@@ -1159,10 +1072,7 @@ export const Dashboard = (props: DashboardComponentProps) => {
 				<Deferred data="user_flow" fallback={
 					<Card>
 						<CardHeader className="pb-2">
-							<CardTitle className="text-lg font-medium flex items-center gap-2">
-								<GitBranch className="w-5 h-5" />
-								Visitor Flows
-							</CardTitle>
+							<CardTitle className="text-base font-semibold text-gray-900">Visitor Flows</CardTitle>
 						</CardHeader>
 						<CardContent className="pt-2">
 							<div className="h-64 flex items-center justify-center">
@@ -1171,7 +1081,7 @@ export const Dashboard = (props: DashboardComponentProps) => {
 						</CardContent>
 					</Card>
 				}>
-					<VisitorFlowSankey links={props.user_flow || []} />
+					<VisitorFlows links={props.user_flow || []} />
 				</Deferred>
 			</div>
 

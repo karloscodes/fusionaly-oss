@@ -2,7 +2,7 @@ import React from 'react';
 import { usePage, useForm, router } from '@inertiajs/react';
 import { PageHeader } from '@/components/ui/page-header';
 import { FlashMessageDisplay } from '@/components/ui/flash-message';
-import { Settings, Info } from 'lucide-react';
+import { Info } from 'lucide-react';
 import type { FlashMessage } from '@/types';
 import { AdminLayout } from "@/components/admin-layout";
 
@@ -189,8 +189,8 @@ const WebsiteEdit: React.FC = () => {
     <AdminLayout currentPath="/admin">
       <div className="py-6">
         <PageHeader
-          title={`Settings of ${website.domain}`}
-          icon={Settings}
+          title="Settings"
+          description={website.domain}
           leftContent={
             <a href="/admin" className="text-gray-600 hover:text-gray-900 mr-4">
               <svg
@@ -226,23 +226,7 @@ const WebsiteEdit: React.FC = () => {
             >
               {/* Website Info Section */}
               <div>
-                <h2 className="text-xl font-semibold flex items-center gap-2 mb-4">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <circle cx="12" cy="12" r="10" />
-                    <line x1="2" x2="22" y1="12" y2="12" />
-                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-                  </svg>
-                  Website Settings
+                <h2 className="text-base font-semibold text-gray-900 mb-3">Website Settings
                 </h2>
                 <div className="space-y-4">
                   <div>
@@ -267,23 +251,7 @@ const WebsiteEdit: React.FC = () => {
 
               {/* Conversion Goals Section */}
               <div className="pt-6 border-t border-gray-200">
-                <h2 className="text-xl font-semibold flex items-center gap-2 mb-4">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <circle cx="12" cy="12" r="10" />
-                    <circle cx="12" cy="12" r="6" />
-                    <circle cx="12" cy="12" r="2" />
-                  </svg>
-                  Conversion Goals
+                <h2 className="text-base font-semibold text-gray-900 mb-3">Conversion Goals
                 </h2>
                 <p className="text-sm text-gray-500 mb-4">
                   Select the events you want to track as conversion goals for this website.
@@ -329,22 +297,7 @@ const WebsiteEdit: React.FC = () => {
               {/* Privacy Mode Section - Hidden but functional */}
               {/* Uncomment to allow users to toggle between privacy and tracking modes
               <div className="pt-6 border-t border-gray-200">
-                <h2 className="text-xl font-semibold flex items-center gap-2 mb-4">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="text-green-600"
-                  >
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                  </svg>
-                  Privacy & Tracking Settings
+                <h2 className="text-base font-semibold text-gray-900 mb-3">Privacy & Tracking Settings
                 </h2>
                 <p className="text-sm text-gray-500 mb-4">
                   Choose how visitor tracking works for this website. Both modes are privacy-compliant (no IP storage).
@@ -415,9 +368,7 @@ const WebsiteEdit: React.FC = () => {
 
               {/* Subdomain Tracking Section */}
               <div className="pt-6 border-t border-gray-200">
-                <h2 className="text-xl font-semibold flex items-center gap-2 mb-4">
-                  <Info className="w-5 h-5 text-blue-500" />
-                  Subdomain Tracking
+                <h2 className="text-base font-semibold text-gray-900 mb-3">Subdomain Tracking
                 </h2>
                 <p className="text-sm text-gray-500 mb-4">
                   Configure whether subdomains should be tracked as part of this website or separately.
