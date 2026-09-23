@@ -1,392 +1,95 @@
 ---
 name: fusionaly-deploy
-description: Use ONLY when explicitly invoked. Installs Fusionaly on a server you can reach over SSH with a key. Optionally provisions a new Hetzner server or sets up Cloudflare DNS.
+description: Use ONLY when explicitly invoked. Puts Fusionaly on a Linux server you reach over SSH with a key. Optionally creates a Hetzner server and the Cloudflare DNS record. The user runs the one interactive install command; the agent prepares and checks everything around it.
 ---
 
 # Deploy Fusionaly
 
-Install Fusionaly on a Linux server you can reach over **SSH with a key**. The standard path: connect to a box you already have, run the installer, point your domain. Provisioning a new Hetzner server and configuring Cloudflare DNS are **optional extras** — offer them, don't assume them.
+Four steps: a server, a DNS record, one install command, a check. The agent does the setup and the checks. **The user runs the install command in their own terminal**, because the installer is interactive and needs a real terminal.
 
-**Principles:**
-- **Key-based SSH only.** Connect with the user's existing SSH key / `ssh-agent`. Never ask for, type, or store a password — that's both the secure default and what lets the agent operate on the box cleanly. If a server only allows password auth, help set up a key first (`ssh-copy-id`); do not proceed over a password.
-- **Existing server is the default.** Any box reachable by SSH key works (Hetzner, DigitalOcean, Linode, EC2, a home server). Hetzner provisioning and Cloudflare DNS are opt-in conveniences, not the path.
-- **Avoid "analytics" in the domain.** Ad/privacy blockers (uBlock Origin, EasyPrivacy) block hostnames containing `analytics`, `tracking`, `stats`, `telemetry` — visitors' requests get dropped before they ever reach the server. When asking for the domain, steer the user to a neutral subdomain (e.g. `data.example.com` or a brandable name), never `analytics.example.com`.
-- **Scan first, report status, ask before every invasive action.**
+## Rules
 
-## Flow
+- **SSH keys only.** Never ask for, type, or store a password. If the server takes only passwords, stop and help the user add a key (`ssh-copy-id`).
+- **Ask before anything that costs money or changes DNS.** Show the exact command first.
+- **Never disable host key checks.** Use `-o StrictHostKeyChecking=accept-new` for a new server.
+- **No "analytics" in the hostname.** Blockers drop hostnames with `analytics`, `tracking`, `stats` or `telemetry`. Suggest `data.example.com` or a brand name.
+- **Tokens stay in the user's shell.** Ask the user to export them. Do not paste them into files.
 
-1. Scan environment (silent)
-2. Show status report
-3. Fix missing tools (ask for each)
-4. Choose: new Hetzner server or existing server
-5. Gather details (domain, location, SSH key)
-6. Cloudflare DNS? (optional)
-7. Confirm plan
-8. Create server (Hetzner only)
-9. Verify install URLs are reachable
-10. Harden server (ask first)
-11. Install Fusionaly (ask first)
-12. Verify install worked
-13. Create DNS record (ask first)
-14. Summary + reminders
+## 1. Server
 
-## Phase 1: Preflight
+Ask: "Do you have a Linux server you can SSH into with a key?" This is the default path.
 
-### Step 1 — Scan Environment (silent, no questions)
-
-Run all checks, collect results:
+**Existing server.** Ask for the IP and the SSH user, then check:
 
 ```bash
-# hcloud CLI
-which hcloud && hcloud version
-hcloud context active 2>/dev/null
-
-# flarectl
-which flarectl
-
-# Local SSH keys
-ls ~/.ssh/*.pub 2>/dev/null
-
-# Hetzner SSH keys (only if hcloud configured)
-hcloud ssh-key list 2>/dev/null
+ssh -o BatchMode=yes -o ConnectTimeout=5 <user>@<ip> 'uname -s && (test "$(id -u)" = 0 || sudo -n true) && echo ready'
 ```
 
-### Step 2 — Present Status Report
+`ready` means SSH works and the user has root or passwordless sudo. Anything else: stop and fix that first.
 
-Show everything at once so the user sees the full picture:
-
-```
-Environment check:
-  hcloud CLI:       ✓ installed (v1.x.x) / ✗ not installed
-  Hetzner token:    ✓ configured (context: xxx) / ✗ not configured
-  flarectl:         ✓ installed / ✗ not installed
-  Local SSH keys:   ✓ N keys found / ✗ none found
-  Hetzner SSH keys: ✓ N keys / — (can't check without token)
-```
-
-### Step 3 — Fix Missing Tools (ask for each)
-
-For each missing item, ask whether to install/configure. One at a time.
-
-**hcloud CLI** (only needed for new server creation):
-```bash
-brew install hcloud
-```
-
-**Hetzner API token** (only needed for new server creation). Walk the user through:
-
-```
-You need a Hetzner Cloud API token with read/write permissions.
-
-  1. Go to https://console.hetzner.cloud
-  2. Select your project (or create one)
-  3. Go to Security → API Tokens
-  4. Click "Generate API Token"
-  5. Name it (e.g. "fusionaly-deploy"), select Read & Write
-  6. Copy the token (you won't see it again)
-```
-
-Then store it:
-```bash
-hcloud context create fusionaly --token <token-user-provided>
-# Verify it works
-hcloud server-type list > /dev/null && echo "Hetzner token works"
-```
-
-**SSH keys** — if none exist:
-```bash
-ssh-keygen -t ed25519
-```
-
-**flarectl** — handled later in Cloudflare section if user opts in.
-
-### Step 3b — Choose Mode
-
-Default to the existing-server path. Only offer provisioning if they don't have a box.
-
-```
-Do you already have a server you can SSH into with a key?
-  • Yes → use it (any provider). [default]
-  • No  → I can provision one on Hetzner for you (optional).
-```
-
-## Phase 2: Gather Choices
-
-Ask one question at a time. Wait for answer before asking next.
-
-### Path A: New Hetzner Server
-
-**If user declined hcloud install in step 3:** explain it's required for this path and stop gracefully.
-
-#### Domain
-
-```
-What domain will Fusionaly run on? (e.g. analytics.example.com)
-```
-
-#### Server Location
-
-Fetch from `hcloud location list` and present the list. Let user pick.
-
-#### Server Type
-
-Fetch from `hcloud server-type list`, filter to shared CPU types (cx/cax), and present with specs and prices. Let user pick.
-
-Fusionaly minimum: 1 vCPU, 512MB RAM, 10GB SSD.
-
-#### SSH Key
+**New Hetzner server (optional).** Needs the `hcloud` CLI and a read/write API token from the Hetzner console (Security > API Tokens).
 
 ```bash
-hcloud ssh-key list
+hcloud context create fusionaly            # paste the token when it asks
+hcloud server-type list -o columns=name,cores,memory,disk   # pick the smallest shared type
+hcloud ssh-key list                         # or: hcloud ssh-key create --name me --public-key-from-file ~/.ssh/id_ed25519.pub
 ```
 
-If keys exist in Hetzner: let user pick from list.
-If no Hetzner keys but local keys exist: offer to upload one.
-
-Upload with: `hcloud ssh-key create --name <name> --public-key-from-file <path>`
-
-### Path B: Existing Server
-
-Ask:
-1. **Server IP:** "What's your server's IP address?"
-2. **SSH user:** "What SSH user should I use? (e.g. root, ubuntu, admin)"
-3. **SSH port:** "What SSH port? (default: 22)"
-4. **Domain:** "What domain will Fusionaly run on?"
-
-Verify SSH connectivity:
-```bash
-ssh -o ConnectTimeout=5 -p <port> <user>@<ip> echo ok
-```
-
-If it fails, help troubleshoot (wrong key, port, user).
-
-### Cloudflare (optional, both paths)
-
-```
-Do you use Cloudflare for DNS on this domain? (y/n)
-```
-
-If yes:
-
-**1. Install flarectl** (if not already installed):
-```bash
-brew install cloudflare/cloudflare/flarectl
-```
-
-**2. Get a Cloudflare API token.** Walk the user through this:
-
-```
-You need a Cloudflare API token with DNS edit permissions.
-
-  1. Go to https://dash.cloudflare.com/profile/api-tokens
-  2. Click "Create Token"
-  3. Use the "Edit zone DNS" template
-  4. Under Zone Resources: select the zone for your domain
-  5. Click "Continue to summary" → "Create Token"
-  6. Copy the token (you won't see it again)
-```
-
-**3. Store and verify the token.** Ask the user to paste it, then:
+Show the plan and ask before creating it (it is billable):
 
 ```bash
-# Export for this session
-export CF_API_TOKEN="<token-user-provided>"
-
-# Verify it works — this MUST succeed before proceeding
-flarectl zone list
+hcloud server create --name fusionaly --type <type> --image ubuntu-24.04 --location <location> --ssh-key <key>
+hcloud server ip fusionaly
+ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=5 root@<ip> 'echo ready'   # retry for ~60s while it boots
 ```
 
-If `flarectl zone list` fails (401, no zones, etc.) — stop and troubleshoot. Do NOT continue to DNS setup with a broken token.
+Fusionaly needs 1 vCPU, 512 MB RAM, 10 GB disk.
 
-## Phase 3: Confirm & Create
+## 2. DNS
 
-### Confirmation
+Ask for the domain. Then create an `A` record: `<domain>` → `<ip>`.
 
-Show full plan. Adapt based on path:
-
-**New Hetzner server:**
-```
-Ready to provision:
-  Server:     <type> (<specs>)
-  Location:   <location-name> (<location-id>)
-  Image:      Ubuntu 24.04
-  SSH key:    <key-name>
-  Domain:     <domain>
-  Cloudflare: yes / no
-
-Proceed? This will create a billable server.
-```
-
-**Existing server:**
-```
-Ready to deploy:
-  Server:     <ip> (via <user>@<ip>:<port>)
-  Domain:     <domain>
-  Cloudflare: yes / no
-
-Proceed?
-```
-
-**Only proceed on explicit yes.**
-
-### Create Server (Hetzner path only)
-
-Sanitize domain for server name: replace dots with dashes, lowercase (e.g. `analytics.example.com` → `fusionaly-analytics-example-com`).
+**Cloudflare (optional).** Ask the user to create a token with the "Edit zone DNS" template and `export CF_API_TOKEN=...` in their shell. Ask before creating the record:
 
 ```bash
-hcloud server create \
-  --name fusionaly-<sanitized-domain> \
-  --type <type> \
-  --location <location> \
-  --image ubuntu-24.04 \
-  --ssh-key <key-name>
+zone=$(curl -s -H "Authorization: Bearer $CF_API_TOKEN" \
+  "https://api.cloudflare.com/client/v4/zones?name=<apex-domain>" | jq -r '.result[0].id')
+curl -s -X POST -H "Authorization: Bearer $CF_API_TOKEN" -H "Content-Type: application/json" \
+  "https://api.cloudflare.com/client/v4/zones/$zone/dns_records" \
+  -d '{"type":"A","name":"<domain>","content":"<ip>","proxied":false,"ttl":300}' | jq '.success'
 ```
 
-Capture the public IP from output. Wait for SSH to become available:
+Keep `proxied` false until the certificate exists.
+
+**Any other DNS provider:** tell the user the exact record to add.
+
+Then wait until the record resolves. The certificate cannot be issued before that:
 
 ```bash
-# Poll until SSH is ready (max ~60 seconds)
-ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no root@<ip> echo ok
+dig +short <domain> @1.1.1.1     # repeat until it prints <ip>
 ```
 
-Tell the user: "Server created at `<ip>`. SSH is ready."
+## 3. Install (the user runs this)
 
-## Phase 4: Server Setup
+Tell the user to run this in their own terminal:
 
-### Verify Install URLs Are Reachable
+```
+ssh -t <user>@<ip> 'curl -fsSL https://fusionaly.com/install | sudo bash'
+```
 
-Before telling the user to SSH in, check the URLs work:
+The installer asks for the domain, checks DNS, installs Docker, starts Fusionaly with HTTPS, and sets up nightly backups and updates. Wait until the user says it finished.
+
+## 4. Check
 
 ```bash
-curl --head --silent --fail https://raw.githubusercontent.com/karloscodes/server-hardener/main/harden.sh > /dev/null && echo "server-hardener: reachable" || echo "server-hardener: UNREACHABLE"
-curl --head --silent --fail https://fusionaly.com/install > /dev/null && echo "fusionaly installer: reachable" || echo "fusionaly installer: UNREACHABLE"
+curl -s -o /dev/null -w "%{http_code}\n" https://<domain>/_health    # 200
 ```
 
-If either URL is unreachable, tell the user before proceeding.
+Then the user opens `https://<domain>/setup` to create the admin account and add the first website.
 
-### Harden Server (ask first)
+## Done: tell the user
 
-```
-Should I run the server-hardener? This will:
-  - Create admin user with SSH key
-  - Disable root login and password auth
-  - Configure firewall (80/443 open)
-  - Option for Tailscale (locks SSH to Tailscale only)
-  - Enable unattended security upgrades
-```
-
-If yes, the hardener is interactive — the user must run it themselves:
-
-```
-The server-hardener is interactive (4 questions). Run this in your terminal:
-
-  ssh root@<ip> 'curl -fsSL https://raw.githubusercontent.com/karloscodes/server-hardener/main/harden.sh -o /tmp/harden.sh && sudo bash /tmp/harden.sh'
-```
-
-**Wait for user to confirm hardening is complete before proceeding.**
-
-After hardening, ask what SSH access method they now have:
-- Tailscale mode: `ssh admin@<tailscale-ip>`
-- No Tailscale: `ssh -p 2222 admin@<ip>`
-
-### Install Fusionaly (ask first)
-
-```
-Should I install Fusionaly now? This will:
-  - Install Docker
-  - Set up Caddy reverse proxy with SSL
-  - Configure automatic backups and updates
-```
-
-If yes, the installer is interactive — the user must run it themselves:
-
-```
-The Fusionaly installer is interactive (asks for domain). Run this in your terminal:
-
-  ssh <user>@<host> 'curl -fsSL https://fusionaly.com/install | sudo bash'
-```
-
-Use the SSH access from the hardening step (admin user, correct port).
-
-**Wait for user to confirm installation is complete.**
-
-### Verify Install Worked
-
-After the user confirms installation is complete, verify it's actually running:
-
-```bash
-# Wait a moment for SSL to provision, then check
-curl --silent --max-time 10 -o /dev/null -w "%{http_code}" https://<domain>
-```
-
-If you get a 200 or 302: install confirmed.
-If connection refused or timeout: SSL may still be provisioning (Let's Encrypt needs DNS to resolve first). Tell the user to wait a few minutes and check `https://<domain>` in their browser.
-
-### Cloudflare DNS (if opted in, ask first)
-
-```
-Should I create the A record now?
-  <domain> → <server-ip>
-```
-
-If yes — `CF_API_TOKEN` should already be exported from the Cloudflare setup step earlier:
-
-```bash
-# CF_API_TOKEN was exported during Cloudflare setup in Phase 2
-flarectl dns create \
-  --zone <base-domain> \
-  --name <subdomain> \
-  --type A \
-  --content <server-ip>
-```
-
-Where `<base-domain>` is extracted from the domain (e.g. `example.com` from `analytics.example.com`) and `<subdomain>` is the prefix (e.g. `analytics`).
-
-If `CF_API_TOKEN` is not set (e.g. new shell session), re-export it:
-```bash
-export CF_API_TOKEN="<token-from-earlier>"
-```
-
-## Phase 5: Summary
-
-Adapt based on what was actually done. Only show completed steps.
-
-**New Hetzner server:**
-```
-Done! Here's what was set up:
-
-  Server:      fusionaly-<domain> (<ip>)
-  Location:    <location-name> (<location-id>)
-  Type:        <type> (<specs>)
-  OS:          Ubuntu 24.04
-  Hardened:    ✓ / ✗ skipped
-  Tailscale:   ✓ / ✗ / — (skipped hardening)
-  Fusionaly:   ✓ installed at <domain> / ✗ skipped
-  DNS:         ✓ A record via Cloudflare / manual setup needed
-  SSH access:  ssh admin@<tailscale-ip> / ssh -p 2222 admin@<ip>
-  Dashboard:   https://<domain>/admin
-```
-
-**Existing server:**
-```
-Done! Here's what was set up:
-
-  Server:      <ip> (via <user>@<ip>:<port>)
-  Hardened:    ✓ / ✗ skipped
-  Fusionaly:   ✓ installed at <domain> / ✗ skipped
-  DNS:         ✓ A record via Cloudflare / manual setup needed
-  SSH access:  <the access method from hardening>
-  Dashboard:   https://<domain>/admin
-```
-
-### Conditional Reminders
-
-Only show what's relevant:
-
-- **If no Cloudflare:** "Create an A record pointing `<domain>` to `<ip>`. SSL via Let's Encrypt won't activate until DNS propagates."
-- **If Tailscale chosen:** "Approve this server in your Tailscale admin console (https://login.tailscale.com/admin)."
-- **If hardening skipped:** "Your server is NOT hardened. Root SSH is still open. Strongly recommend running the server-hardener."
-- **If Fusionaly skipped:** "Fusionaly is not installed yet. SSH in and run the installer when ready."
-- **Always (if Fusionaly installed):** "Auto-updates run daily at 3 AM. Backups stored at `/opt/fusionaly/storage/backups/`."
-- **Always (if Fusionaly installed):** "Consider off-server backups: VPS snapshots, rsync, or Litestream to S3."
-- **If Cloudflare was used:** "Your Cloudflare token is set for this session only. To persist it, add to `~/.zshrc`: `export CF_API_TOKEN=\"your-token\"`"
+- Dashboard: `https://<domain>/admin`. Add the tracking script shown in the website settings.
+- Updates and backups run every night. Keep a copy off the server too (VPS snapshots or rsync).
+- Harden a new server: [server-hardener](https://github.com/karloscodes/server-hardener). Run it yourself: `ssh -t <user>@<ip> 'curl -fsSL https://raw.githubusercontent.com/karloscodes/server-hardener/main/harden.sh -o /tmp/harden.sh && sudo bash /tmp/harden.sh'`. If you pick Tailscale, SSH works only over Tailscale afterwards: connect this machine to your tailnet first.
+- Ask your analytics from your AI client: https://fusionaly.com/agents/
