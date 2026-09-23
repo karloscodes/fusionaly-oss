@@ -11,19 +11,19 @@ export interface WhatsNewItem {
 	detectedAt: string;
 }
 
-// This site's latest activity feed items, next to the chart. The full,
-// cross-site feed lives on Home.
-export const WhatsNewCard = ({ items }: { items: WhatsNewItem[] }) => (
+// This site's latest activity feed items in the selected date range, next to
+// the chart. The full, cross-site feed lives on Home.
+export const WhatsNewCard = ({ items, period }: { items: WhatsNewItem[]; period?: string }) => (
 	<Card className="rounded-xl border border-black">
 		<CardContent className="p-4 sm:p-5 flex flex-col h-full">
 			<div className="flex items-baseline gap-2.5 mb-2">
 				<h2 className="text-base font-semibold text-gray-900">What's new</h2>
-				<span className="font-mono text-[11px] text-gray-500">past 7 days</span>
+				{period && <span className="font-mono text-[11px] text-gray-500">{period.toLowerCase()}</span>}
 			</div>
 
 			{items.length === 0 ? (
 				<p className="text-sm text-gray-500 py-4">
-					Nothing new this week. Small sites stay quiet until something real happens.
+					Nothing new in this period. Small sites stay quiet until something real happens.
 				</p>
 			) : (
 				<ol className="flex flex-col">

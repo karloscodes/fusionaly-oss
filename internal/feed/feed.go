@@ -90,11 +90,17 @@ func GetUserFeed(db *gorm.DB, websiteIDs []uint, limit int) ([]FeedItem, error) 
 	return items, err
 }
 
-// RecentForWebsite returns one website's newest feed items detected after
-// since, newest first. The dashboard shows them as "What's new".
-func RecentForWebsite(db *gorm.DB, websiteID uint, since time.Time, limit int) ([]FeedItem, error) {
+// RecentForWebsite returns one website's newest feed items detected between
+// from and to, newest first. The dashboard shows them as "What's new" for
+// the selected date range.
+func RecentForWebsite(db *gorm.DB, websiteID uint, from, to time.Time, limit int) ([]FeedItem, error) {
 	items := []FeedItem{}
-	err := db.Where("website_id = ? AND detected_at >= ?", websiteID, since).
+	// Compare as UTC instants: SQLite keeps times as text with their offset,
+	// and rows are written in more than one zone, so plain text comparison
+	// breaks. datetime() normalizes both sides to UTC.
+	const layout = "2006-01-02 15:04:05"
+	err := db.Where("website_id = ? AND datetime(detected_at) >= ? AND datetime(detected_at) <= ?",
+		websiteID, from.UTC().Format(layout), to.UTC().Format(layout)).
 		Order("detected_at DESC").
 		Limit(limit).
 		Find(&items).Error

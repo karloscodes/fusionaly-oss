@@ -779,7 +779,7 @@ export const Dashboard = (props: DashboardComponentProps) => {
 						</div>
 					</CardContent>
 				</Card>
-				{props.whats_new && <WhatsNewCard items={props.whats_new} />}
+				{props.whats_new && <WhatsNewCard items={props.whats_new} period={rangeLabel} />}
 				</div>
 
 				{/* Two-column grid for Pages and Referrers */}

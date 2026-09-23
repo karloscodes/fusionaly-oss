@@ -105,8 +105,8 @@ func WebsiteDashboardAction(ctx *cartridge.Context) error {
 	props["annotations"] = annotationsList
 	props["share_token"] = website.ShareToken
 
-	// "What's new": this site's latest activity feed items from the past week.
-	whatsNew, err := feed.RecentForWebsite(db, uint(websiteId), time.Now().UTC().AddDate(0, 0, -7), 5)
+	// "What's new": this site's latest activity feed items in the selected range.
+	whatsNew, err := feed.RecentForWebsite(db, uint(websiteId), timeFrame.From, timeFrame.To, 5)
 	if err != nil {
 		ctx.Logger.Error("Failed to fetch feed items", slog.Any("error", err))
 		whatsNew = []feed.FeedItem{}
