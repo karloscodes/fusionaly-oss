@@ -23,7 +23,11 @@ type Event struct {
 	CustomEventName  string    `gorm:"index"`
 	CustomEventMeta  string    `gorm:"type:text"`
 	Timestamp        time.Time `gorm:"index:idx_website_timestamp;not null"`
-	CreatedAt        time.Time
+	// SessionStart is the time of the visit's first event. It links the events
+	// of one visit, so a later page view can correct the visit's bounce and
+	// exit. Nil for events recorded before it existed.
+	SessionStart *time.Time `gorm:"index"`
+	CreatedAt    time.Time
 }
 
 // EventProcessingData holds enriched data for updating aggregates.
@@ -54,6 +58,17 @@ type EventProcessingData struct {
 	Timestamp        time.Time
 	IsEntrance       bool
 	IsExit           bool
-	IsBounce         bool
+	IsNewPageVisitor bool // first view of this page by this visitor
 	HasUTM           bool
+	// Set when this page view continues a visit whose earlier page views were
+	// counted provisionally (see processed.go).
+	PreviousPageView *PageViewRef // the visit's previous page view: no longer its exit
+	UnbounceAt       *time.Time   // the visit's entry: no longer a bounce
+}
+
+// PageViewRef identifies an earlier page view by where it was counted.
+type PageViewRef struct {
+	Hostname  string
+	Pathname  string
+	Timestamp time.Time
 }

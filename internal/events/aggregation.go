@@ -4,10 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"log/slog"
 	"gorm.io/gorm"
-
-	"fusionaly/internal/config"
+	"log/slog"
 )
 
 const eventsTableName = "events"
@@ -34,39 +32,24 @@ func truncateToHalfHour(timestamp time.Time) time.Time {
 
 // UpdateAllAggregatesBatch updates aggregates from processed events.
 func UpdateAllAggregatesBatch(tx *gorm.DB, logger *slog.Logger, dataList []*EventProcessingData) error {
-	sessionTimeout := config.GetConfig().SessionTimeoutSeconds
 	for _, data := range dataList {
-		// Bounce detection: Check if this is a single-page session within sessionTimeout
-		isBounce := false
-		if data.EventType == EventTypePageView && data.IsNewSession {
-			// For test data, we can use IsBounce directly from the event processing data if it's set
-			if data.IsBounce {
-				isBounce = true
-			} else {
-				var sessionPageViews int64
-				err := tx.Table(eventsTableName).
-					Where("website_id = ? AND user_signature = ? AND event_type = ? AND timestamp >= ? AND timestamp <= ?",
-						data.WebsiteID, data.UserSignature, EventTypePageView,
-						data.Timestamp, data.Timestamp.Add(time.Duration(sessionTimeout)*time.Second)).
-					Count(&sessionPageViews).Error
-				if err != nil {
-					logger.Warn("Failed to count session page views for bounce", slog.Any("error", err))
-				} else {
-					isBounce = sessionPageViews == 1
-				}
-			}
-		}
+		// A visit is a bounce until a second page view arrives; that page view
+		// then takes the bounce back (see applyVisitCorrections).
+		isBounce := data.EventType == EventTypePageView && data.IsNewSession
 
 		// Truncate timestamp to half-hour bucket for finer granularity
-		hourTime := truncateToHalfHour(data.Timestamp)
+		hourTime := truncateToHalfHour(data.Timestamp.UTC())
 
 		// Only update site stats for page views
 		if data.EventType == EventTypePageView {
 			if err := updateSiteStatForPageView(tx, data.WebsiteID, hourTime, data.IsNewVisitor, data.IsNewSession, isBounce); err != nil {
 				return fmt.Errorf("failed to update site stats: %w", err)
 			}
-			if err := updatePageStat(tx, data.WebsiteID, data.Hostname, data.Pathname, hourTime, data.IsEntrance, data.IsExit, data.UserSignature, data.IsNewVisitor); err != nil {
+			if err := updatePageStat(tx, data.WebsiteID, data.Hostname, data.Pathname, hourTime, data.IsEntrance, data.IsExit, data.IsNewPageVisitor); err != nil {
 				return fmt.Errorf("failed to update page stats: %w", err)
+			}
+			if err := applyVisitCorrections(tx, data); err != nil {
+				return fmt.Errorf("failed to correct the visit's earlier page views: %w", err)
 			}
 			if err := updateRefStat(tx, data.WebsiteID, data.ReferrerHostname, data.ReferrerPathname, hourTime, data.IsNewVisitor); err != nil {
 				return fmt.Errorf("failed to update ref stats: %w", err)
@@ -137,8 +120,33 @@ func updateSiteStatForPageView(tx *gorm.DB, websiteID uint, hour time.Time, isNe
 	return tx.Exec(query, websiteID, hour, visitorInc, sessionInc, bounceInc, now, now, visitorInc, sessionInc, bounceInc, now).Error
 }
 
-func updatePageStat(tx *gorm.DB, websiteID uint, hostname, pathname string, hour time.Time, isEntrance, isExit bool, userSignature string, isNewVisitor bool) error {
-	visitorInc := getVisitorIncrement(isNewVisitor)
+// applyVisitCorrections takes back what earlier page views of the same visit
+// counted provisionally: the previous page is no longer the exit, and a visit
+// with a second page view is no longer a bounce. Each lands in the bucket of
+// the page view that counted it. The > 0 guards keep a counter from going
+// negative if that bucket was already cleaned up.
+func applyVisitCorrections(tx *gorm.DB, data *EventProcessingData) error {
+	if prev := data.PreviousPageView; prev != nil {
+		err := tx.Exec(`UPDATE page_stats SET exits = exits - 1
+			WHERE website_id = ? AND hostname = ? AND pathname = ? AND hour = ? AND exits > 0`,
+			data.WebsiteID, prev.Hostname, prev.Pathname, truncateToHalfHour(prev.Timestamp.UTC())).Error
+		if err != nil {
+			return err
+		}
+	}
+	if data.UnbounceAt != nil {
+		err := tx.Exec(`UPDATE site_stats SET bounce_count = bounce_count - 1
+			WHERE website_id = ? AND hour = ? AND bounce_count > 0`,
+			data.WebsiteID, truncateToHalfHour(data.UnbounceAt.UTC())).Error
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func updatePageStat(tx *gorm.DB, websiteID uint, hostname, pathname string, hour time.Time, isEntrance, isExit bool, isNewPageVisitor bool) error {
+	visitorInc := getVisitorIncrement(isNewPageVisitor)
 	now := time.Now().UTC()
 	query := `
 		INSERT INTO page_stats (website_id, hostname, pathname, hour, page_views_count, visitors_count, entrances, exits, created_at, updated_at)

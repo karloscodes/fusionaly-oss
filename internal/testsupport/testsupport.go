@@ -310,27 +310,6 @@ func GetTimeInISOWeek(year, week, dayOffset, hour, min int) time.Time {
 		Add(time.Duration(hour)*time.Hour + time.Duration(min)*time.Minute)
 }
 
-// CreatePageViewEvent creates a page view event for testing
-func CreatePageViewEvent(
-	eventID, websiteID uint,
-	userSignature, hostname, pathname string,
-	timestamp time.Time,
-	isNewVisitor, isNewSession, isEntrance, isExit bool,
-	isBounce ...bool,
-) *events.EventProcessingData {
-	bounce := len(isBounce) > 0 && isBounce[0]
-
-	return &events.EventProcessingData{
-		EventID: eventID, WebsiteID: websiteID,
-		UserSignature: userSignature, Hostname: hostname, Pathname: pathname,
-		DeviceType: "desktop", Browser: "chrome", OperatingSystem: "windows",
-		Country: "US", EventType: events.EventTypePageView,
-		IsNewVisitor: isNewVisitor, IsNewSession: isNewSession,
-		Timestamp: timestamp, IsEntrance: isEntrance, IsExit: isExit,
-		IsBounce: bounce, HasUTM: false,
-	}
-}
-
 // CreateCustomEvent creates a custom event for testing
 func CreateCustomEvent(
 	eventID, websiteID uint,
