@@ -3,14 +3,13 @@ package http
 import (
 	"fusionaly/internal/feed"
 	"net/url"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"log/slog"
 
 	"fusionaly/internal/analytics"
 	"fusionaly/internal/annotations"
-	"fusionaly/internal/timeframe"
+	"fusionaly/internal/settings"
 	websitesCtx "fusionaly/internal/websites"
 	"github.com/karloscodes/cartridge"
 	"github.com/karloscodes/cartridge/inertia"
@@ -57,24 +56,12 @@ func WebsiteDashboardAction(ctx *cartridge.Context) error {
 		slog.String("fromDate", ctx.Query("from")),
 		slog.String("toDate", ctx.Query("to")))
 
-	parser := timeframe.NewTimeFrameParser()
-
-	firstEvent, err := analytics.GetFirstPageView(db, websiteId)
-	firstEventDate := time.Now().UTC().Add(-time.Hour * 24 * 365 * 5)
-
-	if err != nil {
-		ctx.Logger.Warn("Error fetching first event date", slog.Any("error", err))
-	}
-	if firstEvent != nil {
-		firstEventDate = firstEvent.Timestamp
+	// The owner's zone also drives the public dashboard and the feed.
+	if err := settings.SaveTimezone(db, timeZone); err != nil {
+		ctx.Logger.Warn("Failed to save the owner's time zone", slog.Any("error", err))
 	}
 
-	timeFrame, err := parser.ParseTimeFrame(timeframe.TimeFrameParserParams{
-		FromDate:            ctx.Query("from"),
-		ToDate:              ctx.Query("to"),
-		Tz:                  timeZone,
-		AllTimeFirstEventAt: firstEventDate,
-	})
+	timeFrame, err := analytics.DashboardTimeFrame(db, websiteId, timeZone, ctx.Query("from"), ctx.Query("to"))
 	if err != nil {
 		ctx.Logger.Error("Error parsing time frame", slog.Any("error", err))
 		return ctx.Status(fiber.StatusBadRequest).SendString("Invalid date range")

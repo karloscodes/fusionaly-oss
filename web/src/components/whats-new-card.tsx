@@ -13,7 +13,8 @@ export interface WhatsNewItem {
 
 // This site's latest activity feed items in the selected date range, next to
 // the chart. The full, cross-site feed lives on Home.
-export const WhatsNewCard = ({ items, period }: { items: WhatsNewItem[]; period?: string }) => (
+// The public dashboard hides the feed link: it points into the admin.
+export const WhatsNewCard = ({ items, period, showFeedLink = true }: { items: WhatsNewItem[]; period?: string; showFeedLink?: boolean }) => (
 	<Card className="rounded-xl border border-black">
 		<CardContent className="p-4 sm:p-5 flex flex-col h-full">
 			<div className="flex items-baseline gap-2.5 mb-2">
@@ -52,9 +53,11 @@ export const WhatsNewCard = ({ items, period }: { items: WhatsNewItem[]; period?
 				</ol>
 			)}
 
-			<Link href="/admin" className="mt-auto pt-3 text-[13px] font-medium text-gray-900 underline decoration-[rgb(var(--c-accent))] underline-offset-4">
-				Open the activity feed
-			</Link>
+			{showFeedLink && (
+				<Link href="/admin" className="mt-auto pt-3 text-[13px] font-medium text-gray-900 underline decoration-[rgb(var(--c-accent))] underline-offset-4">
+					Open the activity feed
+				</Link>
+			)}
 		</CardContent>
 	</Card>
 );

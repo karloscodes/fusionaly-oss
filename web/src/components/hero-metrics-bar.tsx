@@ -6,6 +6,7 @@ interface MetricData {
 	trend?: number; // Percentage change from previous period
 	series?: number[]; // Values over the selected range, drawn as a sparkline
 	lowerIsBetter?: boolean; // e.g. bounce rate: a drop is good news
+	trendInPoints?: boolean; // trend is percentage points (rates), not percent
 }
 
 interface HeroMetricsBarProps {
@@ -25,8 +26,18 @@ const TrendSkeleton = () => (
 	</span>
 );
 
-// "+18.2%" in mono, green for good news and red for bad news.
-const TrendIndicator = ({ trend, loading, lowerIsBetter }: { trend?: number; loading?: boolean; lowerIsBetter?: boolean }) => {
+// formatTrend writes a change the way a person reads it: "+18.2%" for a
+// relative change, "+6 pts" for a rate, and "72×" once a relative change
+// passes +1000% (a period that grew from almost nothing).
+export const formatTrend = (trend: number, inPoints?: boolean): string => {
+	const sign = trend > 0 ? "+" : "−";
+	if (inPoints) return `${sign}${Math.abs(trend).toFixed(1)} pts`;
+	if (trend >= 1000) return `${Math.round(1 + trend / 100)}×`;
+	return `${sign}${Math.abs(trend).toFixed(1)}%`;
+};
+
+// The change in mono, green for good news and red for bad news.
+const TrendIndicator = ({ trend, loading, lowerIsBetter, inPoints }: { trend?: number; loading?: boolean; lowerIsBetter?: boolean; inPoints?: boolean }) => {
 	if (loading) {
 		return <TrendSkeleton />;
 	}
@@ -36,14 +47,13 @@ const TrendIndicator = ({ trend, loading, lowerIsBetter }: { trend?: number; loa
 	}
 
 	if (trend === 0) {
-		return <span className="font-mono text-xs text-gray-500">0%</span>;
+		return <span className="font-mono text-xs text-gray-500">{inPoints ? "0 pts" : "0%"}</span>;
 	}
 
 	const good = lowerIsBetter ? trend < 0 : trend > 0;
 	return (
 		<span className={`font-mono text-xs ${good ? "text-emerald-600" : "text-rose-500"}`}>
-			{trend > 0 ? "+" : "−"}
-			{Math.abs(trend).toFixed(1)}%
+			{formatTrend(trend, inPoints)}
 		</span>
 	);
 };
@@ -83,7 +93,7 @@ export const HeroMetricsBar = ({ metrics, trendLoading, highlight }: HeroMetrics
 							<span className="text-xl sm:text-[26px] leading-tight font-bold tracking-tight text-black whitespace-nowrap">
 								{typeof metric.value === 'number' ? formatNumber(metric.value) : metric.value}
 							</span>
-							<TrendIndicator trend={metric.trend} loading={trendLoading} lowerIsBetter={metric.lowerIsBetter} />
+							<TrendIndicator trend={metric.trend} loading={trendLoading} lowerIsBetter={metric.lowerIsBetter} inPoints={metric.trendInPoints} />
 						</div>
 						{metric.series && metric.series.length > 1 && (
 							<Sparkline series={metric.series} highlighted={index === highlight} />
@@ -101,11 +111,13 @@ export const createMetric = (
 	value: string | number,
 	trend?: number,
 	series?: number[],
-	lowerIsBetter?: boolean
+	lowerIsBetter?: boolean,
+	trendInPoints?: boolean
 ): MetricData => ({
 	label,
 	value,
 	trend,
 	series,
 	lowerIsBetter,
+	trendInPoints,
 });

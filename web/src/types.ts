@@ -44,7 +44,7 @@ export interface ComparisonMetrics {
   visitors_change?: number;
   views_change?: number;
   sessions_change?: number;
-  bounce_rate_change?: number;
+  bounce_rate_change?: number; // percentage points
   avg_time_change?: number;
   revenue_change?: number;
 }

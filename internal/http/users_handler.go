@@ -10,6 +10,7 @@ import (
 	"log/slog"
 
 	"fusionaly/internal/onboarding"
+	"fusionaly/internal/settings"
 	"fusionaly/internal/users"
 )
 
@@ -93,6 +94,11 @@ func ProcessLoginAction(ctx *cartridge.Context) error {
 	ctx.Logger.Debug("Login successful",
 		slog.String("email", email),
 		slog.Int("userId", int(user.ID)))
+
+	// The owner's zone drives the public dashboard and the feed too.
+	if err := settings.SaveTimezone(db, tz); err != nil {
+		ctx.Logger.Warn("Failed to save the owner's time zone", slog.Any("error", err))
+	}
 
 	// Set timezone cookie with robust configuration (10 years expiration)
 	tzExpiration := time.Now().Add(10 * 365 * 24 * time.Hour)

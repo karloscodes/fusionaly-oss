@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"fusionaly/internal/pkg/async"
 	"fusionaly/internal/settings"
@@ -14,44 +15,44 @@ import (
 
 // DashboardMetrics contains all metrics displayed on the analytics dashboard.
 type DashboardMetrics struct {
-	PageViews            []TimeSeriesPoint    `json:"page_views"`
-	Visitors             []TimeSeriesPoint    `json:"visitors"`
-	Sessions             []TimeSeriesPoint    `json:"sessions"`
-	GoalConversions      []TimeSeriesPoint    `json:"goal_conversions"`
-	Revenue              []TimeSeriesPoint    `json:"revenue"`
-	TopURLs              []MetricCountResult  `json:"top_urls"`
-	TopCountries         []MetricCountResult  `json:"top_countries"`
-	TopDevices           []MetricCountResult  `json:"top_devices"`
-	TopReferrers         []MetricCountResult  `json:"top_referrers"`
-	TopBrowsers          []MetricCountResult  `json:"top_browsers"`
-	TopCustomEvents      []MetricCountResult  `json:"top_custom_events"`
-	EventConversionRates map[string]float64   `json:"event_conversion_rates"`
-	TopOperatingSystems  []MetricCountResult  `json:"top_operating_systems"`
-	EventRevenueTotals   map[string]float64   `json:"event_revenue_totals"`
-	BounceRate           float64              `json:"bounce_rate"`
-	VisitsDuration       float64              `json:"visits_duration"`
-	RevenuePerVisitor    float64              `json:"revenue_per_visitor"`
-	TopEntryPages        []MetricCountResult  `json:"top_entry_pages"`
-	TopExitPages         []MetricCountResult  `json:"top_exit_pages"`
-	TopUTMMediums        []MetricCountResult  `json:"top_utm_mediums"`
-	TopUTMSources        []MetricCountResult  `json:"top_utm_sources"`
-	TopUTMCampaigns      []MetricCountResult  `json:"top_utm_campaigns"`
-	TopUTMTerms          []MetricCountResult  `json:"top_utm_terms"`
-	TopUTMContents       []MetricCountResult  `json:"top_utm_contents"`
-	TopRefParams         []MetricCountResult  `json:"top_ref_params"`
-	BucketSize           string               `json:"bucket_size"`
-	TotalVisitors        int64                `json:"total_visitors"`
-	TotalViews           int64                `json:"total_views"`
-	TotalSessions        int64                `json:"total_sessions"`
-	TotalEntryCount      int64                `json:"total_entry_count"`
-	TotalExitCount       int64                `json:"total_exit_count"`
-	TotalCustomEvents    int64                `json:"total_custom_events"`
-	RevenueMetrics       *RevenueMetrics      `json:"revenue_metrics"`
-	TopRevenueEvents     []MetricCountResult  `json:"top_revenue_events"`
-	ConversionGoals      []string             `json:"conversion_goals"`
-	Insights             []interface{}        `json:"insights"`
-	Comparison           *ComparisonMetrics   `json:"comparison,omitempty"`
-	UserFlow             []UserFlowLink       `json:"user_flow"`
+	PageViews            []TimeSeriesPoint   `json:"page_views"`
+	Visitors             []TimeSeriesPoint   `json:"visitors"`
+	Sessions             []TimeSeriesPoint   `json:"sessions"`
+	GoalConversions      []TimeSeriesPoint   `json:"goal_conversions"`
+	Revenue              []TimeSeriesPoint   `json:"revenue"`
+	TopURLs              []MetricCountResult `json:"top_urls"`
+	TopCountries         []MetricCountResult `json:"top_countries"`
+	TopDevices           []MetricCountResult `json:"top_devices"`
+	TopReferrers         []MetricCountResult `json:"top_referrers"`
+	TopBrowsers          []MetricCountResult `json:"top_browsers"`
+	TopCustomEvents      []MetricCountResult `json:"top_custom_events"`
+	EventConversionRates map[string]float64  `json:"event_conversion_rates"`
+	TopOperatingSystems  []MetricCountResult `json:"top_operating_systems"`
+	EventRevenueTotals   map[string]float64  `json:"event_revenue_totals"`
+	BounceRate           float64             `json:"bounce_rate"`
+	VisitsDuration       float64             `json:"visits_duration"`
+	RevenuePerVisitor    float64             `json:"revenue_per_visitor"`
+	TopEntryPages        []MetricCountResult `json:"top_entry_pages"`
+	TopExitPages         []MetricCountResult `json:"top_exit_pages"`
+	TopUTMMediums        []MetricCountResult `json:"top_utm_mediums"`
+	TopUTMSources        []MetricCountResult `json:"top_utm_sources"`
+	TopUTMCampaigns      []MetricCountResult `json:"top_utm_campaigns"`
+	TopUTMTerms          []MetricCountResult `json:"top_utm_terms"`
+	TopUTMContents       []MetricCountResult `json:"top_utm_contents"`
+	TopRefParams         []MetricCountResult `json:"top_ref_params"`
+	BucketSize           string              `json:"bucket_size"`
+	TotalVisitors        int64               `json:"total_visitors"`
+	TotalViews           int64               `json:"total_views"`
+	TotalSessions        int64               `json:"total_sessions"`
+	TotalEntryCount      int64               `json:"total_entry_count"`
+	TotalExitCount       int64               `json:"total_exit_count"`
+	TotalCustomEvents    int64               `json:"total_custom_events"`
+	RevenueMetrics       *RevenueMetrics     `json:"revenue_metrics"`
+	TopRevenueEvents     []MetricCountResult `json:"top_revenue_events"`
+	ConversionGoals      []string            `json:"conversion_goals"`
+	Insights             []interface{}       `json:"insights"`
+	Comparison           *ComparisonMetrics  `json:"comparison,omitempty"`
+	UserFlow             []UserFlowLink      `json:"user_flow"`
 }
 
 // TimeSeriesPoint represents a single data point in a time series chart.
@@ -161,9 +162,7 @@ func FetchDashboardMetrics(db *gorm.DB, tf *timeframe.TimeFrame, websiteId int, 
 
 // FetchComparisonMetrics loads comparison period metrics for deferred rendering.
 func FetchComparisonMetrics(db *gorm.DB, tf *timeframe.TimeFrame, websiteId int, currentMetrics *DashboardMetrics, logger *slog.Logger) *ComparisonMetrics {
-	duration := tf.To.Sub(tf.From)
-	comparisonFrom := tf.From.Add(-duration)
-	comparisonTo := tf.From
+	comparisonFrom, comparisonTo := PreviousPeriod(tf.From, tf.To)
 
 	comparisonTF := &timeframe.TimeFrame{
 		From:       comparisonFrom,
@@ -215,6 +214,16 @@ func FetchComparisonMetrics(db *gorm.DB, tf *timeframe.TimeFrame, websiteId int,
 	}
 
 	return CalculateComparisonMetrics(data)
+}
+
+// PreviousPeriod returns the period of the same length that ends just before
+// from. Both ends are inclusive, like the current period: it ends one
+// nanosecond before from, so no bucket is counted in both periods. The length
+// is rounded to the second, so an end of day at 23:59:59.999999999 gives whole
+// days and the previous period starts on a bucket boundary.
+func PreviousPeriod(from, to time.Time) (time.Time, time.Time) {
+	length := to.Sub(from).Round(time.Second)
+	return from.Add(-length), from.Add(-time.Nanosecond)
 }
 
 // Task builder helpers
@@ -297,4 +306,20 @@ func ensureNonNil(items []MetricCountResult) []MetricCountResult {
 		return []MetricCountResult{}
 	}
 	return items
+}
+
+// DashboardTimeFrame builds the date range for the private and the public
+// dashboard alike, so both count the same days. Without from and to it is the
+// last 30 days including today, in tz.
+func DashboardTimeFrame(db *gorm.DB, websiteID int, tz, from, to string) (*timeframe.TimeFrame, error) {
+	firstEventDate := time.Now().UTC().Add(-time.Hour * 24 * 365 * 5)
+	if firstEvent, err := GetFirstPageView(db, websiteID); err == nil && firstEvent != nil {
+		firstEventDate = firstEvent.Timestamp
+	}
+	return timeframe.NewTimeFrameParser().ParseTimeFrame(timeframe.TimeFrameParserParams{
+		FromDate:            from,
+		ToDate:              to,
+		Tz:                  tz,
+		AllTimeFirstEventAt: firstEventDate,
+	})
 }

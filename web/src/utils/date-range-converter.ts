@@ -52,7 +52,7 @@ export function convertRangeToDateRange(rangeValue: string): DateRange {
 
     case 'last_7_days': {
       const sevenDaysAgo = new Date(now);
-      sevenDaysAgo.setDate(now.getDate() - 7);
+      sevenDaysAgo.setDate(now.getDate() - 6); // 7 days, today included
       const from = startOfDay(sevenDaysAgo);
       const to = endOfDay(now);
       return {
@@ -63,7 +63,7 @@ export function convertRangeToDateRange(rangeValue: string): DateRange {
 
     case 'last_30_days': {
       const thirtyDaysAgo = new Date(now);
-      thirtyDaysAgo.setDate(now.getDate() - 30);
+      thirtyDaysAgo.setDate(now.getDate() - 29); // 30 days, today included
       const from = startOfDay(thirtyDaysAgo);
       const to = endOfDay(now);
       return {
@@ -74,7 +74,7 @@ export function convertRangeToDateRange(rangeValue: string): DateRange {
 
     case 'last_90_days': {
       const ninetyDaysAgo = new Date(now);
-      ninetyDaysAgo.setDate(now.getDate() - 90);
+      ninetyDaysAgo.setDate(now.getDate() - 89); // 90 days, today included
       const from = startOfDay(ninetyDaysAgo);
       const to = endOfDay(now);
       return {
@@ -142,7 +142,7 @@ export function convertRangeToDateRange(rangeValue: string): DateRange {
     default: {
       // Default to last 7 days
       const sevenDaysAgo = new Date(now);
-      sevenDaysAgo.setDate(now.getDate() - 7);
+      sevenDaysAgo.setDate(now.getDate() - 6); // 7 days, today included
       const from = startOfDay(sevenDaysAgo);
       const to = endOfDay(now);
       return {

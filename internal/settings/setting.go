@@ -441,3 +441,32 @@ func GetAllSettingsForDisplay(db *gorm.DB) ([]SettingResponse, error) {
 	}
 	return result, nil
 }
+
+// KeyTimezone is the owner's IANA time zone, e.g. "Europe/Madrid". Days on
+// the dashboard, the public dashboard, and the activity feed start at
+// midnight in this zone, so everyone sees the same numbers.
+const KeyTimezone = "timezone"
+
+// SaveTimezone stores the owner's time zone. It ignores a zone Go cannot load,
+// and skips the write when nothing changed.
+func SaveTimezone(db *gorm.DB, tz string) error {
+	if _, err := time.LoadLocation(tz); err != nil || tz == "" {
+		return nil
+	}
+	if current, _ := GetSetting(db, KeyTimezone); current == tz {
+		return nil
+	}
+	return CreateOrUpdateSetting(db, KeyTimezone, tz)
+}
+
+// Timezone returns the owner's time zone, or UTC before one was saved.
+func Timezone(db *gorm.DB) string {
+	tz, err := GetSetting(db, KeyTimezone)
+	if err != nil || tz == "" {
+		return "UTC"
+	}
+	if _, err := time.LoadLocation(tz); err != nil {
+		return "UTC"
+	}
+	return tz
+}

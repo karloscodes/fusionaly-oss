@@ -659,7 +659,7 @@ export const Dashboard = (props: DashboardComponentProps) => {
 		createMetric("Visitors", totalVisitors, withTrends ? data.comparison?.visitors_change : undefined, countsOf(data.visitors)),
 		createMetric("Page Views", totalViews, withTrends ? data.comparison?.views_change : undefined, countsOf(data.page_views)),
 		createMetric("Sessions", totalSessions, withTrends ? data.comparison?.sessions_change : undefined, countsOf(data.sessions)),
-		createMetric("Bounce Rate", `${(data.bounce_rate * 100).toFixed(0)}%`, withTrends ? data.comparison?.bounce_rate_change : undefined, undefined, true),
+		createMetric("Bounce Rate", `${(data.bounce_rate * 100).toFixed(0)}%`, withTrends ? data.comparison?.bounce_rate_change : undefined, undefined, true, true),
 		createMetric("Avg Time", formatSessionDuration(data.visits_duration), withTrends ? data.comparison?.avg_time_change : undefined),
 		createMetric("Revenue", `$${data.revenue_metrics ? formatNumber(Math.round(data.revenue_metrics.total_revenue)) : '0'}`, withTrends ? data.comparison?.revenue_change : undefined, countsOf(data.revenue)),
 	];
@@ -779,7 +779,7 @@ export const Dashboard = (props: DashboardComponentProps) => {
 						</div>
 					</CardContent>
 				</Card>
-				{props.whats_new && <WhatsNewCard items={props.whats_new} period={rangeLabel} />}
+				{props.whats_new && <WhatsNewCard items={props.whats_new} period={rangeLabel} showFeedLink={!props.is_public_view} />}
 				</div>
 
 				{/* Two-column grid for Pages and Referrers */}
@@ -870,7 +870,7 @@ export const Dashboard = (props: DashboardComponentProps) => {
 									<h2 className="text-base font-semibold text-gray-900">Countries</h2>
 								</div>
 							</div>
-							<div className="h-[320px] sm:h-[380px] flex flex-col">
+							<div className="flex flex-col">
 								<DataTable
 									data={data.top_countries}
 									showPercentage={true}
@@ -916,7 +916,7 @@ export const Dashboard = (props: DashboardComponentProps) => {
 									</button>
 								</div>
 							</div>
-							<div className="h-[320px] sm:h-[380px] flex flex-col">
+							<div className="flex flex-col">
 								{deviceTab === "devices" && (
 									<DataTable
 										data={data.top_devices}
@@ -954,9 +954,7 @@ export const Dashboard = (props: DashboardComponentProps) => {
 									/>
 								)}
 								{deviceTab === "os" && data && !data.top_operating_systems && (
-									<div className="flex items-center justify-center h-full">
-										<p className="text-gray-500">Operating systems data is currently unavailable. Please ensure the application is fully updated and try a hard refresh.</p>
-									</div>
+									<p className="text-sm text-gray-500 py-4">No operating systems for this period yet.</p>
 								)}
 							</div>
 						</CardContent>
@@ -1070,7 +1068,7 @@ export const Dashboard = (props: DashboardComponentProps) => {
 			{/* Visitor Flow */}
 			<div className="mt-4">
 				<Deferred data="user_flow" fallback={
-					<Card>
+					<Card className="rounded-xl border border-black">
 						<CardHeader className="pb-2">
 							<CardTitle className="text-base font-semibold text-gray-900">Visitor Flows</CardTitle>
 						</CardHeader>

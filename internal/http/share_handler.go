@@ -12,7 +12,8 @@ import (
 
 	"fusionaly/internal/analytics"
 	"fusionaly/internal/annotations"
-	"fusionaly/internal/timeframe"
+	"fusionaly/internal/feed"
+	"fusionaly/internal/settings"
 	"fusionaly/internal/websites"
 )
 
@@ -32,16 +33,16 @@ func PublicDashboardAction(ctx *cartridge.Context) error {
 	// Cache public dashboards for 5 minutes - reduces DB load, CDN-friendly
 	ctx.Set("Cache-Control", "public, max-age=300")
 
-	// Parse timezone from cookie, default to UTC
-	tz := ctx.Cookies("_tz")
-	if tz == "" {
-		tz = "UTC"
-	}
-
-	// Fixed 30-day timeframe for public dashboards
-	timeFrame := timeframe.Last30Days(tz)
+	// The owner's time zone, not the visitor's: everyone who opens the link
+	// sees the same days and numbers as the owner's own dashboard, and the
+	// cached page is right for every visitor.
 	websiteId := int(website.ID)
 	db := ctx.DB()
+	timeFrame, err := analytics.DashboardTimeFrame(db, websiteId, settings.Timezone(db), "", "")
+	if err != nil {
+		ctx.Logger.Error("Error building the public dashboard range", slog.Any("error", err))
+		return ctx.Status(fiber.StatusInternalServerError).SendString("Error loading dashboard")
+	}
 
 	metrics, err := analytics.FetchDashboardMetrics(db, timeFrame, websiteId, ctx.Logger)
 	if err != nil {
@@ -61,6 +62,14 @@ func PublicDashboardAction(ctx *cartridge.Context) error {
 	props["bucket_size"] = string(timeFrame.BucketSize)
 	props["is_public_view"] = true
 	props["annotations"] = annotationsList
+
+	// Same "What's new" card as the private dashboard.
+	whatsNew, err := feed.RecentForWebsite(db, uint(websiteId), timeFrame.From, timeFrame.To, 5)
+	if err != nil {
+		ctx.Logger.Error("Failed to fetch feed items for public dashboard", slog.Any("error", err))
+		whatsNew = []feed.FeedItem{}
+	}
+	props["whats_new"] = whatsNew
 
 	// Add comparison data for trends
 	props["comparison"] = inertia.Defer(func() interface{} {

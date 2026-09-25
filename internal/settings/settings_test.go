@@ -255,3 +255,34 @@ func TestGetAllSettingsForDisplay(t *testing.T) {
 	}
 	assert.Equal(t, []string{"excluded_ips"}, keys, "API keys and licenses never reach page props")
 }
+
+func TestTimezone(t *testing.T) {
+	t.Run("is UTC before the owner logs in", func(t *testing.T) {
+		dbManager, _ := testsupport.SetupTestDBManager(t)
+		db := dbManager.GetConnection()
+
+		tz := settings.Timezone(db)
+
+		assert.Equal(t, "UTC", tz)
+	})
+
+	t.Run("is the zone saved at login", func(t *testing.T) {
+		dbManager, _ := testsupport.SetupTestDBManager(t)
+		db := dbManager.GetConnection()
+
+		require.NoError(t, settings.SaveTimezone(db, "Europe/Madrid"))
+
+		assert.Equal(t, "Europe/Madrid", settings.Timezone(db))
+	})
+
+	t.Run("keeps the last good zone when the browser sends a bad one", func(t *testing.T) {
+		dbManager, _ := testsupport.SetupTestDBManager(t)
+		db := dbManager.GetConnection()
+		require.NoError(t, settings.SaveTimezone(db, "America/New_York"))
+
+		require.NoError(t, settings.SaveTimezone(db, "Mars/Olympus"))
+		require.NoError(t, settings.SaveTimezone(db, ""))
+
+		assert.Equal(t, "America/New_York", settings.Timezone(db))
+	})
+}

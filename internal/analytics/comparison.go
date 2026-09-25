@@ -5,7 +5,7 @@ type ComparisonMetrics struct {
 	VisitorsChange   *float64 `json:"visitors_change,omitempty"`
 	ViewsChange      *float64 `json:"views_change,omitempty"`
 	SessionsChange   *float64 `json:"sessions_change,omitempty"`
-	BounceRateChange *float64 `json:"bounce_rate_change,omitempty"`
+	BounceRateChange *float64 `json:"bounce_rate_change,omitempty"` // percentage points, not percent
 	AvgTimeChange    *float64 `json:"avg_time_change,omitempty"`
 	RevenueChange    *float64 `json:"revenue_change,omitempty"`
 }
@@ -63,12 +63,11 @@ func CalculateComparisonMetrics(data ComparisonData) *ComparisonMetrics {
 		)
 	}
 
-	// Bounce rate change
-	if data.PreviousBounceRate > 0 {
-		comparison.BounceRateChange = calculatePercentageChange(
-			data.CurrentBounceRate,
-			data.PreviousBounceRate,
-		)
+	// Bounce rate change, in percentage points: 40% -> 46% is +6 points, not
+	// +15%. A rate of 0% in a period with visits is still a real rate.
+	if data.PreviousSessions > 0 && data.CurrentSessions > 0 {
+		points := (data.CurrentBounceRate - data.PreviousBounceRate) * 100
+		comparison.BounceRateChange = &points
 	}
 
 	// Average time change
