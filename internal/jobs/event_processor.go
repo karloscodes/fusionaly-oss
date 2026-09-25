@@ -31,6 +31,12 @@ func (j *EventProcessorJob) Run() error {
 
 	db := j.dbManager.GetConnection()
 
+	// One time after an upgrade: fix the counts older versions stored. A
+	// failure is retried on the next run and does not block new events.
+	if err := events.RebuildVisitCountsOnce(db, j.logger); err != nil {
+		j.logger.Error("Failed to rebuild visit counts", slog.Any("error", err))
+	}
+
 	// Count unprocessed events
 	var unprocessedCount int64
 	if err := db.Model(&events.IngestedEvent{}).Where("processed = 0").Count(&unprocessedCount).Error; err != nil {
