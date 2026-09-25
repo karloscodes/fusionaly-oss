@@ -1,15 +1,47 @@
-# Fusionaly
+<h1 align="center">Fusionaly</h1>
 
-[![Latest Release](https://img.shields.io/github/v/release/karloscodes/fusionaly-oss)](https://github.com/karloscodes/fusionaly-oss/releases/latest)
-[![License: MIT](https://img.shields.io/github/license/karloscodes/fusionaly-oss)](./LICENSE)
-[![CI](https://github.com/karloscodes/fusionaly-oss/actions/workflows/pr.yml/badge.svg)](https://github.com/karloscodes/fusionaly-oss/actions)
-[![Docker](https://img.shields.io/docker/pulls/karloscodes/fusionaly)](https://hub.docker.com/r/karloscodes/fusionaly)
+<p align="center"><strong>Self-hosted web analytics in one SQLite file.</strong></p>
 
-Self-hosted web analytics with SQLite. See who visits, where they come from, and what they click — without cookies, fingerprinting, or handing your data to anyone else.
+<p align="center">
+  See who visits, where they come from, and what they click.<br>
+  No cookies, no fingerprinting, no third parties. Your data never leaves your server.
+</p>
 
-Runs on hardware you already have: a Raspberry Pi or a $5 VPS, on your own domain. One script tag to track, one command to install.
+<p align="center">
+  <a href="https://github.com/karloscodes/fusionaly-oss/releases/latest"><img src="https://img.shields.io/github/v/release/karloscodes/fusionaly-oss?color=00D1FF" alt="Latest release"></a>
+  <a href="https://hub.docker.com/r/karloscodes/fusionaly"><img src="https://img.shields.io/docker/pulls/karloscodes/fusionaly?color=00D1FF" alt="Docker pulls"></a>
+  <a href="https://github.com/karloscodes/fusionaly-oss/actions"><img src="https://github.com/karloscodes/fusionaly-oss/actions/workflows/pr.yml/badge.svg" alt="CI"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/github/license/karloscodes/fusionaly-oss?color=00D678" alt="License: MIT"></a>
+  <a href="https://github.com/karloscodes/fusionaly-oss/stargazers"><img src="https://img.shields.io/github/stars/karloscodes/fusionaly-oss?style=flat&color=00D678" alt="GitHub stars"></a>
+  <br>
+  <img src="https://img.shields.io/github/go-mod/go-version/karloscodes/fusionaly-oss" alt="Go version">
+  <img src="https://img.shields.io/badge/database-SQLite-003B57?logo=sqlite&logoColor=white" alt="SQLite">
+  <img src="https://img.shields.io/badge/self--hosted-one%20container-000000" alt="Self-hosted in one container">
+  <a href="#ask-from-your-ai-client"><img src="https://img.shields.io/badge/MCP-Claude%20%C2%B7%20Codex%20%C2%B7%20Cursor%20%C2%B7%20Gemini-00D1FF" alt="MCP: Claude, Codex, Cursor, Gemini"></a>
+</p>
 
-[Website](https://fusionaly.com) · [Documentation](https://fusionaly.com/docs) · [Installation](https://fusionaly.com/docs/installation/)
+<p align="center">
+  <a href="https://t.fusionaly.com/share/QdREgX5mZu5y">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset=".github/assets/dashboard-dark.png">
+      <img src=".github/assets/dashboard-light.png" alt="The Fusionaly dashboard for fusionaly.com: visitors, page views, sessions, bounce rate, and a 30-day visitors chart" width="900">
+    </picture>
+  </a>
+  <br>
+  <sub>The real dashboard for fusionaly.com. <a href="https://t.fusionaly.com/share/QdREgX5mZu5y">Open it live</a>.</sub>
+</p>
+
+<p align="center">
+  Runs on a Raspberry Pi or a $5 VPS, on your own domain. One command installs it, and it updates itself every night.<br>
+  Ask it questions from Claude, Codex, Cursor, or Gemini.
+</p>
+
+<p align="center">
+  <a href="https://fusionaly.com">Website</a> ·
+  <a href="https://fusionaly.com/docs">Documentation</a> ·
+  <a href="https://fusionaly.com/docs/installation/">Installation</a> ·
+  <a href="https://t.fusionaly.com/share/QdREgX5mZu5y">Live dashboard</a>
+</p>
 
 ---
 
