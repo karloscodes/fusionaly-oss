@@ -51,8 +51,8 @@ The SDK picks the right trigger per element — click, submit, `sendBeacon`, or 
 ## What you get
 
 - **Tracking** — page views, SPA navigation, clicks, forms, sections, revenue, and custom events. Automatic where it can be, one attribute where it can't.
-- **Dashboard** — visitors, sources, top pages, countries, devices, goals, and user flows.
-- **What's new** — a home feed across all your sites: traffic spikes, new referrers, milestones. Stays quiet until something real happens.
+- **Dashboard** — visitors, sources, top pages, countries, devices, goals, and user flows. Daily charts follow your timezone, daylight saving included.
+- **What's new** — a home feed across all your sites: traffic spikes and drops, new referrers, goal spikes, milestones. Each day is compared with the same weekday in past weeks, so a normal Monday peak is not news, and one viral day doesn't hide the next. Small sites stay quiet until something real happens.
 - **Ask from your AI client** — Claude, Codex, Cursor, or Gemini answer questions about your traffic in plain English. See [Ask from your AI client](#ask-from-your-ai-client).
 - **Annotations** — mark deployments, campaigns, and incidents on the timeline.
 - **Shareable dashboards** — public read-only links.
