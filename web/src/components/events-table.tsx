@@ -117,8 +117,9 @@ export function EventsTable({ events, isLoading = false, groupBySessions = false
 
 	const sessionGroups = groupBySessions ? groupEventsBySessions(events) : [];
 
-	// Generate loading rows with unique keys
-	const loadingRows = Array.from({ length: 10 }, () => crypto.randomUUID()).map(
+	// Loading rows keyed by position. crypto.randomUUID exists only on HTTPS
+	// and localhost, so it crashed this page over plain HTTP.
+	const loadingRows = Array.from({ length: 10 }, (_, i) => `loading-${i}`).map(
 		(id) => (
 			<TableRow key={id} className="animate-pulse">
 				<TableCell colSpan={6} className="py-2">
