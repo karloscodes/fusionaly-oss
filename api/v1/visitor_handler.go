@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
 	"github.com/karloscodes/cartridge"
 	"gorm.io/gorm"
 
@@ -30,14 +29,14 @@ type visitorEvent struct {
 
 // GetVisitorInfoHandler returns current visitor metadata based on the request context.
 func GetVisitorInfoHandler(ctx *cartridge.Context) error {
-	requestURL := resolveVisitorContextURL(ctx.Ctx)
+	requestURL := resolveVisitorContextURL(ctx)
 	hostParam := strings.TrimSpace(ctx.Query("w"))
 	var host string
 	switch {
 	case strings.EqualFold(strings.TrimSpace(ctx.Get("Early-Data")), "1"):
 		ctx.Logger.Info("Received early data request, returning 425 to force replay",
 			slog.String("path", ctx.Path()))
-		return ctx.Status(fiber.StatusTooEarly).JSON(fiber.Map{
+		return ctx.Status(http.StatusTooEarly).JSON(cartridge.Map{
 			"error": "Replay required",
 			"code":  "TOO_EARLY",
 		})
@@ -46,7 +45,7 @@ func GetVisitorInfoHandler(ctx *cartridge.Context) error {
 	case requestURL != "":
 		parsedURL, err := url.Parse(requestURL)
 		if err != nil || parsedURL.Host == "" {
-			return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{
+			return ctx.Status(http.StatusBadRequest).JSON(cartridge.Map{
 				"error": "Invalid origin context",
 				"code":  "INVALID_CONTEXT",
 			})
@@ -56,7 +55,7 @@ func GetVisitorInfoHandler(ctx *cartridge.Context) error {
 		host = strings.TrimSpace(ctx.Hostname())
 	}
 	if host == "" {
-		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{
+		return ctx.Status(http.StatusBadRequest).JSON(cartridge.Map{
 			"error": "Missing origin context",
 			"code":  "MISSING_CONTEXT",
 		})
@@ -68,7 +67,7 @@ func GetVisitorInfoHandler(ctx *cartridge.Context) error {
 		var websiteNotFoundErr *websites.WebsiteNotFoundError
 		if errors.As(err, &websiteNotFoundErr) {
 			// Return 404 for website not found
-			return ctx.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			return ctx.Status(http.StatusNotFound).JSON(cartridge.Map{
 				"error": websites.NewWebsiteNotFoundError(host).Error(),
 				"code":  "WEBSITE_NOT_FOUND",
 			})
@@ -77,7 +76,7 @@ func GetVisitorInfoHandler(ctx *cartridge.Context) error {
 		ctx.Logger.Error("Failed to resolve website for visitor info",
 			slog.String("host", host),
 			slog.Any("error", err))
-		return ctx.Status(http.StatusInternalServerError).JSON(fiber.Map{
+		return ctx.Status(http.StatusInternalServerError).JSON(cartridge.Map{
 			"error": "Failed to resolve website",
 			"code":  "INTERNAL_ERROR",
 		})
@@ -88,7 +87,7 @@ func GetVisitorInfoHandler(ctx *cartridge.Context) error {
 		userAgent = forwardedUA
 	}
 
-	clientIP := getClientIP(ctx.Ctx)
+	clientIP := getClientIP(ctx)
 	country := events.GetCountryFromIP(clientIP)
 
 	signatureDomain := resolvedDomain
@@ -116,7 +115,7 @@ func GetVisitorInfoHandler(ctx *cartridge.Context) error {
 				slog.Any("error", err),
 				slog.Uint64("website_id", uint64(websiteID)),
 				slog.String("user_signature", userSignature))
-			return ctx.Status(http.StatusInternalServerError).JSON(fiber.Map{
+			return ctx.Status(http.StatusInternalServerError).JSON(cartridge.Map{
 				"error": "Failed to load visitor events",
 				"code":  "EVENT_LOAD_ERROR",
 			})
@@ -136,7 +135,7 @@ func GetVisitorInfoHandler(ctx *cartridge.Context) error {
 					slog.Any("error", err),
 					slog.Uint64("website_id", uint64(websiteID)),
 					slog.String("user_signature", userSignature))
-				return ctx.Status(http.StatusInternalServerError).JSON(fiber.Map{
+				return ctx.Status(http.StatusInternalServerError).JSON(cartridge.Map{
 					"error": "Failed to load visitor events",
 					"code":  "EVENT_LOAD_ERROR",
 				})
@@ -148,7 +147,7 @@ func GetVisitorInfoHandler(ctx *cartridge.Context) error {
 		}
 	}
 
-	return ctx.Status(http.StatusOK).JSON(fiber.Map{
+	return ctx.Status(http.StatusOK).JSON(cartridge.Map{
 		"visitorId":    userSignature,
 		"visitorAlias": alias,
 		"country":      country,
@@ -157,7 +156,7 @@ func GetVisitorInfoHandler(ctx *cartridge.Context) error {
 	})
 }
 
-func resolveVisitorContextURL(c *fiber.Ctx) string {
+func resolveVisitorContextURL(c *cartridge.Context) string {
 	for _, candidate := range []string{
 		c.Get("Origin"),
 		c.Query("url"),

@@ -13,7 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -373,7 +372,7 @@ func TestGetVisitorInfoHandler(t *testing.T) {
 
 		resp, err := app.Test(req, 30000)
 		require.NoError(t, err)
-		assert.Equal(t, fiber.StatusTooEarly, resp.StatusCode)
+		assert.Equal(t, http.StatusTooEarly, resp.StatusCode)
 	})
 
 	t.Run("returns visitor info with events from processed table", func(t *testing.T) {

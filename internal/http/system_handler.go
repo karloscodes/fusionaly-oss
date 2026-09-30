@@ -3,11 +3,11 @@ package http
 import (
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 	"path/filepath"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
 	"github.com/karloscodes/cartridge"
 	"github.com/karloscodes/cartridge/inertia"
 
@@ -32,7 +32,7 @@ func SystemExportDatabaseAction(ctx *cartridge.Context) error {
 	if err := ctx.DB().Exec("VACUUM INTO ?", snapshot).Error; err != nil {
 		os.Remove(snapshot)
 		ctx.Logger.Error("Failed to snapshot database", slog.Any("error", err))
-		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+		return ctx.Status(http.StatusInternalServerError).JSON(cartridge.Map{
 			"success": false,
 			"error":   "Failed to export database",
 		})
@@ -44,7 +44,7 @@ func SystemExportDatabaseAction(ctx *cartridge.Context) error {
 	os.Remove(snapshot)
 	if err != nil {
 		ctx.Logger.Error("Failed to open database snapshot", slog.Any("error", err))
-		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+		return ctx.Status(http.StatusInternalServerError).JSON(cartridge.Map{
 			"success": false,
 			"error":   "Failed to export database",
 		})
@@ -65,7 +65,7 @@ func SystemExportDatabaseAction(ctx *cartridge.Context) error {
 
 // AdministrationIndexAction redirects to the first administration page
 func AdministrationIndexAction(ctx *cartridge.Context) error {
-	return ctx.Redirect("/admin/administration/ingestion", fiber.StatusFound)
+	return ctx.Redirect("/admin/administration/ingestion", http.StatusFound)
 }
 
 // AdministrationIngestionPageAction renders the Ingestion administration page
@@ -270,7 +270,7 @@ func SystemHealthAction(ctx *cartridge.Context) error {
 		warning = "GeoLite database not yet downloaded"
 	}
 
-	return ctx.JSON(fiber.Map{
+	return ctx.JSON(cartridge.Map{
 		"healthy":            warning == "",
 		"warning":            warning,
 		"geolite_configured": geoConfigured,
@@ -288,11 +288,11 @@ func SystemPurgeCacheFormAction(ctx *cartridge.Context) error {
 	rowsAffected, err := cache.PurgeAllCaches(db)
 	if err != nil {
 		ctx.Logger.Error("Failed to clear generic_cache", slog.Any("error", err))
-		return ctx.FlashError("Failed to clear caches").Redirect("/admin/administration/system", fiber.StatusFound)
+		return ctx.FlashError("Failed to clear caches").Redirect("/admin/administration/system", http.StatusFound)
 	}
 
 	ctx.Logger.Info("Caches purged successfully", slog.Int64("rows_deleted", rowsAffected))
-	return ctx.FlashSuccess("All caches have been purged successfully").Redirect("/admin/administration/system", fiber.StatusFound)
+	return ctx.FlashSuccess("All caches have been purged successfully").Redirect("/admin/administration/system", http.StatusFound)
 }
 
 // SystemGeoLiteFormAction handles POST form submission for GeoLite settings (Inertia)
@@ -306,7 +306,7 @@ func SystemGeoLiteFormAction(ctx *cartridge.Context) error {
 	// Save GeoLite credentials
 	if err := settings.SaveGeoLiteCredentials(db, accountID, licenseKey); err != nil {
 		ctx.Logger.Error("Failed to save GeoLite settings", slog.Any("error", err))
-		return ctx.FlashError("Failed to save GeoLite settings").Redirect("/admin/administration/system", fiber.StatusFound)
+		return ctx.FlashError("Failed to save GeoLite settings").Redirect("/admin/administration/system", http.StatusFound)
 	}
 
 	ctx.Logger.Info("GeoLite settings updated",
@@ -317,9 +317,9 @@ func SystemGeoLiteFormAction(ctx *cartridge.Context) error {
 	if accountID != "" && licenseKey != "" {
 		cfg := ctx.Config.(*config.Config)
 		jobs.TriggerImmediateDownload(db, ctx.Logger, cfg)
-		return ctx.FlashSuccess("GeoLite settings saved. Database download started in the background.").Redirect("/admin/administration/system", fiber.StatusFound)
+		return ctx.FlashSuccess("GeoLite settings saved. Database download started in the background.").Redirect("/admin/administration/system", http.StatusFound)
 	}
-	return ctx.FlashSuccess("GeoLite settings saved successfully").Redirect("/admin/administration/system", fiber.StatusFound)
+	return ctx.FlashSuccess("GeoLite settings saved successfully").Redirect("/admin/administration/system", http.StatusFound)
 }
 
 // SystemGeoLiteDownloadAction triggers an immediate GeoLite database download (Inertia)
@@ -329,7 +329,7 @@ func SystemGeoLiteDownloadAction(ctx *cartridge.Context) error {
 	// Check if credentials are configured
 	accountID, licenseKey, _ := settings.GetGeoLiteCredentials(db)
 	if accountID == "" || licenseKey == "" {
-		return ctx.FlashError("GeoLite credentials not configured. Please enter your Account ID and License Key first.").Redirect("/admin/administration/system", fiber.StatusFound)
+		return ctx.FlashError("GeoLite credentials not configured. Please enter your Account ID and License Key first.").Redirect("/admin/administration/system", http.StatusFound)
 	}
 
 	// Trigger immediate download
@@ -337,7 +337,7 @@ func SystemGeoLiteDownloadAction(ctx *cartridge.Context) error {
 	jobs.TriggerImmediateDownload(db, ctx.Logger, cfg)
 
 	ctx.Logger.Info("Manual GeoLite database download triggered")
-	return ctx.FlashSuccess("Database download started in the background. Refresh this page in a moment to check status.").Redirect("/admin/administration/system", fiber.StatusFound)
+	return ctx.FlashSuccess("Database download started in the background. Refresh this page in a moment to check status.").Redirect("/admin/administration/system", http.StatusFound)
 }
 
 // SystemAgentAPIKeyAction returns or creates the Agent API key (JSON response)
@@ -347,12 +347,12 @@ func SystemAgentAPIKeyAction(ctx *cartridge.Context) error {
 	key, err := settings.GetOrCreateAgentAPIKey(db)
 	if err != nil {
 		ctx.Logger.Error("Failed to get/create Agent API key", slog.Any("error", err))
-		return ctx.Ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+		return ctx.Status(http.StatusInternalServerError).JSON(cartridge.Map{
 			"error": "Failed to retrieve API key",
 		})
 	}
 
-	return ctx.Ctx.JSON(fiber.Map{
+	return ctx.JSON(cartridge.Map{
 		"api_key": key,
 	})
 }
@@ -364,9 +364,9 @@ func SystemAgentAPIKeyRegenerateAction(ctx *cartridge.Context) error {
 	_, err := settings.RegenerateAgentAPIKey(db)
 	if err != nil {
 		ctx.Logger.Error("Failed to regenerate Agent API key", slog.Any("error", err))
-		return ctx.FlashError("Failed to regenerate API key").Redirect("/admin/administration/agents", fiber.StatusFound)
+		return ctx.FlashError("Failed to regenerate API key").Redirect("/admin/administration/agents", http.StatusFound)
 	}
 
 	ctx.Logger.Info("Agent API key regenerated")
-	return ctx.FlashSuccess("API key regenerated successfully. Copy your new key - it won't be shown again in full.").Redirect("/admin/administration/agents", fiber.StatusFound)
+	return ctx.FlashSuccess("API key regenerated successfully. Copy your new key - it won't be shown again in full.").Redirect("/admin/administration/agents", http.StatusFound)
 }

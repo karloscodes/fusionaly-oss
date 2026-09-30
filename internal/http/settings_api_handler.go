@@ -2,9 +2,9 @@ package http
 
 import (
 	"net"
+	"net/http"
 	"strings"
 
-	"github.com/gofiber/fiber/v2"
 	"log/slog"
 
 	"fusionaly/internal/settings"
@@ -48,7 +48,7 @@ func IngestionSettingsFormAction(ctx *cartridge.Context) error {
 	// Validate IP list
 	if valid, msg := validateIPList(excludedIPs); !valid {
 		ctx.Logger.Warn("invalid IP format submitted", slog.String("error", msg))
-		return ctx.FlashError(msg).Redirect("/admin/administration/ingestion", fiber.StatusFound)
+		return ctx.FlashError(msg).Redirect("/admin/administration/ingestion", http.StatusFound)
 	}
 
 	db := ctx.DB()
@@ -56,11 +56,11 @@ func IngestionSettingsFormAction(ctx *cartridge.Context) error {
 	// Update setting
 	if err := settings.UpdateSetting(db, "excluded_ips", excludedIPs); err != nil {
 		ctx.Logger.Error("failed to update excluded_ips setting", slog.Any("error", err))
-		return ctx.FlashError("Failed to update IP filtering settings").Redirect("/admin/administration/ingestion", fiber.StatusFound)
+		return ctx.FlashError("Failed to update IP filtering settings").Redirect("/admin/administration/ingestion", http.StatusFound)
 	}
 
 	ctx.Logger.Info("excluded IPs updated via form")
-	return ctx.FlashSuccess("Ingestion settings saved successfully!").Redirect("/admin/administration/ingestion", fiber.StatusFound)
+	return ctx.FlashSuccess("Ingestion settings saved successfully!").Redirect("/admin/administration/ingestion", http.StatusFound)
 }
 
 // Note: AISettingsFormAction is available in Fusionaly Pro

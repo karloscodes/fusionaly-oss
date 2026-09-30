@@ -4,8 +4,8 @@ import (
 	"fusionaly/internal/feed"
 	"net/url"
 
-	"github.com/gofiber/fiber/v2"
 	"log/slog"
+	"net/http"
 
 	"fusionaly/internal/analytics"
 	"fusionaly/internal/annotations"
@@ -23,7 +23,7 @@ func WebsiteDashboardAction(ctx *cartridge.Context) error {
 	websiteId, err := ctx.ParamsInt("id")
 	if err != nil {
 		ctx.Logger.Error("Invalid website ID in URL", slog.Any("error", err))
-		return ctx.Redirect("/admin/websites", fiber.StatusFound)
+		return ctx.Redirect("/admin/websites", http.StatusFound)
 	}
 
 	db := ctx.DB()
@@ -32,10 +32,10 @@ func WebsiteDashboardAction(ctx *cartridge.Context) error {
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			ctx.Logger.Warn("Website not found", slog.Int("websiteId", websiteId))
-			return ctx.FlashError("Website not found").Redirect("/admin/websites", fiber.StatusFound)
+			return ctx.FlashError("Website not found").Redirect("/admin/websites", http.StatusFound)
 		}
 		ctx.Logger.Error("Failed to get website", slog.Any("error", err))
-		return ctx.Redirect("/admin/websites", fiber.StatusFound)
+		return ctx.Redirect("/admin/websites", http.StatusFound)
 	}
 
 	timeZone := ctx.Cookies("_tz")
@@ -46,7 +46,7 @@ func WebsiteDashboardAction(ctx *cartridge.Context) error {
 	}
 
 	if timeZone == "" {
-		return ctx.Status(fiber.StatusBadRequest).SendString("Your cookies have issues, we can't continue")
+		return ctx.Status(http.StatusBadRequest).SendString("Your cookies have issues, we can't continue")
 	}
 
 	ctx.Logger.Info("Website Dashboard accessed",
@@ -64,13 +64,13 @@ func WebsiteDashboardAction(ctx *cartridge.Context) error {
 	timeFrame, err := analytics.DashboardTimeFrame(db, websiteId, timeZone, ctx.Query("from"), ctx.Query("to"))
 	if err != nil {
 		ctx.Logger.Error("Error parsing time frame", slog.Any("error", err))
-		return ctx.Status(fiber.StatusBadRequest).SendString("Invalid date range")
+		return ctx.Status(http.StatusBadRequest).SendString("Invalid date range")
 	}
 
 	metrics, err := analytics.FetchDashboardMetrics(db, timeFrame, websiteId, ctx.Logger)
 	if err != nil {
 		ctx.Logger.Error("Error fetching metrics", slog.Any("error", err))
-		return ctx.Status(fiber.StatusInternalServerError).SendString("Error fetching metrics")
+		return ctx.Status(http.StatusInternalServerError).SendString("Error fetching metrics")
 	}
 
 	websitesData, err := websitesCtx.GetWebsitesForSelector(db)

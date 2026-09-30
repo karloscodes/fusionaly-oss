@@ -8,15 +8,16 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/karloscodes/cartridge"
+	ctestsupport "github.com/karloscodes/cartridge/testsupport"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestRespondDatabaseBusy(t *testing.T) {
 	t.Run("answers 503 with a Retry-After the client can act on", func(t *testing.T) {
-		app := fiber.New()
-		app.Post("/busy", func(c *fiber.Ctx) error {
+		app := ctestsupport.NewTestServer(t, ctestsupport.TestServerOptions{DisableMiddleware: true}).Server
+		app.Post("/busy", func(c *cartridge.Context) error {
 			return respondDatabaseBusy(c)
 		})
 

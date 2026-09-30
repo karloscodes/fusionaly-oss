@@ -4,9 +4,9 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"log/slog"
+	"net/http"
 	"strings"
 
-	"github.com/gofiber/fiber/v2"
 	"github.com/karloscodes/cartridge"
 	"github.com/karloscodes/cartridge/crypto"
 	"github.com/karloscodes/cartridge/inertia"
@@ -38,12 +38,12 @@ func OnboardingCheckAction(ctx *cartridge.Context) error {
 	required, err := onboarding.IsOnboardingRequired(db)
 	if err != nil {
 		ctx.Logger.Error("Failed to check if onboarding is required", slog.Any("error", err))
-		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+		return ctx.Status(http.StatusInternalServerError).JSON(cartridge.Map{
 			"error": "Failed to check onboarding status",
 		})
 	}
 
-	return ctx.JSON(fiber.Map{
+	return ctx.JSON(cartridge.Map{
 		"required": required,
 	})
 }
@@ -52,7 +52,7 @@ func OnboardingCheckAction(ctx *cartridge.Context) error {
 func GetOrCreateOnboardingSession(ctx *cartridge.Context, db *gorm.DB) (*onboarding.OnboardingSession, error) {
 	// Clear any existing authentication cookies to ensure clean onboarding
 	if ctx.Session != nil {
-		ctx.Session.ClearSession(ctx.Ctx)
+		ctx.Session.ClearSession(ctx)
 	}
 
 	// Try to get existing session from cookie
@@ -78,7 +78,7 @@ func GetOrCreateOnboardingSession(ctx *cartridge.Context, db *gorm.DB) (*onboard
 	}
 
 	// Store session ID in cookie
-	ctx.Cookie(&fiber.Cookie{
+	ctx.Cookie(&cartridge.Cookie{
 		Name:     onboardingSessionCookieName,
 		Value:    newSessionID,
 		Path:     "/",
@@ -99,7 +99,7 @@ func OnboardingPageAction(ctx *cartridge.Context) error {
 	session, err := GetOrCreateOnboardingSession(ctx, db)
 	if err != nil {
 		ctx.Logger.Error("Failed to get/create onboarding session", slog.Any("error", err))
-		return ctx.FlashError("Failed to start onboarding session").Redirect("/login", fiber.StatusFound)
+		return ctx.FlashError("Failed to start onboarding session").Redirect("/login", http.StatusFound)
 	}
 
 	// Build props based on current step
@@ -119,7 +119,7 @@ func OnboardingUserFormAction(ctx *cartridge.Context) error {
 	// Get session ID from cookie
 	sessionID := ctx.Cookies(onboardingSessionCookieName)
 	if sessionID == "" {
-		return ctx.FlashError("No active onboarding session").Redirect("/setup", fiber.StatusFound)
+		return ctx.FlashError("No active onboarding session").Redirect("/setup", http.StatusFound)
 	}
 
 	db := ctx.DB()
@@ -128,22 +128,22 @@ func OnboardingUserFormAction(ctx *cartridge.Context) error {
 	session, err := onboarding.GetOnboardingSession(db, sessionID)
 	if err != nil {
 		ctx.Logger.Error("Failed to get onboarding session", slog.Any("error", err))
-		return ctx.FlashError("Invalid or expired onboarding session").Redirect("/setup", fiber.StatusFound)
+		return ctx.FlashError("Invalid or expired onboarding session").Redirect("/setup", http.StatusFound)
 	}
 
 	// Validate current step
 	if session.Step != onboarding.StepUserAccount {
-		return ctx.FlashError("Invalid step").Redirect("/setup", fiber.StatusFound)
+		return ctx.FlashError("Invalid step").Redirect("/setup", http.StatusFound)
 	}
 
 	// Validate email
 	if email == "" {
-		return ctx.FlashError("Email is required").Redirect("/setup", fiber.StatusFound)
+		return ctx.FlashError("Email is required").Redirect("/setup", http.StatusFound)
 	}
 
 	// Basic email validation
 	if !strings.Contains(email, "@") || !strings.Contains(email, ".") {
-		return ctx.FlashError("Please enter a valid email address").Redirect("/setup", fiber.StatusFound)
+		return ctx.FlashError("Please enter a valid email address").Redirect("/setup", http.StatusFound)
 	}
 
 	// Update session with email and move to password step
@@ -151,10 +151,10 @@ func OnboardingUserFormAction(ctx *cartridge.Context) error {
 	err = onboarding.UpdateOnboardingSession(db, sessionID, onboarding.StepPassword, session.Data)
 	if err != nil {
 		ctx.Logger.Error("Failed to update onboarding session", slog.Any("error", err))
-		return ctx.FlashError("Failed to save progress").Redirect("/setup", fiber.StatusFound)
+		return ctx.FlashError("Failed to save progress").Redirect("/setup", http.StatusFound)
 	}
 
-	return ctx.Redirect("/setup", fiber.StatusFound)
+	return ctx.Redirect("/setup", http.StatusFound)
 }
 
 // OnboardingPasswordFormAction handles password form submission (PRG pattern)
@@ -165,7 +165,7 @@ func OnboardingPasswordFormAction(ctx *cartridge.Context) error {
 	// Get session ID from cookie
 	sessionID := ctx.Cookies(onboardingSessionCookieName)
 	if sessionID == "" {
-		return ctx.FlashError("No active onboarding session").Redirect("/setup", fiber.StatusFound)
+		return ctx.FlashError("No active onboarding session").Redirect("/setup", http.StatusFound)
 	}
 
 	db := ctx.DB()
@@ -174,45 +174,45 @@ func OnboardingPasswordFormAction(ctx *cartridge.Context) error {
 	session, err := onboarding.GetOnboardingSession(db, sessionID)
 	if err != nil {
 		ctx.Logger.Error("Failed to get onboarding session", slog.Any("error", err))
-		return ctx.FlashError("Invalid or expired onboarding session").Redirect("/setup", fiber.StatusFound)
+		return ctx.FlashError("Invalid or expired onboarding session").Redirect("/setup", http.StatusFound)
 	}
 
 	// Validate current step
 	if session.Step != onboarding.StepPassword {
-		return ctx.FlashError("Invalid step").Redirect("/setup", fiber.StatusFound)
+		return ctx.FlashError("Invalid step").Redirect("/setup", http.StatusFound)
 	}
 
 	// Validate password
 	if strings.TrimSpace(password) == "" {
-		return ctx.FlashError("Password is required").Redirect("/setup", fiber.StatusFound)
+		return ctx.FlashError("Password is required").Redirect("/setup", http.StatusFound)
 	}
 
 	if password != confirmPassword {
-		return ctx.FlashError("Passwords do not match").Redirect("/setup", fiber.StatusFound)
+		return ctx.FlashError("Passwords do not match").Redirect("/setup", http.StatusFound)
 	}
 
 	if len(password) < 8 {
-		return ctx.FlashError("Password must be at least 8 characters long").Redirect("/setup", fiber.StatusFound)
+		return ctx.FlashError("Password must be at least 8 characters long").Redirect("/setup", http.StatusFound)
 	}
 
 	// Update session with the password hash and move to GeoLite step
 	passwordHash, err := crypto.GeneratePasswordHash(password)
 	if err != nil {
 		ctx.Logger.Error("Failed to hash password", slog.Any("error", err))
-		return ctx.FlashError("Failed to save progress").Redirect("/setup", fiber.StatusFound)
+		return ctx.FlashError("Failed to save progress").Redirect("/setup", http.StatusFound)
 	}
 	session.Data.PasswordHash = string(passwordHash)
 	err = onboarding.UpdateOnboardingSession(db, sessionID, onboarding.StepGeoLite, session.Data)
 	if err != nil {
 		ctx.Logger.Error("Failed to update onboarding session", slog.Any("error", err))
-		return ctx.FlashError("Failed to save progress").Redirect("/setup", fiber.StatusFound)
+		return ctx.FlashError("Failed to save progress").Redirect("/setup", http.StatusFound)
 	}
 
-	return ctx.Redirect("/setup", fiber.StatusFound)
+	return ctx.Redirect("/setup", http.StatusFound)
 }
 
 // completeOnboarding finishes the onboarding process by creating the user
-func completeOnboarding(db *gorm.DB, logger *slog.Logger, c *fiber.Ctx, sessionMgr *cartridge.SessionManager, session *onboarding.OnboardingSession) error {
+func completeOnboarding(db *gorm.DB, logger *slog.Logger, c *cartridge.Context, sessionMgr *cartridge.SessionManager, session *onboarding.OnboardingSession) error {
 	// Prepare completion data
 	completionData := onboarding.CompletionData{
 		Email:        session.Data.Email,
@@ -253,7 +253,7 @@ func OnboardingGeoLiteFormAction(ctx *cartridge.Context) error {
 	// Get session ID from cookie
 	sessionID := ctx.Cookies(onboardingSessionCookieName)
 	if sessionID == "" {
-		return ctx.FlashError("No active onboarding session").Redirect("/setup", fiber.StatusFound)
+		return ctx.FlashError("No active onboarding session").Redirect("/setup", http.StatusFound)
 	}
 
 	db := ctx.DB()
@@ -262,12 +262,12 @@ func OnboardingGeoLiteFormAction(ctx *cartridge.Context) error {
 	session, err := onboarding.GetOnboardingSession(db, sessionID)
 	if err != nil {
 		ctx.Logger.Error("Failed to get onboarding session", slog.Any("error", err))
-		return ctx.FlashError("Invalid or expired onboarding session").Redirect("/setup", fiber.StatusFound)
+		return ctx.FlashError("Invalid or expired onboarding session").Redirect("/setup", http.StatusFound)
 	}
 
 	// Validate current step
 	if session.Step != onboarding.StepGeoLite {
-		return ctx.FlashError("Invalid step").Redirect("/setup", fiber.StatusFound)
+		return ctx.FlashError("Invalid step").Redirect("/setup", http.StatusFound)
 	}
 
 	// Get GeoLite credentials from form (optional)
@@ -300,11 +300,11 @@ func OnboardingGeoLiteFormAction(ctx *cartridge.Context) error {
 	// GeoLite is the last step: create the admin and log in. The optional
 	// OpenRouter key step is gone with Lens hidden; the key can still be set in
 	// Administration > AI when the Lens flag is on.
-	err = completeOnboarding(db, ctx.Logger, ctx.Ctx, ctx.Session, session)
+	err = completeOnboarding(db, ctx.Logger, ctx, ctx.Session, session)
 	if err != nil {
 		ctx.Logger.Error("Failed to complete onboarding", slog.Any("error", err))
-		return ctx.FlashError("Failed to complete setup: "+err.Error()).Redirect("/setup", fiber.StatusFound)
+		return ctx.FlashError("Failed to complete setup: "+err.Error()).Redirect("/setup", http.StatusFound)
 	}
 
-	return ctx.FlashSuccess("Setup complete! You have been logged in.").Redirect("/admin/websites/new", fiber.StatusFound)
+	return ctx.FlashSuccess("Setup complete! You have been logged in.").Redirect("/admin/websites/new", http.StatusFound)
 }

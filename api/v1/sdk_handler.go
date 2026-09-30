@@ -3,9 +3,9 @@ package v1
 import (
 	"bytes"
 	_ "embed"
+	"net/http"
 	"text/template"
 
-	"github.com/gofiber/fiber/v2"
 	"log/slog"
 
 	"github.com/karloscodes/cartridge"
@@ -19,7 +19,7 @@ func GetSDKAction(ctx *cartridge.Context) error {
 	tmpl, err := template.New("./api/v1/sdk.js").Parse(sdkTemplate)
 	if err != nil {
 		ctx.Logger.Error("Failed to parse SDK template", slog.Any("error", err))
-		return ctx.Status(fiber.StatusInternalServerError).SendString("Internal Server Error")
+		return ctx.Status(http.StatusInternalServerError).SendString("Internal Server Error")
 	}
 
 	// Execute the template with the base URL
@@ -29,7 +29,7 @@ func GetSDKAction(ctx *cartridge.Context) error {
 	}
 	if err := tmpl.Execute(&buf, data); err != nil {
 		ctx.Logger.Error("Failed to render SDK template", slog.Any("error", err))
-		return ctx.Status(fiber.StatusInternalServerError).SendString("Internal Server Error")
+		return ctx.Status(http.StatusInternalServerError).SendString("Internal Server Error")
 	}
 
 	// Generate ETag for the rendered content
@@ -47,7 +47,7 @@ func GetSDKAction(ctx *cartridge.Context) error {
 		ctx.Logger.Debug("ETag match, returning 304",
 			slog.String("etag", etag),
 			slog.String("path", ctx.Path()))
-		return ctx.Status(fiber.StatusNotModified).Send(nil)
+		return ctx.Status(http.StatusNotModified).Send(nil)
 	}
 
 	ctx.Set("Content-Type", "application/javascript")

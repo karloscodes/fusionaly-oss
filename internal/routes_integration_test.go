@@ -1,67 +1,48 @@
 package internal
 
 import (
-	"reflect"
-	"runtime"
-	"strings"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
-	"github.com/gofiber/fiber/v2"
 	"github.com/karloscodes/cartridge/testsupport"
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
+
+	"fusionaly/internal/config"
+	"fusionaly/internal/users"
 )
 
 func TestPublicEventsRouteRateLimited(t *testing.T) {
 	srv := testsupport.NewTestServer(t, testsupport.TestServerOptions{
 		RouteMountFunc: MountAppRoutes,
 	})
-	routes := srv.App.GetRoutes(true)
-
-	var eventRoute *fiber.Route
-	for idx := range routes {
-		route := routes[idx]
-		if route.Method == fiber.MethodPost && route.Path == "/x/api/v1/events" {
-			eventRoute = &routes[idx]
-			break
-		}
+	// The public rate limiter only runs in production.
+	cfg := config.GetConfig()
+	env := cfg.Environment
+	cfg.Environment = config.Production
+	t.Cleanup(func() { cfg.Environment = env })
+	post := func() int {
+		resp, _ := srv.Server.Test(httptest.NewRequest("POST", "/x/api/v1/events", nil))
+		return resp.StatusCode
+	}
+	for range 70 {
+		post()
 	}
 
-	require.NotNil(t, eventRoute, "expected events route to be registered")
+	status := post()
 
-	// The rate limiter is wrapped in a conditional function that only applies
-	// in production. In test environment, it passes through but the wrapper
-	// still exists. Check for the conditional wrapper (defined in MountAppRoutes).
-	hasRateLimiter := false
-	var handlerNames []string
-	for _, handler := range eventRoute.Handlers {
-		name := runtime.FuncForPC(reflect.ValueOf(handler).Pointer()).Name()
-		handlerNames = append(handlerNames, name)
-		// Check for either the raw limiter or our conditional wrapper
-		if strings.Contains(name, "middleware/limiter") || strings.Contains(name, "MountAppRoutes") {
-			hasRateLimiter = true
-			break
-		}
-	}
-
-	require.Truef(t, hasRateLimiter, "expected rate limiter middleware for public events route, handlers: %v", handlerNames)
+	assert.Equal(t, http.StatusTooManyRequests, status, "the 71st request in a minute is limited")
 }
 
 func TestLensRoutesRegistered(t *testing.T) {
 	srv := testsupport.NewTestServer(t, testsupport.TestServerOptions{
+		Models:         []any{&users.User{}},
 		RouteMountFunc: MountAppRoutes,
 	})
-	routes := srv.App.GetRoutes(true)
 
-	var hasLensIndex bool
+	resp, _ := srv.Server.Test(httptest.NewRequest("GET", "/admin/websites/1/lens", nil))
 
-	for _, route := range routes {
-		// Website-scoped routes (Inertia)
-		// OSS version: only the GET route for the paywall page
-		if route.Path == "/admin/websites/:id/lens" && route.Method == fiber.MethodGet {
-			hasLensIndex = true
-		}
-	}
-
-	require.True(t, hasLensIndex, "expected website-scoped lens index route to be registered")
-	// Note: POST routes for Lens are available in Fusionaly Pro
+	// The admin chain runs: with no user yet, it sends the visitor to setup.
+	assert.Equal(t, http.StatusFound, resp.StatusCode)
+	assert.Equal(t, "/setup", resp.Header.Get("Location"))
 }

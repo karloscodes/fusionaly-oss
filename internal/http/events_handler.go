@@ -1,10 +1,10 @@
 package http
 
 import (
+	"net/http"
 	"strconv"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 	"log/slog"
 
@@ -51,10 +51,10 @@ func EventsIndexAction(ctx *cartridge.Context) error {
 			if err == gorm.ErrRecordNotFound {
 				ctx.Logger.Info("No websites found in database - redirecting to website creation")
 				// Redirect to website creation page when no websites exist
-				return ctx.Redirect("/admin/websites/new", fiber.StatusFound)
+				return ctx.Redirect("/admin/websites/new", http.StatusFound)
 			}
 			ctx.Logger.Error("Failed to get first website", slog.Any("error", err))
-			return ctx.FlashError("Error getting website data").Redirect("/admin/websites", fiber.StatusFound)
+			return ctx.FlashError("Error getting website data").Redirect("/admin/websites", http.StatusFound)
 		}
 
 		ctx.Logger.Info("Found first website", slog.Uint64("id", uint64(firstWebsite.ID)), slog.String("domain", firstWebsite.Domain))
@@ -92,7 +92,7 @@ func EventsIndexAction(ctx *cartridge.Context) error {
 	})
 	if err != nil {
 		ctx.Logger.Error("Failed to fetch events", slog.Any("error", err))
-		return ctx.FlashError("Failed to fetch events").Redirect("/admin/websites", fiber.StatusFound)
+		return ctx.FlashError("Failed to fetch events").Redirect("/admin/websites", http.StatusFound)
 	}
 
 	mappedEvents := make([]Event, len(result.Events))
@@ -172,7 +172,7 @@ func WebsiteEventsAction(ctx *cartridge.Context) error {
 	websiteId, err := ctx.ParamsInt("id")
 	if err != nil {
 		ctx.Logger.Error("Invalid website ID in URL", slog.Any("error", err))
-		return ctx.Redirect("/admin/websites", fiber.StatusFound)
+		return ctx.Redirect("/admin/websites", http.StatusFound)
 	}
 
 	db := ctx.DB()
@@ -182,10 +182,10 @@ func WebsiteEventsAction(ctx *cartridge.Context) error {
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			ctx.Logger.Warn("Website not found", slog.Int("websiteId", websiteId))
-			return ctx.FlashError("Website not found").Redirect("/admin/websites", fiber.StatusFound)
+			return ctx.FlashError("Website not found").Redirect("/admin/websites", http.StatusFound)
 		}
 		ctx.Logger.Error("Failed to get website", slog.Any("error", err))
-		return ctx.Redirect("/admin/websites", fiber.StatusFound)
+		return ctx.Redirect("/admin/websites", http.StatusFound)
 	}
 
 	// Get pagination parameters
@@ -219,7 +219,7 @@ func WebsiteEventsAction(ctx *cartridge.Context) error {
 	})
 	if err != nil {
 		ctx.Logger.Error("Failed to fetch events", slog.Any("error", err))
-		return ctx.FlashError("Failed to fetch events").Redirect("/admin/websites", fiber.StatusFound)
+		return ctx.FlashError("Failed to fetch events").Redirect("/admin/websites", http.StatusFound)
 	}
 
 	mappedEvents := make([]Event, len(result.Events))

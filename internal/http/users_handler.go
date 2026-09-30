@@ -1,9 +1,9 @@
 package http
 
 import (
+	"net/http"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
 	"github.com/karloscodes/cartridge"
 	"github.com/karloscodes/cartridge/crypto"
 	"github.com/karloscodes/cartridge/inertia"
@@ -16,7 +16,7 @@ import (
 
 // RenderLoginAction renders the login page
 func RenderLoginAction(ctx *cartridge.Context) error {
-	ctx.Logger.Debug("is authenticated", slog.Bool("isAuthenticated", ctx.Session.IsAuthenticated(ctx.Ctx)))
+	ctx.Logger.Debug("is authenticated", slog.Bool("isAuthenticated", ctx.Session.IsAuthenticated(ctx)))
 
 	db := ctx.DB()
 
@@ -26,10 +26,10 @@ func RenderLoginAction(ctx *cartridge.Context) error {
 		ctx.Logger.Error("Failed to check if onboarding is required on login", slog.Any("error", err))
 	} else if required {
 		ctx.Logger.Info("Login page accessed but onboarding required, redirecting to setup")
-		return ctx.Redirect("/setup", fiber.StatusFound)
+		return ctx.Redirect("/setup", http.StatusFound)
 	}
 
-	if ctx.Session.IsAuthenticated(ctx.Ctx) {
+	if ctx.Session.IsAuthenticated(ctx) {
 		return ctx.Redirect("/admin")
 	}
 
@@ -52,7 +52,7 @@ func ProcessLoginAction(ctx *cartridge.Context) error {
 
 	if email == "" || password == "" {
 		// Set flash error message and redirect to login page
-		return ctx.FlashError("Email and password are required").Redirect("/login", fiber.StatusFound)
+		return ctx.FlashError("Email and password are required").Redirect("/login", http.StatusFound)
 	}
 
 	db := ctx.DB()
@@ -83,13 +83,13 @@ func ProcessLoginAction(ctx *cartridge.Context) error {
 	// Check if authentication failed (either user not found or wrong password)
 	if !passwordValid {
 		// Generic error message - don't reveal whether email exists
-		return ctx.FlashError("Invalid email or password").Redirect("/login", fiber.StatusFound)
+		return ctx.FlashError("Invalid email or password").Redirect("/login", http.StatusFound)
 	}
 
 	// Set session cookie
-	if err := ctx.Session.SetSession(ctx.Ctx, user.ID); err != nil {
+	if err := ctx.Session.SetSession(ctx, user.ID); err != nil {
 		ctx.Logger.Error("Failed to set session", slog.Any("error", err))
-		return ctx.FlashError("Login failed").Redirect("/login", fiber.StatusFound)
+		return ctx.FlashError("Login failed").Redirect("/login", http.StatusFound)
 	}
 	ctx.Logger.Debug("Login successful",
 		slog.String("email", email),
@@ -102,7 +102,7 @@ func ProcessLoginAction(ctx *cartridge.Context) error {
 
 	// Set timezone cookie with robust configuration (10 years expiration)
 	tzExpiration := time.Now().Add(10 * 365 * 24 * time.Hour)
-	ctx.Cookie(&fiber.Cookie{
+	ctx.Cookie(&cartridge.Cookie{
 		Name:     "_tz",
 		Value:    tz,
 		Path:     "/",                                        // Explicit path
@@ -115,7 +115,7 @@ func ProcessLoginAction(ctx *cartridge.Context) error {
 	})
 
 	// Redirect to websites list (admin home)
-	return ctx.Redirect("/admin", fiber.StatusFound)
+	return ctx.Redirect("/admin", http.StatusFound)
 }
 
 // LogoutAction handles user logout
@@ -124,17 +124,17 @@ func LogoutAction(ctx *cartridge.Context) error {
 		slog.String("path", ctx.Path()),
 		slog.String("method", ctx.Method()))
 
-	userID, isAuthenticated := ctx.Session.GetUserID(ctx.Ctx)
+	userID, isAuthenticated := ctx.Session.GetUserID(ctx)
 	ctx.Logger.Debug("LogoutAction: Current auth state",
 		slog.Uint64("userID", uint64(userID)),
 		slog.Bool("isAuthenticated", isAuthenticated))
 
 	// Clear the session
-	ctx.Session.ClearSession(ctx.Ctx)
+	ctx.Session.ClearSession(ctx)
 
 	// Also clear the timezone cookie for clean logout
 	ctx.ClearCookie("_tz")
-	ctx.Cookie(&fiber.Cookie{
+	ctx.Cookie(&cartridge.Cookie{
 		Name:     "_tz",
 		Value:    "",
 		Path:     "/",
@@ -148,5 +148,5 @@ func LogoutAction(ctx *cartridge.Context) error {
 	ctx.Logger.Debug("LogoutAction: User logged out, redirecting to login page")
 
 	// Set a flash message and redirect to /login
-	return ctx.FlashSuccess("You have been successfully logged out").Redirect("/login", fiber.StatusFound)
+	return ctx.FlashSuccess("You have been successfully logged out").Redirect("/login", http.StatusFound)
 }

@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
 	"github.com/karloscodes/cartridge"
 
 	"fusionaly/internal/config"
@@ -48,14 +47,14 @@ func CreateEventPublicAPIHandler(ctx *cartridge.Context) error {
 	}
 	ctx.Logger.Debug("Received User-Agent header", slog.String("userAgent", userAgentHeader))
 
-	params, err := validateAndParseRequest(ctx.Ctx, ctx.DBManager, ctx.Logger)
+	params, err := validateAndParseRequest(ctx, ctx.DBManager, ctx.Logger)
 	if err != nil {
 		ctx.Logger.Debug("Failed to validate request", slog.Any("error", err))
-		return handleError(ctx.Ctx, err)
+		return handleError(ctx, err)
 	}
 
 	input := &events.CollectEventInput{
-		IPAddress:       getClientIP(ctx.Ctx),
+		IPAddress:       getClientIP(ctx),
 		UserAgent:       params.UserAgent,
 		SecChUa:         ctx.Get("Sec-CH-UA"),
 		ReferrerURL:     params.Referrer,
@@ -73,31 +72,31 @@ func CreateEventPublicAPIHandler(ctx *cartridge.Context) error {
 		// Check for website not found error using the custom error type
 		var websiteNotFoundErr *websites.WebsiteNotFoundError
 		if errors.As(err, &websiteNotFoundErr) {
-			return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{
+			return ctx.Status(http.StatusBadRequest).JSON(cartridge.Map{
 				"error": "Website not found - please register your domain first",
 				"code":  "WEBSITE_NOT_FOUND",
 			})
 		}
 
 		if errors.Is(err, events.ErrStorageBusy) {
-			return respondDatabaseBusy(ctx.Ctx)
+			return respondDatabaseBusy(ctx)
 		}
 
 		if errors.Is(err, events.ErrInvalidURL) {
-			return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{
+			return ctx.Status(http.StatusBadRequest).JSON(cartridge.Map{
 				"error": "Invalid url - send the full page URL, e.g. https://example.com/pricing",
 				"code":  "INVALID_URL",
 			})
 		}
 
-		return ctx.Status(http.StatusInternalServerError).JSON(fiber.Map{
+		return ctx.Status(http.StatusInternalServerError).JSON(cartridge.Map{
 			"error": "Failed to collect event",
 			"code":  "COLLECTION_ERROR",
 		})
 	}
 
 	ctx.Logger.Info("Collected event successfully")
-	return ctx.Status(http.StatusAccepted).JSON(fiber.Map{
+	return ctx.Status(http.StatusAccepted).JSON(cartridge.Map{
 		"message": msgEventAdded,
 		"status":  http.StatusAccepted,
 	})
@@ -106,18 +105,18 @@ func CreateEventPublicAPIHandler(ctx *cartridge.Context) error {
 // respondDatabaseBusy answers a write that lost to transient SQLite contention.
 // Retry-After tells the client when to come back; the SDK reads it off this
 // response, so internal/routes.go must keep exposing the header via CORS.
-func respondDatabaseBusy(c *fiber.Ctx) error {
-	c.Set(fiber.HeaderRetryAfter, retryAfterSeconds)
-	return c.Status(http.StatusServiceUnavailable).JSON(fiber.Map{
+func respondDatabaseBusy(c *cartridge.Context) error {
+	c.Set("Retry-After", retryAfterSeconds)
+	return c.Status(http.StatusServiceUnavailable).JSON(cartridge.Map{
 		"error": "Database busy - retry shortly",
 		"code":  "DATABASE_BUSY",
 	})
 }
 
-func validateAndParseRequest(c *fiber.Ctx, dbManager cartridge.DBManager, logger *slog.Logger) (*CreateEventParams, error) {
+func validateAndParseRequest(c *cartridge.Context, dbManager cartridge.DBManager, logger *slog.Logger) (*CreateEventParams, error) {
 	var params CreateEventParams
 	if err := c.BodyParser(&params); err != nil {
-		return nil, fiber.NewError(http.StatusBadRequest, errInvalidRequest)
+		return nil, cartridge.NewError(http.StatusBadRequest, errInvalidRequest)
 	}
 
 	// Validate Origin header against registered websites
@@ -132,7 +131,7 @@ func validateAndParseRequest(c *fiber.Ctx, dbManager cartridge.DBManager, logger
 // validateOrigin checks if the request comes from a registered website domain
 // using the Origin header (set automatically by browsers for cross-origin requests)
 // or falls back to Referer header for same-origin requests
-func validateOrigin(c *fiber.Ctx, dbManager cartridge.DBManager, logger *slog.Logger) error {
+func validateOrigin(c *cartridge.Context, dbManager cartridge.DBManager, logger *slog.Logger) error {
 	// Get Origin header (set by browser for cross-origin requests)
 	origin := c.Get("Origin")
 
@@ -143,14 +142,14 @@ func validateOrigin(c *fiber.Ctx, dbManager cartridge.DBManager, logger *slog.Lo
 
 	if origin == "" {
 		logger.Debug("No Origin or Referer header present")
-		return fiber.NewError(http.StatusForbidden, errInvalidOrigin)
+		return cartridge.NewError(http.StatusForbidden, errInvalidOrigin)
 	}
 
 	// Parse the origin URL to extract the hostname
 	parsedURL, err := url.Parse(origin)
 	if err != nil {
 		logger.Debug("Failed to parse origin URL", slog.String("origin", origin), slog.Any("error", err))
-		return fiber.NewError(http.StatusForbidden, errInvalidOrigin)
+		return cartridge.NewError(http.StatusForbidden, errInvalidOrigin)
 	}
 
 	hostname := parsedURL.Hostname()
@@ -192,7 +191,7 @@ func validateOrigin(c *fiber.Ctx, dbManager cartridge.DBManager, logger *slog.Lo
 		slog.String("origin", origin),
 		slog.String("hostname", hostname),
 		slog.String("baseDomain", baseDomain))
-	return fiber.NewError(http.StatusForbidden, errInvalidOrigin)
+	return cartridge.NewError(http.StatusForbidden, errInvalidOrigin)
 }
 
 // CreateEventBeaconHandler handles event tracking requests sent via navigator.sendBeacon
@@ -211,7 +210,7 @@ func CreateEventBeaconHandler(ctx *cartridge.Context) error {
 	ctx.Logger.Debug("Parsed beacon request", slog.Any("params", params))
 
 	// Validate Origin header against registered websites
-	if err := validateOrigin(ctx.Ctx, ctx.DBManager, ctx.Logger); err != nil {
+	if err := validateOrigin(ctx, ctx.DBManager, ctx.Logger); err != nil {
 		ctx.Logger.Debug("Invalid origin in beacon request")
 		return ctx.SendStatus(http.StatusAccepted) // Always return 202 for beacon requests
 	}
@@ -229,7 +228,7 @@ func CreateEventBeaconHandler(ctx *cartridge.Context) error {
 
 	// Prepare event input
 	input := &events.CollectEventInput{
-		IPAddress:       getClientIP(ctx.Ctx),
+		IPAddress:       getClientIP(ctx),
 		UserAgent:       userAgentHeader,
 		SecChUa:         ctx.Get("Sec-CH-UA"),
 		ReferrerURL:     params.Referrer,
@@ -254,14 +253,14 @@ func CreateEventBeaconHandler(ctx *cartridge.Context) error {
 	return ctx.SendStatus(http.StatusAccepted)
 }
 
-func handleError(c *fiber.Ctx, err error) error {
-	if fiberErr, ok := err.(*fiber.Error); ok {
-		return c.Status(fiberErr.Code).JSON(fiber.Map{
+func handleError(c *cartridge.Context, err error) error {
+	if fiberErr, ok := err.(*cartridge.Error); ok {
+		return c.Status(fiberErr.Code).JSON(cartridge.Map{
 			"error": fiberErr.Message,
 		})
 	}
 
-	return c.Status(http.StatusUnprocessableEntity).JSON(fiber.Map{
+	return c.Status(http.StatusUnprocessableEntity).JSON(cartridge.Map{
 		"error": errInvalidRequest,
 	})
 }

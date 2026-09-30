@@ -13,7 +13,7 @@ import (
 	"net/netip"
 	"strings"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/karloscodes/cartridge"
 )
 
 // trustedProxies are the networks a forwarding proxy can sit in: private and
@@ -23,7 +23,7 @@ var trustedProxies = mustPrefixes(
 	"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "127.0.0.0/8",
 	"fc00::/7", "fe80::/10", "::1/128",
 	// The unspecified address is never a real peer: the kernel reports a
-	// concrete one. Fiber's in-memory test connections use it, so tests can
+	// concrete one. cartridge's Server.Test connects from it, so tests can
 	// play the part of the local proxy.
 	"0.0.0.0/32", "::/128",
 	"173.245.48.0/20", "103.21.244.0/22", "103.22.200.0/22", "103.31.4.0/22",
@@ -35,8 +35,8 @@ var trustedProxies = mustPrefixes(
 )
 
 // FromRequest returns the client address of the request.
-func FromRequest(c *fiber.Ctx) string {
-	return resolve(c.Context().RemoteAddr().String(), c.Get("X-Forwarded-For"))
+func FromRequest(c *cartridge.Context) string {
+	return resolve(c.Request().RemoteAddr, c.Get("X-Forwarded-For"))
 }
 
 // resolve picks the client address from the direct peer and the

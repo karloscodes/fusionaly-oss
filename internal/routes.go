@@ -1,10 +1,9 @@
 package internal
 
 import (
+	nethttp "net/http"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/karloscodes/cartridge"
 	cartridgemiddleware "github.com/karloscodes/cartridge/middleware"
 
@@ -17,7 +16,7 @@ import (
 
 // publicCORSConfig returns the standard CORS configuration for public endpoints.
 // All public endpoints share this permissive CORS setup for cross-origin access.
-var publicCORSConfig = &cors.Config{
+var publicCORSConfig = &cartridge.CORSConfig{
 	AllowOrigins: "*",
 	AllowMethods: "POST,GET,OPTIONS",
 	AllowHeaders: "Origin, Content-Type, Accept, Authorization, Referrer, User-Agent",
@@ -49,8 +48,8 @@ func MountAppRoutes(srv *cartridge.Server) {
 
 	// Helper to conditionally apply rate limiting (only in production)
 	// In development/test, rate limiting would interfere with testing
-	conditionalRateLimiter := func(limiter fiber.Handler) fiber.Handler {
-		return func(c *fiber.Ctx) error {
+	conditionalRateLimiter := func(limiter cartridge.HandlerFunc) cartridge.HandlerFunc {
+		return func(c *cartridge.Context) error {
 			if cfg.IsProduction() {
 				return limiter(c)
 			}
@@ -88,7 +87,7 @@ func MountAppRoutes(srv *cartridge.Server) {
 		EnableCORS:         true,
 		EnableSecFetchSite: cartridge.Bool(false),
 		WriteConcurrency:   false,
-		CustomMiddleware:   []fiber.Handler{publicRateLimiter},
+		CustomMiddleware:   []cartridge.HandlerFunc{publicRateLimiter},
 		CORSConfig:         publicCORSConfig,
 	}
 
@@ -96,7 +95,7 @@ func MountAppRoutes(srv *cartridge.Server) {
 	// Rate limiting + CORS (no Sec-Fetch-Site needed for GET-only)
 	sdkConfig := &cartridge.RouteConfig{
 		EnableCORS:       true,
-		CustomMiddleware: []fiber.Handler{publicRateLimiter},
+		CustomMiddleware: []cartridge.HandlerFunc{publicRateLimiter},
 		CORSConfig:       publicCORSConfig,
 	}
 
@@ -110,14 +109,14 @@ func MountAppRoutes(srv *cartridge.Server) {
 	// SetupOnly closes the wizard once an admin exists
 	onboardingConfig := &cartridge.RouteConfig{
 		EnableSecFetchSite: cartridge.Bool(false),
-		CustomMiddleware:   []fiber.Handler{middleware.SetupOnly(db, logger)},
+		CustomMiddleware:   []cartridge.HandlerFunc{middleware.SetupOnly(db, logger)},
 	}
 	onboardingCheckConfig := &cartridge.RouteConfig{
 		EnableSecFetchSite: cartridge.Bool(false),
 	}
 
 	adminConfig := &cartridge.RouteConfig{
-		CustomMiddleware: []fiber.Handler{
+		CustomMiddleware: []cartridge.HandlerFunc{
 			middleware.OnboardingCheck(db, logger),
 			sessionMgr.Middleware(),
 			middleware.WebsiteFilter(db, logger),
@@ -125,7 +124,7 @@ func MountAppRoutes(srv *cartridge.Server) {
 	}
 
 	adminAPIConfig := &cartridge.RouteConfig{
-		CustomMiddleware: []fiber.Handler{
+		CustomMiddleware: []cartridge.HandlerFunc{
 			middleware.OnboardingCheck(db, logger),
 			sessionMgr.Middleware(),
 			middleware.WebsiteFilter(db, logger),
@@ -144,26 +143,26 @@ func MountAppRoutes(srv *cartridge.Server) {
 	// === PUBLIC DASHBOARD SHARING ===
 	// Rate limited to prevent abuse (same as public API)
 	publicDashboardConfig := &cartridge.RouteConfig{
-		CustomMiddleware: []fiber.Handler{publicRateLimiter},
+		CustomMiddleware: []cartridge.HandlerFunc{publicRateLimiter},
 	}
 	srv.Get("/share/:token", http.PublicDashboardAction, publicDashboardConfig)
 
 	// === PUBLIC API ROUTES ===
 	srv.Post("/x/api/v1/events", v1.CreateEventPublicAPIHandler, publicAPIConfig)
 	srv.Options("/x/api/v1/events", func(ctx *cartridge.Context) error {
-		return ctx.SendStatus(fiber.StatusNoContent)
+		return ctx.SendStatus(nethttp.StatusNoContent)
 	}, publicAPIConfig)
 	srv.Post("/x/api/v1/events/beacon", v1.CreateEventBeaconHandler, publicAPIConfig)
 	srv.Options("/x/api/v1/events/beacon", func(ctx *cartridge.Context) error {
-		return ctx.SendStatus(fiber.StatusNoContent)
+		return ctx.SendStatus(nethttp.StatusNoContent)
 	}, publicAPIConfig)
 	srv.Get("/x/api/v1/me", v1.GetVisitorInfoHandler, publicAPIConfig)
 	srv.Options("/x/api/v1/me", func(ctx *cartridge.Context) error {
-		return ctx.SendStatus(fiber.StatusNoContent)
+		return ctx.SendStatus(nethttp.StatusNoContent)
 	}, publicAPIConfig)
 	srv.Get("/x/api/v1/you", v1.GetVisitorInfoHandler, publicAPIConfig)
 	srv.Options("/x/api/v1/you", func(ctx *cartridge.Context) error {
-		return ctx.SendStatus(fiber.StatusNoContent)
+		return ctx.SendStatus(nethttp.StatusNoContent)
 	}, publicAPIConfig)
 
 	// === SDK ROUTES ===
@@ -180,7 +179,7 @@ func MountAppRoutes(srv *cartridge.Server) {
 	agentAPIConfig := &cartridge.RouteConfig{
 		EnableCORS:         true,
 		EnableSecFetchSite: cartridge.Bool(false), // Allow CLI tools (curl, agents)
-		CustomMiddleware: []fiber.Handler{
+		CustomMiddleware: []cartridge.HandlerFunc{
 			agentRateLimiter,
 			middleware.AgentAPIKeyAuth(db, logger),
 		},
@@ -200,7 +199,7 @@ func MountAppRoutes(srv *cartridge.Server) {
 	// === AUTHENTICATION ROUTES ===
 	// Login needs rate limiting to prevent brute force attacks
 	loginConfig := &cartridge.RouteConfig{
-		CustomMiddleware: []fiber.Handler{authRateLimiter},
+		CustomMiddleware: []cartridge.HandlerFunc{authRateLimiter},
 	}
 	srv.Get("/login", http.RenderLoginAction)
 	srv.Post("/login", http.ProcessLoginAction, loginConfig)
@@ -255,7 +254,6 @@ func MountAppRoutes(srv *cartridge.Server) {
 	srv.Post("/admin/system/purge-cache", http.SystemPurgeCacheFormAction, adminConfig)
 	srv.Post("/admin/system/geolite", http.SystemGeoLiteFormAction, adminConfig)
 	srv.Post("/admin/system/geolite/download", http.SystemGeoLiteDownloadAction, adminConfig)
-	srv.Post("/admin/ingestion/settings", http.IngestionSettingsFormAction, adminConfig)
 
 	// === AGENT API KEY MANAGEMENT ===
 	srv.Get("/admin/api/agent-api-key", http.SystemAgentAPIKeyAction, adminAPIConfig)

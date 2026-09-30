@@ -1,9 +1,9 @@
 package http
 
 import (
+	"net/http"
 	"strings"
 
-	"github.com/gofiber/fiber/v2"
 	"github.com/karloscodes/cartridge"
 	"github.com/karloscodes/cartridge/inertia"
 
@@ -45,7 +45,7 @@ func AISettingsFormAction(ctx *cartridge.Context) error {
 
 	// Don't save masked keys (user didn't change the existing value)
 	if strings.HasPrefix(openAIKey, "****") {
-		return ctx.FlashInfo("No changes made to AI settings").Redirect("/admin/administration/ai", fiber.StatusFound)
+		return ctx.FlashInfo("No changes made to AI settings").Redirect("/admin/administration/ai", http.StatusFound)
 	}
 
 	if openAIKey != "" {
@@ -54,9 +54,9 @@ func AISettingsFormAction(ctx *cartridge.Context) error {
 		// require a non-empty key, which is already guaranteed here.
 		if err := settings.SaveOpenAIKey(db, openAIKey); err != nil {
 			ctx.Logger.Error("Failed to save OpenAI API key")
-			return ctx.FlashError("Failed to save AI settings").Redirect("/admin/administration/ai", fiber.StatusFound)
+			return ctx.FlashError("Failed to save AI settings").Redirect("/admin/administration/ai", http.StatusFound)
 		}
 	}
 
-	return ctx.FlashSuccess("AI settings saved successfully").Redirect("/admin/administration/ai", fiber.StatusFound)
+	return ctx.FlashSuccess("AI settings saved successfully").Redirect("/admin/administration/ai", http.StatusFound)
 }

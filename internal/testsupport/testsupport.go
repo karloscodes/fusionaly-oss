@@ -5,6 +5,7 @@ import (
 	"io"
 	"log/slog"
 	"math/rand"
+	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
@@ -14,7 +15,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
 	"github.com/karloscodes/cartridge"
 	ctestsupport "github.com/karloscodes/cartridge/testsupport"
 	"github.com/stretchr/testify/assert"
@@ -390,8 +390,8 @@ func ProcessAllTestEvents(dbManager cartridge.DBManager, logger *slog.Logger) er
 	return nil
 }
 
-// CreateMinimalTestApp creates a test Fiber app with all routes
-func CreateMinimalTestApp(t *testing.T, db *gorm.DB) *fiber.App {
+// CreateMinimalTestApp creates a test server with all routes
+func CreateMinimalTestApp(t *testing.T, db *gorm.DB) *cartridge.Server {
 	t.Helper()
 
 	dbManager := NewTestDBManager(db)
@@ -413,7 +413,7 @@ func CreateMinimalTestApp(t *testing.T, db *gorm.DB) *fiber.App {
 	require.NoError(t, err)
 
 	internal.MountAppRoutes(srv)
-	return srv.App()
+	return srv
 }
 
 // ExtractCSRFToken extracts the CSRF token from response body
@@ -426,7 +426,7 @@ func ExtractCSRFToken(body string) string {
 }
 
 // LoginTestUser simulates login and returns session cookie, CSRF token, and CSRF cookie
-func LoginTestUser(t *testing.T, app *fiber.App, email, password string) (string, string, string) {
+func LoginTestUser(t *testing.T, app *cartridge.Server, email, password string) (string, string, string) {
 	t.Helper()
 
 	// GET /login for CSRF token
@@ -434,7 +434,7 @@ func LoginTestUser(t *testing.T, app *fiber.App, email, password string) (string
 	req.Header.Set("User-Agent", "Mozilla/5.0 Test Browser")
 	resp, err := app.Test(req)
 	require.NoError(t, err)
-	assert.Equal(t, fiber.StatusOK, resp.StatusCode)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	body, _ := io.ReadAll(resp.Body)
 	csrfToken := ExtractCSRFToken(string(body))
@@ -466,7 +466,7 @@ func LoginTestUser(t *testing.T, app *fiber.App, email, password string) (string
 
 	resp, err = app.Test(req)
 	require.NoError(t, err)
-	assert.Equal(t, fiber.StatusFound, resp.StatusCode)
+	assert.Equal(t, http.StatusFound, resp.StatusCode)
 	assert.Equal(t, "/admin/dashboard", resp.Header.Get("Location"))
 
 	var sessionValue string

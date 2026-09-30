@@ -2,9 +2,10 @@ package middleware
 
 import (
 	"log/slog"
+	"net/http"
 	"strconv"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/karloscodes/cartridge"
 	"gorm.io/gorm"
 
 	"fusionaly/internal/websites"
@@ -12,8 +13,8 @@ import (
 
 // WebsiteFilter sets the website_id in the request context.
 // Dependencies are injected via the factory function for clean architecture.
-func WebsiteFilter(db *gorm.DB, logger *slog.Logger) fiber.Handler {
-	return func(c *fiber.Ctx) error {
+func WebsiteFilter(db *gorm.DB, logger *slog.Logger) cartridge.HandlerFunc {
+	return func(c *cartridge.Context) error {
 		// Try to get website_id from query param or header
 		websiteIDStr := c.Query("website_id", c.Get("X-Website-ID"))
 		if websiteIDStr != "" {
@@ -22,7 +23,7 @@ func WebsiteFilter(db *gorm.DB, logger *slog.Logger) fiber.Handler {
 				logger.Warn("Invalid website_id provided",
 					slog.String("website_id", websiteIDStr),
 					slog.Any("error", err))
-				return c.Status(fiber.StatusBadRequest).SendString("Invalid website_id")
+				return c.Status(http.StatusBadRequest).SendString("Invalid website_id")
 			}
 			c.Locals("website_id", int(websiteID))
 			logger.Debug("Applied website filter", slog.Int("website_id", c.Locals("website_id").(int)))

@@ -1,16 +1,15 @@
 package http
 
 import (
+	"net/http"
 	"strconv"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 	"log/slog"
 
 	"fusionaly/internal/annotations"
 	"github.com/karloscodes/cartridge"
-	"github.com/karloscodes/cartridge/flash"
 )
 
 // annotationFormData holds parsed form data for annotations
@@ -69,7 +68,7 @@ func AnnotationsListAction(ctx *cartridge.Context) error {
 	websiteID, err := ctx.ParamsInt("id")
 	if err != nil {
 		ctx.Logger.Error("Invalid website ID", slog.Any("error", err))
-		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+		return ctx.Status(http.StatusBadRequest).JSON(cartridge.Map{
 			"error": "Invalid website ID",
 		})
 	}
@@ -98,7 +97,7 @@ func AnnotationsListAction(ctx *cartridge.Context) error {
 		annotationsList, err = annotations.GetAnnotationsForTimeframe(db, uint(websiteID), from, to)
 		if err != nil {
 			ctx.Logger.Error("Failed to get annotations for timeframe", slog.Any("error", err), slog.Int("websiteID", websiteID))
-			return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			return ctx.Status(http.StatusInternalServerError).JSON(cartridge.Map{
 				"error": "Failed to fetch annotations",
 			})
 		}
@@ -106,13 +105,13 @@ func AnnotationsListAction(ctx *cartridge.Context) error {
 		annotationsList, err = annotations.GetAnnotationsForWebsite(db, uint(websiteID))
 		if err != nil {
 			ctx.Logger.Error("Failed to get annotations", slog.Any("error", err), slog.Int("websiteID", websiteID))
-			return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			return ctx.Status(http.StatusInternalServerError).JSON(cartridge.Map{
 				"error": "Failed to fetch annotations",
 			})
 		}
 	}
 
-	return ctx.JSON(fiber.Map{
+	return ctx.JSON(cartridge.Map{
 		"annotations": annotationsList,
 	})
 }
@@ -122,7 +121,7 @@ func AnnotationCreateAction(ctx *cartridge.Context) error {
 	websiteID, err := ctx.ParamsInt("id")
 	if err != nil {
 		ctx.Logger.Error("Invalid website ID", slog.Any("error", err))
-		return ctx.FlashError("Invalid website ID").Redirect("/admin", fiber.StatusFound)
+		return ctx.FlashError("Invalid website ID").Redirect("/admin", http.StatusFound)
 	}
 
 	form := parseAnnotationForm(ctx)
@@ -137,17 +136,17 @@ func AnnotationCreateAction(ctx *cartridge.Context) error {
 
 	// Validate required fields
 	if form.Title == "" {
-		return ctx.FlashError("Title is required").Redirect(redirectPath, fiber.StatusFound)
+		return ctx.FlashError("Title is required").Redirect(redirectPath, http.StatusFound)
 	}
 
 	if form.AnnotationDate == "" {
-		return ctx.FlashError("Date is required").Redirect(redirectPath, fiber.StatusFound)
+		return ctx.FlashError("Date is required").Redirect(redirectPath, http.StatusFound)
 	}
 
 	annotationDate, ok := parseAnnotationDate(form.AnnotationDate)
 	if !ok {
 		ctx.Logger.Error("Failed to parse annotation date", slog.String("date", form.AnnotationDate))
-		return ctx.FlashError("Invalid date format").Redirect(redirectPath, fiber.StatusFound)
+		return ctx.FlashError("Invalid date format").Redirect(redirectPath, http.StatusFound)
 	}
 
 	db := ctx.DB()
@@ -168,7 +167,7 @@ func AnnotationCreateAction(ctx *cartridge.Context) error {
 
 	if err := annotations.CreateAnnotation(db, annotation); err != nil {
 		ctx.Logger.Error("Failed to create annotation", slog.Any("error", err))
-		return ctx.FlashError("Failed to create annotation").Redirect(redirectPath, fiber.StatusFound)
+		return ctx.FlashError("Failed to create annotation").Redirect(redirectPath, http.StatusFound)
 	}
 
 	ctx.Logger.Info("Annotation created successfully",
@@ -176,7 +175,7 @@ func AnnotationCreateAction(ctx *cartridge.Context) error {
 		slog.Int("websiteID", websiteID),
 	)
 
-	return ctx.FlashSuccess("Annotation created successfully").Redirect(redirectPath, fiber.StatusFound)
+	return ctx.FlashSuccess("Annotation created successfully").Redirect(redirectPath, http.StatusFound)
 }
 
 // AnnotationUpdateAction updates an existing annotation (form submission)
@@ -184,7 +183,7 @@ func AnnotationUpdateAction(ctx *cartridge.Context) error {
 	websiteID, err := ctx.ParamsInt("id")
 	if err != nil {
 		ctx.Logger.Error("Invalid website ID", slog.Any("error", err))
-		return ctx.FlashError("Invalid website ID").Redirect("/admin", fiber.StatusFound)
+		return ctx.FlashError("Invalid website ID").Redirect("/admin", http.StatusFound)
 	}
 
 	redirectPath := dashboardPath(websiteID)
@@ -192,7 +191,7 @@ func AnnotationUpdateAction(ctx *cartridge.Context) error {
 	annotationID, err := ctx.ParamsInt("annotationId")
 	if err != nil {
 		ctx.Logger.Error("Invalid annotation ID", slog.Any("error", err))
-		return ctx.FlashError("Invalid annotation ID").Redirect(redirectPath, fiber.StatusFound)
+		return ctx.FlashError("Invalid annotation ID").Redirect(redirectPath, http.StatusFound)
 	}
 
 	db := ctx.DB()
@@ -200,18 +199,18 @@ func AnnotationUpdateAction(ctx *cartridge.Context) error {
 	existing, err := annotations.GetAnnotationByID(db, uint(annotationID), uint(websiteID))
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			flash.SetFlash(ctx.Ctx, "error", "Annotation not found")
+			ctx.FlashError("Annotation not found")
 		} else {
 			ctx.Logger.Error("Failed to get annotation", slog.Any("error", err))
-			flash.SetFlash(ctx.Ctx, "error", "Failed to update annotation")
+			ctx.FlashError("Failed to update annotation")
 		}
-		return ctx.Redirect(redirectPath, fiber.StatusFound)
+		return ctx.Redirect(redirectPath, http.StatusFound)
 	}
 
 	form := parseAnnotationForm(ctx)
 
 	if form.Title == "" {
-		return ctx.FlashError("Title is required").Redirect(redirectPath, fiber.StatusFound)
+		return ctx.FlashError("Title is required").Redirect(redirectPath, http.StatusFound)
 	}
 
 	// Update fields
@@ -231,7 +230,7 @@ func AnnotationUpdateAction(ctx *cartridge.Context) error {
 
 	if err := annotations.UpdateAnnotation(db, existing); err != nil {
 		ctx.Logger.Error("Failed to update annotation", slog.Any("error", err))
-		return ctx.FlashError("Failed to update annotation").Redirect(redirectPath, fiber.StatusFound)
+		return ctx.FlashError("Failed to update annotation").Redirect(redirectPath, http.StatusFound)
 	}
 
 	ctx.Logger.Info("Annotation updated successfully",
@@ -239,7 +238,7 @@ func AnnotationUpdateAction(ctx *cartridge.Context) error {
 		slog.Int("websiteID", websiteID),
 	)
 
-	return ctx.FlashSuccess("Annotation updated successfully").Redirect(redirectPath, fiber.StatusFound)
+	return ctx.FlashSuccess("Annotation updated successfully").Redirect(redirectPath, http.StatusFound)
 }
 
 // AnnotationDeleteAction deletes an annotation (form submission)
@@ -247,7 +246,7 @@ func AnnotationDeleteAction(ctx *cartridge.Context) error {
 	websiteID, err := ctx.ParamsInt("id")
 	if err != nil {
 		ctx.Logger.Error("Invalid website ID", slog.Any("error", err))
-		return ctx.FlashError("Invalid website ID").Redirect("/admin", fiber.StatusFound)
+		return ctx.FlashError("Invalid website ID").Redirect("/admin", http.StatusFound)
 	}
 
 	redirectPath := dashboardPath(websiteID)
@@ -255,19 +254,19 @@ func AnnotationDeleteAction(ctx *cartridge.Context) error {
 	annotationID, err := ctx.ParamsInt("annotationId")
 	if err != nil {
 		ctx.Logger.Error("Invalid annotation ID", slog.Any("error", err))
-		return ctx.FlashError("Invalid annotation ID").Redirect(redirectPath, fiber.StatusFound)
+		return ctx.FlashError("Invalid annotation ID").Redirect(redirectPath, http.StatusFound)
 	}
 
 	db := ctx.DB()
 
 	if err := annotations.DeleteAnnotation(db, uint(annotationID), uint(websiteID)); err != nil {
 		if err == gorm.ErrRecordNotFound {
-			flash.SetFlash(ctx.Ctx, "error", "Annotation not found")
+			ctx.FlashError("Annotation not found")
 		} else {
 			ctx.Logger.Error("Failed to delete annotation", slog.Any("error", err))
-			flash.SetFlash(ctx.Ctx, "error", "Failed to delete annotation")
+			ctx.FlashError("Failed to delete annotation")
 		}
-		return ctx.Redirect(redirectPath, fiber.StatusFound)
+		return ctx.Redirect(redirectPath, http.StatusFound)
 	}
 
 	ctx.Logger.Info("Annotation deleted successfully",
@@ -275,5 +274,5 @@ func AnnotationDeleteAction(ctx *cartridge.Context) error {
 		slog.Int("websiteID", websiteID),
 	)
 
-	return ctx.FlashSuccess("Annotation deleted successfully").Redirect(redirectPath, fiber.StatusFound)
+	return ctx.FlashSuccess("Annotation deleted successfully").Redirect(redirectPath, http.StatusFound)
 }

@@ -3,10 +3,9 @@ package http
 import (
 	"fmt"
 	"log/slog"
+	"net/http"
 
-	"github.com/gofiber/fiber/v2"
 	"github.com/karloscodes/cartridge"
-	"github.com/karloscodes/cartridge/flash"
 	"github.com/karloscodes/cartridge/inertia"
 	"github.com/karloscodes/cartridge/structs"
 
@@ -21,13 +20,13 @@ import (
 func PublicDashboardAction(ctx *cartridge.Context) error {
 	token := ctx.Params("token")
 	if token == "" {
-		return ctx.Status(fiber.StatusNotFound).SendString("Not found")
+		return ctx.Status(http.StatusNotFound).SendString("Not found")
 	}
 
 	website, err := websites.GetWebsiteByShareToken(ctx.DB(), token)
 	if err != nil {
 		ctx.Logger.Debug("Public dashboard not found", slog.String("token", token))
-		return ctx.Status(fiber.StatusNotFound).SendString("Dashboard not found")
+		return ctx.Status(http.StatusNotFound).SendString("Dashboard not found")
 	}
 
 	// Cache public dashboards for 5 minutes - reduces DB load, CDN-friendly
@@ -41,13 +40,13 @@ func PublicDashboardAction(ctx *cartridge.Context) error {
 	timeFrame, err := analytics.DashboardTimeFrame(db, websiteId, settings.Timezone(db), "", "")
 	if err != nil {
 		ctx.Logger.Error("Error building the public dashboard range", slog.Any("error", err))
-		return ctx.Status(fiber.StatusInternalServerError).SendString("Error loading dashboard")
+		return ctx.Status(http.StatusInternalServerError).SendString("Error loading dashboard")
 	}
 
 	metrics, err := analytics.FetchDashboardMetrics(db, timeFrame, websiteId, ctx.Logger)
 	if err != nil {
 		ctx.Logger.Error("Error fetching public dashboard metrics", slog.Any("error", err))
-		return ctx.Status(fiber.StatusInternalServerError).SendString("Error loading dashboard")
+		return ctx.Status(http.StatusInternalServerError).SendString("Error loading dashboard")
 	}
 
 	// Fetch annotations for this website and timeframe
@@ -94,34 +93,34 @@ func PublicDashboardAction(ctx *cartridge.Context) error {
 func EnableShareAction(ctx *cartridge.Context) error {
 	websiteID, err := ctx.ParamsInt("id")
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).SendString("Invalid website ID")
+		return ctx.Status(http.StatusBadRequest).SendString("Invalid website ID")
 	}
 
 	_, err = websites.EnableSharing(ctx.DB(), uint(websiteID))
 	if err != nil {
 		ctx.Logger.Error("Failed to enable sharing", slog.Any("error", err), slog.Int("websiteID", websiteID))
-		flash.SetFlash(ctx.Ctx, "error", "Failed to enable sharing")
+		ctx.FlashError("Failed to enable sharing")
 	} else {
-		flash.SetFlash(ctx.Ctx, "success", "Public sharing enabled")
+		ctx.FlashSuccess("Public sharing enabled")
 	}
 
-	return ctx.Redirect(fmt.Sprintf("/admin/websites/%d/dashboard", websiteID), fiber.StatusFound)
+	return ctx.Redirect(fmt.Sprintf("/admin/websites/%d/dashboard", websiteID), http.StatusFound)
 }
 
 // DisableShareAction disables public sharing for a website
 func DisableShareAction(ctx *cartridge.Context) error {
 	websiteID, err := ctx.ParamsInt("id")
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).SendString("Invalid website ID")
+		return ctx.Status(http.StatusBadRequest).SendString("Invalid website ID")
 	}
 
 	err = websites.DisableSharing(ctx.DB(), uint(websiteID))
 	if err != nil {
 		ctx.Logger.Error("Failed to disable sharing", slog.Any("error", err), slog.Int("websiteID", websiteID))
-		flash.SetFlash(ctx.Ctx, "error", "Failed to disable sharing")
+		ctx.FlashError("Failed to disable sharing")
 	} else {
-		flash.SetFlash(ctx.Ctx, "success", "Public sharing disabled")
+		ctx.FlashSuccess("Public sharing disabled")
 	}
 
-	return ctx.Redirect(fmt.Sprintf("/admin/websites/%d/dashboard", websiteID), fiber.StatusFound)
+	return ctx.Redirect(fmt.Sprintf("/admin/websites/%d/dashboard", websiteID), http.StatusFound)
 }

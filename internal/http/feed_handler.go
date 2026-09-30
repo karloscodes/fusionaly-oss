@@ -1,11 +1,12 @@
 package http
 
 import (
+	"net/http"
+
 	"fusionaly/internal/analytics"
 	"log/slog"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
 	"github.com/karloscodes/cartridge"
 	"github.com/karloscodes/cartridge/inertia"
 	"gorm.io/gorm"
@@ -22,7 +23,7 @@ func HomeFeedAction(ctx *cartridge.Context) error {
 	var websiteIDs []uint
 	if err := db.Table("websites").Pluck("id", &websiteIDs).Error; err != nil {
 		ctx.Logger.Error("Failed to get website IDs", slog.Any("error", err))
-		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+		return ctx.Status(http.StatusInternalServerError).JSON(cartridge.Map{
 			"error": "Failed to get websites",
 		})
 	}
@@ -69,7 +70,7 @@ func HomeFeedAction(ctx *cartridge.Context) error {
 	items, err := feed.GetUserFeed(db, websiteIDs, 100)
 	if err != nil {
 		ctx.Logger.Error("Failed to get feed items", slog.Any("error", err))
-		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+		return ctx.Status(http.StatusInternalServerError).JSON(cartridge.Map{
 			"error": "Failed to get feed items",
 		})
 	}

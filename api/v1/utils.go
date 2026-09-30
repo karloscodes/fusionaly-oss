@@ -4,14 +4,14 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/karloscodes/cartridge"
 
 	"fusionaly/internal/pkg/clientip"
 )
 
 // getClientIP returns the visitor's address. See clientip for why it is the
 // rightmost X-Forwarded-For entry that no trusted proxy wrote.
-func getClientIP(c *fiber.Ctx) string {
+func getClientIP(c *cartridge.Context) string {
 	return clientip.FromRequest(c)
 }
 
