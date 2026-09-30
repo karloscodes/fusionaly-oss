@@ -6,7 +6,7 @@ toolchain go1.26.5
 
 require (
 	github.com/gofiber/fiber/v2 v2.52.14
-	github.com/karloscodes/cartridge v0.15.5
+	github.com/karloscodes/cartridge v0.17.0
 	github.com/karloscodes/matcha v0.12.18
 	github.com/oschwald/geoip2-golang v1.13.0
 	github.com/pariz/gountries v0.1.6
@@ -44,7 +44,6 @@ require (
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/oschwald/maxminddb-golang v1.13.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
-	github.com/petaki/inertia-go v1.14.0 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
