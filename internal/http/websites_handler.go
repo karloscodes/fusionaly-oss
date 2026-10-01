@@ -66,6 +66,9 @@ func WebsiteCreateAction(ctx *cartridge.Context) error {
 	if domain == "" {
 		return ctx.FlashError("Domain is required").Redirect("/admin/websites/new", http.StatusFound)
 	}
+	if err := websites.ValidateDomain(domain); err != nil {
+		return ctx.FlashError("Use a host name such as example.com, without https:// or a path").Redirect("/admin/websites/new", http.StatusFound)
+	}
 
 	db := ctx.DB()
 

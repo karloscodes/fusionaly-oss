@@ -173,6 +173,12 @@ func (c *Config) validate() error {
 		return fmt.Errorf("invalid database type: %s", c.DatabaseType)
 	}
 
+	// The key signs login sessions; cartridge refuses a shorter one. Fail at
+	// startup with a clear message, not with a panic in the route setup.
+	if len(c.PrivateKey) < 32 {
+		return fmt.Errorf("FUSIONALY_PRIVATE_KEY must have at least 32 characters; generate one with: openssl rand -hex 32")
+	}
+
 	return nil
 }
 

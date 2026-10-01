@@ -3,6 +3,7 @@ package websites
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -158,8 +159,30 @@ func GetWebsiteByDomain(db *gorm.DB, domain string) (*Website, error) {
 	return &website, nil
 }
 
+// hostLabel is one label of a host name: letters, digits, and inner dashes.
+var hostLabel = regexp.MustCompile(`^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?$`)
+
+// ValidateDomain reports whether domain is a host name, such as
+// "example.com": no scheme, path, port, or spaces. Events match a website by
+// the host of the page URL, so any other value can never match.
+func ValidateDomain(domain string) error {
+	if domain == "" || len(domain) > 253 {
+		return fmt.Errorf("invalid domain %q: use a host name such as example.com", domain)
+	}
+	for _, label := range strings.Split(domain, ".") {
+		if !hostLabel.MatchString(label) {
+			return fmt.Errorf("invalid domain %q: use a host name such as example.com", domain)
+		}
+	}
+	return nil
+}
+
 // CreateWebsite creates a new website
 func CreateWebsite(db *gorm.DB, website *Website) error {
+	if err := ValidateDomain(website.Domain); err != nil {
+		return err
+	}
+
 	var existing int64
 	if err := db.Model(&Website{}).Where("domain = ?", website.Domain).Count(&existing).Error; err != nil {
 		return err

@@ -184,3 +184,17 @@ func TestCreateWebsite(t *testing.T) {
 		assert.ErrorIs(t, err, websites.ErrWebsiteExists)
 	})
 }
+
+func TestValidateDomain(t *testing.T) {
+	t.Run("accepts host names", func(t *testing.T) {
+		for _, domain := range []string{"example.com", "www.example.co.uk", "my-site.io", "localhost", "xn--bcher-kva.example"} {
+			assert.NoError(t, websites.ValidateDomain(domain), domain)
+		}
+	})
+
+	t.Run("rejects anything that is not a host name", func(t *testing.T) {
+		for _, domain := range []string{"bad domain", "https://example.com", "example.com/path", "example.com:8080", "-example.com", "example..com", "<script>", ""} {
+			assert.Error(t, websites.ValidateDomain(domain), domain)
+		}
+	})
+}
