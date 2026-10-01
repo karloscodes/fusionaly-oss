@@ -13,16 +13,18 @@ const (
 // Event represents a tracked page view or custom event in the main database.
 type Event struct {
 	ID               uint   `gorm:"primaryKey;autoIncrement"`
-	WebsiteID        uint   `gorm:"index:idx_website_timestamp;not null"`
-	UserSignature    string `gorm:"index;size:64;not null"`
+	WebsiteID        uint   `gorm:"index:idx_website_timestamp;index:idx_events_visitors,priority:1;not null"`
+	UserSignature    string `gorm:"index;index:idx_events_visitors,priority:4;size:64;not null"`
 	Hostname         string `gorm:"index;not null"`
 	Pathname         string `gorm:"index;not null"`
 	ReferrerHostname string `gorm:"index"`
 	ReferrerPathname string
-	EventType        EventType `gorm:"not null;default:1"`
+	EventType        EventType `gorm:"index:idx_events_visitors,priority:3;not null;default:1"`
 	CustomEventName  string    `gorm:"index"`
 	CustomEventMeta  string    `gorm:"type:text"`
-	Timestamp        time.Time `gorm:"index:idx_website_timestamp;not null"`
+	// idx_events_visitors covers the visitor counts (distinct signatures of
+	// page views per website and time range), so they never read the rows.
+	Timestamp time.Time `gorm:"index:idx_website_timestamp;index:idx_events_visitors,priority:2;not null"`
 	// SessionStart is the time of the visit's first event. It links the events
 	// of one visit, so a later page view can correct the visit's bounce and
 	// exit. Nil for events recorded before it existed.
