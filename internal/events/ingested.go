@@ -85,6 +85,7 @@ func CollectEvent(dbManager cartridge.DBManager, logger *slog.Logger, input *Col
 		return nil
 	}
 
+	input.Timestamp = eventTime(input.Timestamp, time.Now().UTC())
 	country := GetCountryFromIP(input.IPAddress)
 	db := dbManager.GetConnection()
 
@@ -103,6 +104,20 @@ func CollectEvent(dbManager cartridge.DBManager, logger *slog.Logger, input *Col
 	}
 
 	return nil
+}
+
+// eventTime returns the time to store for an event, in UTC. The client
+// sends the time, and the visitor signature belongs to the receive day (UTC).
+// A time that is missing, in the future, or before the receive day becomes
+// the receive time. Clock skew and events replayed from browser storage
+// then stay in the visitor's day.
+func eventTime(sent, received time.Time) time.Time {
+	sent = sent.UTC()
+	dayStart := received.Truncate(24 * time.Hour)
+	if sent.IsZero() || sent.After(received) || sent.Before(dayStart) {
+		return received
+	}
+	return sent
 }
 
 // ErrStorageBusy marks a write that lost to transient SQLite contention. The

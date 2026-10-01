@@ -1241,8 +1241,10 @@ func TestVisitorStatusDetermination(t *testing.T) {
 	testsupport.CleanAllTables(db)
 
 	// Create test website
-	testsupport.CreateTestWebsite(db, "example.com")
+	website := testsupport.CreateTestWebsite(db, "example.com")
 
+	// The events skip CollectEvent, which moves a time outside the receive
+	// day to the receive time. This test checks processing only.
 	// Define base time for consistent timestamps
 	baseTime := time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC)
 
@@ -1255,7 +1257,7 @@ func TestVisitorStatusDetermination(t *testing.T) {
 		Timestamp:   baseTime,
 		RawUrl:      "https://example.com/page1",
 	}
-	err := events.CollectEvent(dbManager, logger, &input1)
+	_, err := createIngestedEvent(db, website.ID, &input1)
 	require.NoError(t, err)
 
 	// Process the event
@@ -1279,7 +1281,7 @@ func TestVisitorStatusDetermination(t *testing.T) {
 		Timestamp:   baseTime.Add(5 * time.Minute),
 		RawUrl:      "https://example.com/page2",
 	}
-	err = events.CollectEvent(dbManager, logger, &input2)
+	_, err = createIngestedEvent(db, website.ID, &input2)
 	require.NoError(t, err)
 
 	// Process the second event
@@ -1303,7 +1305,7 @@ func TestVisitorStatusDetermination(t *testing.T) {
 		Timestamp:   baseTime.Add(3 * time.Hour), // Still 2024-01-01
 		RawUrl:      "https://example.com/page3",
 	}
-	err = events.CollectEvent(dbManager, logger, &input3)
+	_, err = createIngestedEvent(db, website.ID, &input3)
 	require.NoError(t, err)
 
 	// Process the third event
@@ -1328,7 +1330,7 @@ func TestVisitorStatusDetermination(t *testing.T) {
 		Timestamp:   baseTime.Add(10 * time.Minute),
 		RawUrl:      "https://example.com/page4",
 	}
-	err = events.CollectEvent(dbManager, logger, &input4)
+	_, err = createIngestedEvent(db, website.ID, &input4)
 	require.NoError(t, err)
 
 	// Process the fourth event
@@ -1616,4 +1618,53 @@ func TestNormalizeOperatingSystem(t *testing.T) {
 			assert.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+func TestCollectEventTime(t *testing.T) {
+	dbManager, logger := testsupport.SetupTestDBManager(t)
+	db := dbManager.GetConnection()
+	testsupport.CleanAllTables(db)
+	testsupport.CreateTestWebsite(db, "example.com")
+
+	collect := func(t *testing.T, at time.Time) (stored time.Time, raw string, received time.Time) {
+		t.Helper()
+		db.Exec("DELETE FROM ingested_events")
+		input := events.CollectEventInput{IPAddress: "192.168.1.1", UserAgent: "Mozilla/5.0 (test)",
+			EventType: events.EventTypePageView, Timestamp: at, RawUrl: "https://example.com/"}
+		before := time.Now().UTC()
+		require.NoError(t, events.CollectEvent(dbManager, logger, &input))
+		var saved events.IngestedEvent
+		require.NoError(t, db.First(&saved).Error)
+		require.NoError(t, db.Raw("SELECT timestamp FROM ingested_events").Scan(&raw).Error)
+		return saved.Timestamp, raw, before
+	}
+
+	t.Run("keeps a time of the receive day, in UTC", func(t *testing.T) {
+		at := time.Now().Add(-time.Second).In(time.FixedZone("", 2*60*60))
+
+		stored, raw, _ := collect(t, at)
+
+		assert.True(t, stored.Equal(at), "the same instant")
+		assert.NotContains(t, raw, "+02:00", "stored in UTC, so text comparisons in SQL hold")
+	})
+
+	t.Run("uses the receive time for a missing time", func(t *testing.T) {
+		stored, _, received := collect(t, time.Time{})
+
+		assert.WithinDuration(t, received, stored, 5*time.Second)
+	})
+
+	t.Run("uses the receive time for a time in the future", func(t *testing.T) {
+		stored, _, received := collect(t, time.Now().Add(time.Hour))
+
+		assert.WithinDuration(t, received, stored, 5*time.Second)
+	})
+
+	t.Run("uses the receive time for a time before the receive day", func(t *testing.T) {
+		yesterday := time.Now().UTC().Truncate(24 * time.Hour).Add(-time.Minute)
+
+		stored, _, received := collect(t, yesterday)
+
+		assert.WithinDuration(t, received, stored, 5*time.Second, "the visitor signature belongs to the receive day")
+	})
 }
