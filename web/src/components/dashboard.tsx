@@ -676,8 +676,8 @@ export const Dashboard = (props: DashboardComponentProps) => {
 		{
 			...createMetric("Revenue", `${money}${data.revenue_metrics ? formatNumber(Math.round(data.revenue_metrics.total_revenue)) : '0'}`, withTrends ? data.comparison?.revenue_change : undefined, countsOf(data.revenue)),
 			note: otherCurrencies.length > 0 ? {
-				text: `+ ${otherCurrencies.length} ${otherCurrencies.length === 1 ? "currency" : "currencies"}`,
-				title: otherCurrencies
+				text: `+${otherCurrencies.length}`,
+				title: "Not included, in other currencies:\n" + otherCurrencies
 					.map((c) => `${formatMoney(c.total_revenue, c.currency)} · ${c.total_sales} ${c.total_sales === 1 ? "sale" : "sales"}`)
 					.join("\n"),
 			} : undefined,
