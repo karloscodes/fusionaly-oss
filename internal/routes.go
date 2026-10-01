@@ -73,7 +73,7 @@ func MountAppRoutes(srv *cartridge.Server) {
 	// Stricter rate limiter for auth endpoints (10 requests per minute)
 	// Prevents brute force login attempts
 	authRateLimiter := conditionalRateLimiter(cartridgemiddleware.RateLimiter(
-		cartridgemiddleware.WithKeyGenerator(clientip.FromRequest),
+		cartridgemiddleware.WithKeyGenerator(clientip.RateLimitKey),
 		cartridgemiddleware.WithMax(10),
 		cartridgemiddleware.WithDuration(time.Minute),
 	))

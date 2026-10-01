@@ -33,3 +33,31 @@ func TestResolve(t *testing.T) {
 		})
 	}
 }
+
+func TestRateLimitKey(t *testing.T) {
+	t.Run("IPv4 address is the key", func(t *testing.T) {
+		key := rateLimitKey("203.0.113.7")
+
+		if key != "203.0.113.7" {
+			t.Fatalf("got %q", key)
+		}
+	})
+
+	t.Run("IPv6 addresses in one /64 share a key", func(t *testing.T) {
+		first := rateLimitKey("2001:db8:1:2:aaaa::1")
+		second := rateLimitKey("2001:db8:1:2:ffff:ffff:ffff:ffff")
+
+		if first != second || first != "2001:db8:1:2::/64" {
+			t.Fatalf("got %q and %q", first, second)
+		}
+	})
+
+	t.Run("IPv6 addresses in other /64 networks have other keys", func(t *testing.T) {
+		first := rateLimitKey("2001:db8:1:2::1")
+		second := rateLimitKey("2001:db8:1:3::1")
+
+		if first == second {
+			t.Fatalf("both got %q", first)
+		}
+	})
+}

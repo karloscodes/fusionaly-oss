@@ -39,6 +39,21 @@ func FromRequest(c *cartridge.Context) string {
 	return resolve(c.Request().RemoteAddr, c.Get("X-Forwarded-For"))
 }
 
+// RateLimitKey returns the rate limit key of the request: the client IPv4
+// address, or the /64 network of a client IPv6 address. One IPv6 host
+// usually has a full /64, so a per-address key is easy to step around.
+func RateLimitKey(c *cartridge.Context) string {
+	return rateLimitKey(FromRequest(c))
+}
+
+func rateLimitKey(client string) string {
+	addr, ok := parse(client)
+	if !ok || addr.Is4() {
+		return client
+	}
+	return netip.PrefixFrom(addr, 64).Masked().String()
+}
+
 // resolve picks the client address from the direct peer and the
 // X-Forwarded-For header.
 func resolve(remoteAddr, forwardedFor string) string {
