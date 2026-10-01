@@ -88,6 +88,9 @@ func NewAppWithConfig(cfg *config.Config, opts ...AppOption) (*Application, erro
 	// The web client is Inertia v3, which reads the first page from a JSON script element.
 	inertia.SetScriptElement(true)
 
+	// Cartridge leaves the page title empty by default.
+	inertia.SetTitle("Fusionaly")
+
 	// Create logger
 	logger := cartridge.NewLogger(cfg, nil)
 
