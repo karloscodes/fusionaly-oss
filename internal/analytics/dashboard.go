@@ -86,7 +86,6 @@ func FetchDashboardMetrics(db *gorm.DB, tf *timeframe.TimeFrame, websiteId int, 
 		passthroughTask("eventRevenueTotals", func() (interface{}, error) { return GetEventRevenueTotals(db, queryParams) }),
 		passthroughTask("bounceRate", func() (interface{}, error) { return GetBounceRateInTimeFrame(db, queryParams) }),
 		passthroughTask("visitsDuration", func() (interface{}, error) { return GetVisitDurationInTimeFrame(db, queryParams) }),
-		passthroughTask("revenuePerVisitor", func() (interface{}, error) { return GetRevenuePerVisitor(db, queryParams) }),
 		passthroughTask("topEntryPages", func() (interface{}, error) { return GetTopEntryPagesInTimeFrame(db, queryParams) }),
 		passthroughTask("topExitPages", func() (interface{}, error) { return GetTopExitPagesInTimeFrame(db, queryParams) }),
 		passthroughTask("topUTMMediums", func() (interface{}, error) { return GetTopUTMMediumsInTimeFrame(db, queryParams) }),
@@ -96,13 +95,12 @@ func FetchDashboardMetrics(db *gorm.DB, tf *timeframe.TimeFrame, websiteId int, 
 		passthroughTask("topUTMContents", func() (interface{}, error) { return GetTopUTMContentsInTimeFrame(db, queryParams) }),
 		passthroughTask("topRefParams", func() (interface{}, error) { return GetTopQueryParamValuesInTimeFrame(db, queryParams, "ref") }),
 		passthroughTask("topChannels", func() (interface{}, error) { return GetTopChannelsInTimeFrame(db, queryParams) }),
-		passthroughTask("totalVisitors", func() (interface{}, error) { return GetTotalVisitorsInTimeFrame(db, queryParams) }),
+		passthroughTask("visitorsAndRevenue", func() (interface{}, error) { return getVisitorsAndRevenue(db, queryParams) }),
 		passthroughTask("totalViews", func() (interface{}, error) { return GetTotalPageViewsInTimeFrame(db, queryParams) }),
 		passthroughTask("totalSessions", func() (interface{}, error) { return GetTotalSessionsInTimeFrame(db, queryParams) }),
 		passthroughTask("totalEntryCount", func() (interface{}, error) { return GetTotalEntryCountInTimeFrame(db, queryParams) }),
 		passthroughTask("totalExitCount", func() (interface{}, error) { return GetTotalExitCountInTimeFrame(db, queryParams) }),
 		passthroughTask("totalCustomEvents", func() (interface{}, error) { return GetTotalCustomEventsInTimeFrame(db, queryParams) }),
-		passthroughTask("revenueMetrics", func() (interface{}, error) { return GetRevenueMetrics(db, queryParams) }),
 		passthroughTask("topRevenueEvents", func() (interface{}, error) { return GetTopRevenueEvents(db, queryParams) }),
 		{Name: "conversionGoals", Execute: func() (interface{}, error) { return conversionGoals, nil }},
 	}
@@ -115,6 +113,8 @@ func FetchDashboardMetrics(db *gorm.DB, tf *timeframe.TimeFrame, websiteId int, 
 			return nil, fmt.Errorf("error fetching %s: %w", name, result.Err)
 		}
 	}
+
+	current := results["visitorsAndRevenue"].Data.(visitorsAndRevenue)
 
 	resp := &DashboardMetrics{
 		PageViews:            results["pageViews"].Data.([]TimeSeriesPoint),
@@ -132,7 +132,7 @@ func FetchDashboardMetrics(db *gorm.DB, tf *timeframe.TimeFrame, websiteId int, 
 		EventRevenueTotals:   revenueTotalsOrEmpty(results, "eventRevenueTotals"),
 		BounceRate:           results["bounceRate"].Data.(float64),
 		VisitsDuration:       results["visitsDuration"].Data.(float64),
-		RevenuePerVisitor:    results["revenuePerVisitor"].Data.(float64),
+		RevenuePerVisitor:    current.revenue.PerVisitor(current.visitors),
 		TopEntryPages:        ensureNonNil(metricResultsOrEmpty(results, "topEntryPages")),
 		TopExitPages:         ensureNonNil(metricResultsOrEmpty(results, "topExitPages")),
 		TopUTMMediums:        ensureNonNil(metricResultsOrEmpty(results, "topUTMMediums")),
@@ -143,13 +143,13 @@ func FetchDashboardMetrics(db *gorm.DB, tf *timeframe.TimeFrame, websiteId int, 
 		TopRefParams:         ensureNonNil(metricResultsOrEmpty(results, "topRefParams")),
 		TopChannels:          ensureNonNil(metricResultsOrEmpty(results, "topChannels")),
 		BucketSize:           string(tf.BucketSize),
-		TotalVisitors:        results["totalVisitors"].Data.(int64),
+		TotalVisitors:        current.visitors,
 		TotalViews:           results["totalViews"].Data.(int64),
 		TotalSessions:        results["totalSessions"].Data.(int64),
 		TotalEntryCount:      results["totalEntryCount"].Data.(int64),
 		TotalExitCount:       results["totalExitCount"].Data.(int64),
 		TotalCustomEvents:    results["totalCustomEvents"].Data.(int64),
-		RevenueMetrics:       results["revenueMetrics"].Data.(*RevenueMetrics),
+		RevenueMetrics:       current.revenue,
 		TopRevenueEvents:     ensureNonNil(metricResultsOrEmpty(results, "topRevenueEvents")),
 		ConversionGoals:      results["conversionGoals"].Data.([]string),
 		Insights:             []interface{}{},
@@ -174,15 +174,14 @@ func FetchComparisonMetrics(db *gorm.DB, tf *timeframe.TimeFrame, websiteId int,
 	comparisonParams := NewWebsiteScopedQueryParams(comparisonTF, websiteId)
 
 	tasks := []async.Task{
-		passthroughTask("comparisonVisitors", func() (interface{}, error) { return GetTotalVisitorsInTimeFrame(db, comparisonParams) }),
+		passthroughTask("comparisonVisitorsAndRevenue", func() (interface{}, error) { return getVisitorsAndRevenue(db, comparisonParams) }),
 		passthroughTask("comparisonViews", func() (interface{}, error) { return GetTotalPageViewsInTimeFrame(db, comparisonParams) }),
 		passthroughTask("comparisonSessions", func() (interface{}, error) { return GetTotalSessionsInTimeFrame(db, comparisonParams) }),
 		passthroughTask("comparisonBounceRate", func() (interface{}, error) { return GetBounceRateInTimeFrame(db, comparisonParams) }),
 		passthroughTask("comparisonVisitsDuration", func() (interface{}, error) { return GetVisitDurationInTimeFrame(db, comparisonParams) }),
-		passthroughTask("comparisonRevenueMetrics", func() (interface{}, error) { return GetRevenueMetrics(db, comparisonParams) }),
 	}
 
-	pool := async.NewPool(6)
+	pool := async.NewPool(5)
 	results := pool.Execute(context.Background(), tasks)
 
 	data := ComparisonData{
@@ -193,8 +192,9 @@ func FetchComparisonMetrics(db *gorm.DB, tf *timeframe.TimeFrame, websiteId int,
 		CurrentAvgTime:    currentMetrics.VisitsDuration,
 	}
 
-	if v, ok := results["comparisonVisitors"].Data.(int64); ok {
-		data.PreviousVisitors = v
+	previous, hasPrevious := results["comparisonVisitorsAndRevenue"].Data.(visitorsAndRevenue)
+	if hasPrevious {
+		data.PreviousVisitors = previous.visitors
 	}
 	if v, ok := results["comparisonViews"].Data.(int64); ok {
 		data.PreviousViews = v
@@ -212,12 +212,33 @@ func FetchComparisonMetrics(db *gorm.DB, tf *timeframe.TimeFrame, websiteId int,
 	// never compares euros with dollars.
 	if current := currentMetrics.RevenueMetrics; current != nil {
 		data.CurrentRevenue = current.TotalRevenue
-		if previous, ok := results["comparisonRevenueMetrics"].Data.(*RevenueMetrics); ok && previous != nil {
-			data.PreviousRevenue = previous.RevenueIn(current.Currency)
+		if hasPrevious {
+			data.PreviousRevenue = previous.revenue.RevenueIn(current.Currency)
 		}
 	}
 
 	return CalculateComparisonMetrics(data)
+}
+
+// visitorsAndRevenue holds the visitors and the revenue of one period.
+type visitorsAndRevenue struct {
+	visitors int64
+	revenue  *RevenueMetrics
+}
+
+// getVisitorsAndRevenue counts the visitors of the period once, and the
+// revenue conversion rate uses that count. The visitor count scans the
+// events table, so the dashboard runs it as few times as it can.
+func getVisitorsAndRevenue(db *gorm.DB, params WebsiteScopedQueryParams) (interface{}, error) {
+	visitors, err := GetTotalVisitorsInTimeFrame(db, params)
+	if err != nil {
+		return nil, err
+	}
+	revenue, err := GetRevenueMetrics(db, params, visitors)
+	if err != nil {
+		return nil, err
+	}
+	return visitorsAndRevenue{visitors: visitors, revenue: revenue}, nil
 }
 
 // PreviousPeriod returns the period just before [from, to]: the same range

@@ -42,6 +42,14 @@ func (m *RevenueMetrics) RevenueIn(currency string) float64 {
 	return 0
 }
 
+// PerVisitor returns the main currency revenue per visitor.
+func (m *RevenueMetrics) PerVisitor(totalVisitors int64) float64 {
+	if totalVisitors <= 0 {
+		return 0
+	}
+	return m.TotalRevenue / float64(totalVisitors)
+}
+
 const defaultCurrency = "USD"
 
 // A purchase is a "revenue:purchased" custom event, in any letter case,
@@ -111,8 +119,10 @@ func purchasesArgs(params WebsiteScopedQueryParams) []interface{} {
 	}
 }
 
-// GetRevenueMetrics calculates revenue metrics for events with "revenue:purchased" naming convention
-func GetRevenueMetrics(db *gorm.DB, params WebsiteScopedQueryParams) (*RevenueMetrics, error) {
+// GetRevenueMetrics calculates revenue metrics for events with "revenue:purchased"
+// naming convention. totalVisitors is the visitors of the same period, for the
+// conversion rate. The caller counts them once and shares the count.
+func GetRevenueMetrics(db *gorm.DB, params WebsiteScopedQueryParams, totalVisitors int64) (*RevenueMetrics, error) {
 	var totals []struct {
 		Currency     string
 		TotalRevenue float64
@@ -158,11 +168,6 @@ func GetRevenueMetrics(db *gorm.DB, params WebsiteScopedQueryParams) (*RevenueMe
 
 	if metrics.TotalSales > 0 {
 		metrics.AverageOrderValue = metrics.TotalRevenue / float64(metrics.TotalSales)
-	}
-
-	totalVisitors, err := GetTotalVisitorsInTimeFrame(db, params)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get total visitors for conversion rate: %w", err)
 	}
 
 	// The share of visitors who bought, in any currency. A visitor who buys
@@ -261,28 +266,6 @@ func GetEventRevenueTotals(db *gorm.DB, params WebsiteScopedQueryParams) (map[st
 	}
 
 	return totals, nil
-}
-
-// GetRevenuePerVisitor calculates revenue per visitor for the given time frame
-func GetRevenuePerVisitor(db *gorm.DB, params WebsiteScopedQueryParams) (float64, error) {
-	// Get revenue metrics
-	revenueMetrics, err := GetRevenueMetrics(db, params)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get revenue metrics: %w", err)
-	}
-
-	// Get total visitors
-	totalVisitors, err := GetTotalVisitorsInTimeFrame(db, params)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get total visitors: %w", err)
-	}
-
-	// Calculate revenue per visitor
-	if totalVisitors > 0 {
-		return revenueMetrics.TotalRevenue / float64(totalVisitors), nil
-	}
-
-	return 0, nil
 }
 
 // AggregatedRevenueInTimeFrame returns revenue sums aggregated over a time frame from revenue:purchased events

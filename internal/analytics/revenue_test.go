@@ -29,11 +29,10 @@ func TestRevenue(t *testing.T) {
 		purchase("u1", "Revenue:Purchased", `{"price":500,"currency":"USD"}`, at("11h")),
 		purchase("u2", "revenue:purchased", `{"price":0,"currency":"USD"}`, at("12h")),
 		purchase("u2", "revenue:purchased", `not json`, at("12h")),
-		pageView("u1", "/", at("10h")),
-		pageView("u2", "/", at("10h")),
 	)
 
-	metrics, err := analytics.GetRevenueMetrics(db, params)
+	// 2 visitors.
+	metrics, err := analytics.GetRevenueMetrics(db, params, 2)
 	require.NoError(t, err)
 	chart, err := analytics.AggregatedRevenueInTimeFrame(db, params)
 	require.NoError(t, err)
@@ -82,20 +81,14 @@ func TestRevenueCurrencies(t *testing.T) {
 			purchase("u3", "revenue:purchased", `{"price":9900,"currency":"USD"}`, at("12h")),
 			purchase("u4", "revenue:purchased", `{"price":500,"quantity":2,"currency":"GBP"}`, at("13h")),
 		)
-		// 10 visitors, 4 of them buyers. Visitors count from page views.
-		for _, user := range []string{"u1", "u2", "u3", "u4", "v5", "v6", "v7", "v8", "v9", "v10"} {
-			require.NoError(t, db.Create(&[]events.Event{pageView(user, "/", at("09h"))}).Error)
-		}
-
-		metrics, err := analytics.GetRevenueMetrics(db, params)
+		// 10 visitors, 4 of them buyers.
+		metrics, err := analytics.GetRevenueMetrics(db, params, 10)
 		require.NoError(t, err)
 		chart, err := analytics.AggregatedRevenueInTimeFrame(db, params)
 		require.NoError(t, err)
 		top, err := analytics.GetTopRevenueEvents(db, params)
 		require.NoError(t, err)
 		totals, err := analytics.GetEventRevenueTotals(db, params)
-		require.NoError(t, err)
-		perVisitor, err := analytics.GetRevenuePerVisitor(db, params)
 		require.NoError(t, err)
 
 		t.Run("the main currency has the most purchases, in upper case", func(t *testing.T) {
@@ -120,7 +113,7 @@ func TestRevenueCurrencies(t *testing.T) {
 		})
 
 		t.Run("revenue per visitor counts only the main currency", func(t *testing.T) {
-			assert.InDelta(t, 3.00, perVisitor, 0.001)
+			assert.InDelta(t, 3.00, metrics.PerVisitor(10), 0.001)
 		})
 
 		t.Run("the chart counts only main currency purchases", func(t *testing.T) {
@@ -148,7 +141,7 @@ func TestRevenueCurrencies(t *testing.T) {
 			purchase("u2", "revenue:purchased", `{"price":2000,"currency":"EUR"}`, at("11h")),
 		)
 
-		metrics, err := analytics.GetRevenueMetrics(db, params)
+		metrics, err := analytics.GetRevenueMetrics(db, params, 0)
 
 		require.NoError(t, err)
 		assert.Equal(t, "EUR", metrics.Currency)
@@ -162,7 +155,7 @@ func TestRevenueCurrencies(t *testing.T) {
 			purchase("u3", "revenue:purchased", `{"price":4000,"currency":"EUR"}`, at("12h")),
 		)
 
-		metrics, err := analytics.GetRevenueMetrics(db, params)
+		metrics, err := analytics.GetRevenueMetrics(db, params, 0)
 
 		require.NoError(t, err)
 		assert.Equal(t, "USD", metrics.Currency)
@@ -172,7 +165,7 @@ func TestRevenueCurrencies(t *testing.T) {
 	t.Run("without purchases, the currency is USD and there are no other currencies", func(t *testing.T) {
 		db := setupFlowDB(t)
 
-		metrics, err := analytics.GetRevenueMetrics(db, params)
+		metrics, err := analytics.GetRevenueMetrics(db, params, 0)
 
 		require.NoError(t, err)
 		assert.Equal(t, "USD", metrics.Currency)
@@ -205,7 +198,7 @@ func TestRevenueWithoutSalesInThePeriod(t *testing.T) {
 			purchase("u1", "revenue:purchased", `{"price":1000,"currency":"EUR"}`, at("10h")),
 		)
 
-		metrics, err := analytics.GetRevenueMetrics(db, params)
+		metrics, err := analytics.GetRevenueMetrics(db, params, 0)
 
 		require.NoError(t, err)
 		assert.Equal(t, "EUR", metrics.Currency)
@@ -216,7 +209,7 @@ func TestRevenueWithoutSalesInThePeriod(t *testing.T) {
 		db := setupFlowDB(t,
 			purchase("u1", "revenue:purchased", `{"price":1000,"currency":"EUR"}`, at("10h")),
 		)
-		current, err := analytics.GetRevenueMetrics(db, params)
+		current, err := analytics.GetRevenueMetrics(db, params, 0)
 		require.NoError(t, err)
 
 		comparison := analytics.FetchComparisonMetrics(db, today, 1, &analytics.DashboardMetrics{RevenueMetrics: current}, slog.Default())
@@ -242,7 +235,7 @@ func TestRevenueDuplicateOrders(t *testing.T) {
 		purchase("u3", "revenue:purchased", `{"price":5000,"order_id":42,"currency":"USD"}`, at("1h")),
 	)
 
-	metrics, err := analytics.GetRevenueMetrics(db, params)
+	metrics, err := analytics.GetRevenueMetrics(db, params, 0)
 	require.NoError(t, err)
 	chart, err := analytics.AggregatedRevenueInTimeFrame(db, params)
 	require.NoError(t, err)
