@@ -6,6 +6,7 @@
 		eventTypes: {
 			pageView: 1,
 			customEvent: 2,
+			pageHide: 3,
 		},
 		sendInterval: 200,
 		maxRetries: 3,
@@ -247,6 +248,7 @@
 		}
 
 		lastPagePath = window.location.pathname;
+		startPageHideClock();
 		bufferEvent({
 			timestamp: new Date().toISOString(),
 			referrer: document.referrer,
@@ -344,6 +346,47 @@
 			}
 		}
 	});
+
+	// Page hide: tells the server when the visitor left or hid the page, so
+	// Avg Time includes the time on the last page. The server only extends
+	// the visit with it; it counts nowhere else. One per page view, and only
+	// after 1 s of visible time. A failed send is not stored: a late page
+	// hide has the wrong time.
+	let visibleMs = 0;
+	let visibleSince = null;
+	let pageHideSent = true; // until the first page view
+
+	const startPageHideClock = () => {
+		visibleMs = 0;
+		visibleSince = document.visibilityState === "visible" ? Date.now() : null;
+		pageHideSent = false;
+	};
+
+	const sendPageHide = () => {
+		if (visibleSince !== null) {
+			visibleMs += Date.now() - visibleSince;
+			visibleSince = null;
+		}
+		if (pageHideSent || visibleMs < 1000 || !shouldTrack()) {
+			return;
+		}
+		pageHideSent = true;
+		sendBeaconEvent({
+			url: window.location.href,
+			timestamp: new Date().toISOString(),
+			eventType: window.Fusionaly.config.eventTypes.pageHide,
+			userAgent: navigator.userAgent,
+		});
+	};
+
+	document.addEventListener("visibilitychange", () => {
+		if (document.visibilityState === "hidden") {
+			sendPageHide();
+		} else if (visibleSince === null) {
+			visibleSince = Date.now();
+		}
+	});
+	window.addEventListener("pagehide", sendPageHide);
 
 	const sanitizeForEventKey = (text) => {
 		if (!text) return "";
