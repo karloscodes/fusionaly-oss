@@ -46,4 +46,26 @@ func TestEventProcessorJob(t *testing.T) {
 		require.NoError(t, db.Model(&events.Event{}).Count(&eventCount).Error)
 		assert.Equal(t, int64(1), eventCount, "processed event should have been written to the Event table")
 	})
+
+	t.Run("stores the flows of a backlog from earlier hours", func(t *testing.T) {
+		dbManager, logger, website := testsupport.SetupTestDBManagerWithWebsite(t, "example.com")
+		db := dbManager.GetConnection()
+		earlier := time.Now().UTC().Add(-5 * time.Hour)
+		for i, path := range []string{"/", "/pricing"} {
+			at := earlier.Add(time.Duration(i) * time.Minute)
+			require.NoError(t, db.Create(&events.IngestedEvent{
+				WebsiteID: website.ID, UserSignature: "backlog", Hostname: "example.com", Pathname: path,
+				ReferrerHostname: events.DirectOrUnknownReferrer, EventType: events.EventTypePageView,
+				Timestamp: at, CreatedAt: at, UserAgent: "Mozilla/5.0 (Test Agent)", RawURL: "https://example.com" + path,
+			}).Error)
+		}
+		job := jobs.NewEventProcessorJob(dbManager, logger)
+
+		err := job.Run()
+
+		require.NoError(t, err)
+		var transitions int64
+		require.NoError(t, db.Table("flow_transition_stats").Where("website_id = ?", website.ID).Select("COALESCE(SUM(transitions), 0)").Scan(&transitions).Error)
+		assert.Equal(t, int64(1), transitions)
+	})
 }

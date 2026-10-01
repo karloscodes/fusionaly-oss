@@ -99,9 +99,8 @@ func (j *EventProcessorJob) Run() error {
 		slog.Int("count", processedCount),
 		slog.Int64("remaining", unprocessedCount-int64(processedCount)))
 
-	// Compute flow transitions for recent hours
-	if err := events.ComputeFlowTransitionsForRecentHours(db, j.logger, 2, flowMaxDepth); err != nil {
-		j.logger.Warn("Failed to compute flow transitions", slog.Any("error", err))
+	if result != nil {
+		events.ComputeFlowTransitionsForEvents(db, j.logger, result.ProcessedEvents, flowMaxDepth)
 	}
 
 	return nil

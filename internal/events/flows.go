@@ -165,21 +165,25 @@ func ComputeFlowTransitionsForHour(db *gorm.DB, logger *slog.Logger, hour time.T
 	return nil
 }
 
-// ComputeFlowTransitionsForRecentHours recomputes the last hoursBack hours,
-// the current one included. The event processor calls it on each run.
-func ComputeFlowTransitionsForRecentHours(db *gorm.DB, logger *slog.Logger, hoursBack int, maxDepth int) error {
-	now := time.Now().UTC().Truncate(time.Hour)
+// ComputeFlowTransitionsForEvents recomputes the hours of the page views
+// just processed. A new page view is always its visit's latest (see
+// visitStatus), so it only adds a move in its own hour. The event processor
+// calls it after each run, so a backlog from earlier hours is stored too.
+func ComputeFlowTransitionsForEvents(db *gorm.DB, logger *slog.Logger, processed []*Event, maxDepth int) {
+	hours := map[time.Time]bool{}
+	for _, e := range processed {
+		if e.EventType == EventTypePageView {
+			hours[e.Timestamp.UTC().Truncate(time.Hour)] = true
+		}
+	}
 
-	for i := 0; i < hoursBack; i++ {
-		hour := now.Add(-time.Duration(i) * time.Hour)
+	for hour := range hours {
 		if err := ComputeFlowTransitionsForHour(db, logger, hour, maxDepth); err != nil {
 			logger.Warn("Failed to compute flow transitions for hour",
 				slog.Time("hour", hour),
 				slog.Any("error", err))
 		}
 	}
-
-	return nil
 }
 
 // RebuildFlowTransitionsOnce rebuilds flow_transition_stats from the events
