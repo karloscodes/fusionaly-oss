@@ -6,14 +6,14 @@
   },
   "metadata": {
     "description": "Fusionaly: privacy-first web analytics you host yourself.",
-    "version": "2.4.1"
+    "version": "2.4.2"
   },
   "plugins": [
     {
       "name": "fusionaly",
       "source": "./plugin",
       "description": "Ask your analytics from inside your AI client. MCP server plus the analytics skill.",
-      "version": "2.4.1",
+      "version": "2.4.2",
       "category": "analytics",
       "keywords": ["analytics", "web-analytics", "privacy", "self-hosted", "mcp"]
     }

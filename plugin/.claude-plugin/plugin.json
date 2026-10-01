@@ -1,7 +1,7 @@
 {
   "name": "fusionaly",
   "description": "Ask your analytics from inside your AI client. Bundles the Fusionaly MCP server with the analytics skill.",
-  "version": "2.4.1",
+  "version": "2.4.2",
   "author": {
     "name": "Carlos Castellanos",
     "url": "https://fusionaly.com"

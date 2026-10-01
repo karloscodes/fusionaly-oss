@@ -10,7 +10,7 @@ Every `*_stats` table has `website_id`, `hour` (the start of a 30-minute UTC buc
 |-------|-----------------|-------|
 | `site_stats` | `visitors`, `page_views`, `sessions`, `bounce_count` | Site totals. Bounce rate: `SUM(bounce_count) * 100.0 / SUM(sessions)`. |
 | `page_stats` | `pathname`, `visitors_count`, `page_views_count`, `entrances`, `exits` | Per page. Entry pages: rank by `entrances`. |
-| `ref_stats` | `hostname`, `pathname`, `visitors_count`, `page_views_count` | Referrers. `hostname` is the referrer domain; empty means direct. |
+| `ref_stats` | `hostname`, `pathname`, `visitors_count`, `page_views_count` | Referrers. `hostname` is the referrer domain; `__direct_or_unknown__` means direct. |
 | `country_stats` | `country`, `visitors_count` | Lowercase ISO codes: `us`, `gb`, `de`, `fr`. |
 | `device_stats` | `device_type`, `visitors_count` | |
 | `browser_stats` | `browser`, `visitors_count` | |
@@ -35,7 +35,7 @@ Replace `1` with the `website_id` from `list_websites`.
 ```sql
 SELECT hostname AS source, SUM(visitors_count) AS visitors
 FROM ref_stats
-WHERE website_id = 1 AND hour >= datetime('now', '-30 days') AND hostname != ''
+WHERE website_id = 1 AND hour >= datetime('now', '-30 days') AND hostname != '__direct_or_unknown__'
 GROUP BY hostname ORDER BY visitors DESC LIMIT 15
 ```
 

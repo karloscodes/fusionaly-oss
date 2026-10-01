@@ -42,7 +42,7 @@ No `fusionaly` tools in your tool list? Use the `connect` skill (in Claude Code:
 - **Stats tables hold 30-minute UTC buckets.** Always `SUM()` the count columns. For visitors per day, count distinct `user_signature` in `events` (see the reference), not `SUM(visitors)`.
 - **Use the exact names.** `ref_stats.hostname` is the referrer domain. There is no `referrer_domain`, no `referrer_stats`, no `pageviews` table.
 - **Countries are lowercase ISO codes**: "United States" is `'us'`, "UK" is `'gb'`, "Germany" is `'de'`.
-- **Direct traffic** has an empty `hostname` in `ref_stats`. Exclude it with `hostname != ''` when ranking sources.
+- **Direct traffic** has `hostname = '__direct_or_unknown__'` in `ref_stats`. Exclude it with `hostname != '__direct_or_unknown__'` when ranking sources.
 - **Day of week:** return all 7 days with a CTE. Never `LIMIT 1`; the user wants the shape.
 - **One statement, no comments.** The server rejects `;`-separated statements and `--` or `/* */` comments.
 - A query fails? Read the error, fix the name or the syntax from the schema, and retry. Try three times before you give up.
