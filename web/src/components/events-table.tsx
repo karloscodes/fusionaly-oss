@@ -238,9 +238,12 @@ export function EventsTable({ events, isLoading = false, groupBySessions = false
 							</Fragment>
 						))
 					) : (
-						events.map((event) => (
+						// Keyed by position: two events can share a timestamp and URL
+						// (a custom event and a purchase sent together), and duplicate
+						// keys left stale rows behind.
+						events.map((event, index) => (
 							<TableRow
-								key={`event-${event.timestamp}-${event.raw_url}`}
+								key={`event-${index}`}
 								className="text-sm hover:bg-gray-50 transition-colors"
 							>
 								<TableCell className="py-2 px-4 text-gray-700 whitespace-nowrap">
