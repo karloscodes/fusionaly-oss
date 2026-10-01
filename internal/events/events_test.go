@@ -1710,3 +1710,44 @@ func TestCollectEventSelfReferral(t *testing.T) {
 		assert.Equal(t, events.DirectOrUnknownReferrer, storedReferrer(t, "https://example.net/thanks", "https://checkout.stripe.com/c/pay/cs_123"))
 	})
 }
+
+func TestCollectEventSizeLimits(t *testing.T) {
+	dbManager, logger := testsupport.SetupTestDBManager(t)
+	db := dbManager.GetConnection()
+	testsupport.CleanAllTables(db)
+	testsupport.CreateTestWebsite(db, "example.com")
+	base := func() events.CollectEventInput {
+		return events.CollectEventInput{IPAddress: "192.168.1.1", UserAgent: "Mozilla/5.0 (test)",
+			EventType: events.EventTypeCustomEvent, CustomEventName: "signup", Timestamp: time.Now().UTC(), RawUrl: "https://example.com/"}
+	}
+
+	t.Run("rejects oversized events", func(t *testing.T) {
+		tooBig := map[string]func(*events.CollectEventInput){
+			"metadata":   func(in *events.CollectEventInput) { in.CustomEventMeta = `{"x":"` + strings.Repeat("a", 9000) + `"}` },
+			"event name": func(in *events.CollectEventInput) { in.CustomEventName = strings.Repeat("a", 201) },
+			"url":        func(in *events.CollectEventInput) { in.RawUrl = "https://example.com/" + strings.Repeat("a", 4100) },
+		}
+		for name, grow := range tooBig {
+			db.Exec("DELETE FROM ingested_events")
+			input := base()
+			grow(&input)
+
+			err := events.CollectEvent(dbManager, logger, &input)
+
+			assert.ErrorIs(t, err, events.ErrEventTooLarge, name)
+			var count int64
+			db.Model(&events.IngestedEvent{}).Count(&count)
+			assert.Zero(t, count, name)
+		}
+	})
+
+	t.Run("accepts events within the limits", func(t *testing.T) {
+		db.Exec("DELETE FROM ingested_events")
+		input := base()
+		input.CustomEventMeta = `{"x":"` + strings.Repeat("a", 1000) + `"}`
+
+		err := events.CollectEvent(dbManager, logger, &input)
+
+		assert.NoError(t, err)
+	})
+}

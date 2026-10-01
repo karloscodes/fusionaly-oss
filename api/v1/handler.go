@@ -90,6 +90,13 @@ func CreateEventPublicAPIHandler(ctx *cartridge.Context) error {
 			})
 		}
 
+		if errors.Is(err, events.ErrEventTooLarge) {
+			return ctx.Status(http.StatusBadRequest).JSON(cartridge.Map{
+				"error": "Event too large - url up to 4096 characters, event name up to 200, metadata up to 8 KB",
+				"code":  "EVENT_TOO_LARGE",
+			})
+		}
+
 		return ctx.Status(http.StatusInternalServerError).JSON(cartridge.Map{
 			"error": "Failed to collect event",
 			"code":  "COLLECTION_ERROR",

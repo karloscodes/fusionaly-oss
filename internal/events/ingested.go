@@ -63,8 +63,24 @@ type urlData struct {
 	rawURL   string
 }
 
+// Size limits for one event. Real page URLs, event names, and metadata are
+// far smaller; larger values only bloat the database and the dashboard.
+const (
+	MaxURLLength       = 4096
+	MaxEventNameLength = 200
+	MaxMetadataBytes   = 8 << 10
+)
+
+// ErrEventTooLarge marks an event over a size limit. The client sent a bad
+// request; retrying it cannot succeed.
+var ErrEventTooLarge = errors.New("event too large")
+
 // CollectEvent stores an event in the IngestedEvent table
 func CollectEvent(dbManager cartridge.DBManager, logger *slog.Logger, input *CollectEventInput) error {
+	if len(input.RawUrl) > MaxURLLength || len(input.CustomEventName) > MaxEventNameLength || len(input.CustomEventMeta) > MaxMetadataBytes {
+		return fmt.Errorf("%w: url ≤ %d, event name ≤ %d, metadata ≤ %d bytes", ErrEventTooLarge, MaxURLLength, MaxEventNameLength, MaxMetadataBytes)
+	}
+
 	if input.UserAgent == "" {
 		input.UserAgent = "Unknown User Agent"
 	}
