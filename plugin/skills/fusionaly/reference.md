@@ -58,12 +58,14 @@ WHERE website_id = 1 AND hour >= datetime('now', '-30 days')
 GROUP BY pathname ORDER BY visitors DESC LIMIT 10
 ```
 
-**Daily trend**
+**Daily trend** (visitors as the dashboard counts them: distinct signatures with a page view per day; days are UTC here, so shift `timestamp` for a local day, e.g. `DATE(timestamp, '-7 hours')`)
 
 ```sql
-SELECT DATE(hour) AS day, SUM(visitors) AS visitors, SUM(page_views) AS page_views
-FROM site_stats
-WHERE website_id = 1 AND hour >= datetime('now', '-30 days')
+SELECT DATE(timestamp) AS day,
+  COUNT(DISTINCT user_signature) AS visitors,
+  COUNT(*) AS page_views
+FROM events
+WHERE website_id = 1 AND event_type = 1 AND timestamp >= datetime('now', '-30 days')
 GROUP BY day ORDER BY day
 ```
 
@@ -81,20 +83,28 @@ LEFT JOIN site_stats s
 GROUP BY d.dow ORDER BY d.dow
 ```
 
-**Revenue** (price is in cents; `quantity` defaults to 1)
+**Revenue** (as the dashboard counts it: price is in cents, `quantity` defaults to 1, currency codes are trimmed and upper case, and a repeated `order_id` counts once)
 
 ```sql
-SELECT
-  SUM(CAST(json_extract(custom_event_meta, '$.price') AS REAL) / 100.0
-      * COALESCE(CAST(json_extract(custom_event_meta, '$.quantity') AS INTEGER), 1)) AS revenue,
-  COUNT(*) AS sales,
-  COALESCE(json_extract(custom_event_meta, '$.currency'), 'USD') AS currency
-FROM events
-WHERE website_id = 1 AND event_type = 2
-  AND LOWER(custom_event_name) = 'revenue:purchased'
-  AND json_valid(custom_event_meta) = 1
-  AND timestamp >= datetime('now', '-30 days')
-GROUP BY currency
+WITH purchases AS (
+  SELECT
+    CAST(json_extract(custom_event_meta, '$.price') AS REAL)
+      * COALESCE(CAST(json_extract(custom_event_meta, '$.quantity') AS INTEGER), 1) AS cents,
+    COALESCE(NULLIF(UPPER(TRIM(json_extract(custom_event_meta, '$.currency'))), ''), 'USD') AS currency,
+    ROW_NUMBER() OVER (
+      PARTITION BY COALESCE(NULLIF(CAST(json_extract(custom_event_meta, '$.order_id') AS TEXT), ''), 'event-' || id)
+      ORDER BY timestamp, id
+    ) AS copy
+  FROM events
+  WHERE website_id = 1 AND event_type = 2
+    AND LOWER(custom_event_name) = 'revenue:purchased'
+    AND json_valid(custom_event_meta) = 1
+    AND CAST(json_extract(custom_event_meta, '$.price') AS REAL) > 0
+    AND timestamp >= datetime('now', '-30 days')
+)
+SELECT currency, SUM(cents) / 100.0 AS revenue, COUNT(*) AS sales
+FROM purchases WHERE copy = 1
+GROUP BY currency ORDER BY sales DESC
 ```
 
 **Where visitors go after the homepage**

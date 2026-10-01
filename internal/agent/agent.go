@@ -43,7 +43,7 @@ func GetSchema(db *gorm.DB) (*SchemaResponse, error) {
 		Concepts: map[string]string{
 			"time_filtering":      "Stats tables hold 30-minute buckets in UTC (the 'hour' column is the bucket start). Filter by 'hour'.",
 			"website_scoping":     "Data is multi-tenant. Always filter by 'website_id'.",
-			"visitors_vs_views":   "A visitor is a daily signature (it resets at UTC midnight). In site_stats, page_stats, country_stats, device_stats, browser_stats, and os_stats, visitors counts each visitor once per day; summed over days it counts a returning visitor once per day. In ref_stats, utm_stats, and query_param_stats, visitors_count counts visits (a visit's first page view). page_views_count is the number of page views.",
+			"visitors_vs_views":   "A visitor is a daily signature (it resets at UTC midnight). In site_stats, page_stats, country_stats, device_stats, browser_stats, and os_stats, visitors counts each visitor once per day; summed over days it counts a returning visitor once per day. In ref_stats, utm_stats, and query_param_stats, visitors_count counts visits (a visit's first page view). page_views_count is the number of page views. The dashboard's Visitors count distinct user_signature with event_type = 1 in events per local day; for those numbers, query events, not site_stats.",
 			"country_codes":       "Countries use lowercase ISO codes: 'us', 'gb', 'de', 'fr', etc.",
 			"direct_traffic":      "Direct traffic has hostname '__direct_or_unknown__' in ref_stats.",
 			"bounce_rate":         "Calculate as: (bounce_count * 100.0 / sessions) from site_stats.",
