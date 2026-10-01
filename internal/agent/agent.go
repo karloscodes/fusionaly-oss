@@ -47,6 +47,7 @@ func GetSchema(db *gorm.DB) (*SchemaResponse, error) {
 			"country_codes":       "Countries use lowercase ISO codes: 'us', 'gb', 'de', 'fr', etc.",
 			"direct_traffic":      "Direct traffic has hostname '__direct_or_unknown__' in ref_stats.",
 			"bounce_rate":         "Calculate as: (bounce_count * 100.0 / sessions) from site_stats.",
+			"event_types":         "events.event_type: 1 = page view, 2 = custom event, 3 = page hide (only extends a visit; leave it out of counts)",
 			"aggregation_pattern": "Always SUM() count columns when grouping. Each row holds one 30-minute bucket.",
 		},
 	}, nil

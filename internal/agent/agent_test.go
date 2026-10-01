@@ -160,6 +160,7 @@ func TestGetSchema(t *testing.T) {
 		assert.Contains(t, schema.Schema, "CREATE TABLE", "Schema should contain CREATE TABLE statements")
 		assert.NotEmpty(t, schema.Concepts, "Concepts should not be empty")
 		assert.Contains(t, schema.Concepts, "website_scoping", "Concepts should include website_scoping")
+		assert.Contains(t, schema.Concepts["event_types"], "3 = page hide", "Concepts should explain the event types")
 	})
 }
 
