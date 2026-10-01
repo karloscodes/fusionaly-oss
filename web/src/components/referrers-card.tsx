@@ -16,7 +16,7 @@ import type { ReferrersCardProps, MetricType } from "../types";
 
 // Where visitors came from, grouped the way people look for it.
 const MENU_GROUPS: { label: string; items: MetricType[] }[] = [
-	{ label: "Sources", items: ["referrers"] },
+	{ label: "Sources", items: ["referrers", "channels"] },
 	{ label: "Campaigns (UTM)", items: ["utm_sources", "utm_mediums", "utm_campaigns", "utm_terms", "utm_contents"] },
 	{ label: "Links", items: ["ref_params"] },
 ];
@@ -36,6 +36,7 @@ export const ReferrersCard = ({ data }: ReferrersCardProps) => {
 			utm_terms: "UTM Term",
 			utm_contents: "UTM Content",
 			ref_params: "Ref",
+			channels: "Channels",
 		};
 		return metricNames[metricType] || metricType;
 	};
@@ -57,6 +58,8 @@ export const ReferrersCard = ({ data }: ReferrersCardProps) => {
 				return data.top_utm_contents || [];
 			case "ref_params":
 				return data.top_ref_params || [];
+			case "channels":
+				return data.top_channels || [];
 			default:
 				return data.top_referrers || [];
 		}

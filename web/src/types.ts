@@ -87,6 +87,7 @@ export interface AnalyticsData {
   top_utm_terms: MetricCountResult[];
   top_utm_contents: MetricCountResult[];
   top_ref_params: MetricCountResult[];
+  top_channels: MetricCountResult[];
   bucket_size: "hour" | "day" | "week" | "month" | "year";
   total_visitors?: number;
   total_views?: number;
@@ -171,7 +172,7 @@ export interface SettingsResponse {
 }
 
 // Types for ReferrersCard component
-export type MetricType = 'referrers' | 'utm_sources' | 'utm_mediums' | 'utm_campaigns' | 'utm_terms' | 'utm_contents' | 'ref_params';
+export type MetricType = 'referrers' | 'utm_sources' | 'utm_mediums' | 'utm_campaigns' | 'utm_terms' | 'utm_contents' | 'ref_params' | 'channels';
 
 export interface ReferrersCardProps {
   data: {
@@ -182,6 +183,7 @@ export interface ReferrersCardProps {
     top_utm_terms: DataItem[];
     top_utm_contents: DataItem[];
     top_ref_params: DataItem[];
+    top_channels: DataItem[];
   };
 }
 
