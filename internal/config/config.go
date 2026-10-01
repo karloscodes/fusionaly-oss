@@ -1,13 +1,14 @@
-// Package config provides configuration management using Viper
+// Package config reads the application configuration from environment variables.
 package config
 
 import (
 	"fmt"
 	"log"
+	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"sync"
-
-	"github.com/spf13/viper"
 )
 
 // Environment types
@@ -36,40 +37,40 @@ const (
 // Config holds all configuration parameters for the application
 type Config struct {
 	// Application settings
-	AppName               string   `mapstructure:"appname"`
-	AppPort               string   `mapstructure:"appport"`
-	Environment           string   `mapstructure:"environment"`
-	LogLevel              LogLevel `mapstructure:"loglevel"`
-	PrivateKey            string `mapstructure:"privatekey"`
-	SessionTimeoutSeconds      int `mapstructure:"sessiontimeoutseconds"`
-	LoginSessionTimeoutSeconds int `mapstructure:"loginsessiontimeoutseconds"`
-	CSRFContextKey        string   `mapstructure:"-"`
-	AdminEmail            string   `mapstructure:"adminemail"`
-	Domain                string   `mapstructure:"domain"`
+	AppName                    string
+	AppPort                    string
+	Environment                string
+	LogLevel                   LogLevel
+	PrivateKey                 string
+	SessionTimeoutSeconds      int
+	LoginSessionTimeoutSeconds int
+	CSRFContextKey             string
+	AdminEmail                 string
+	Domain                     string
 
 	// File paths
-	DatabasePath          string `mapstructure:"storagepath"`
-	DatabaseName          string `mapstructure:"-"` // Derived from other settings
-	GeoDBPath             string `mapstructure:"geodbpath"`
-	PublicDirectory       string `mapstructure:"publicdir"`
-	PublicAssetsUrlPrefix string `mapstructure:"publicassetsurlprefix"`
+	DatabasePath          string
+	DatabaseName          string // Derived from other settings
+	GeoDBPath             string
+	PublicDirectory       string
+	PublicAssetsUrlPrefix string
 
 	// Logging settings
-	LogsDirectory    string `mapstructure:"logsdir"`
-	LogsMaxSizeInMb  int    `mapstructure:"logsmaxsizeinmb"`
-	LogsMaxBackups   int    `mapstructure:"logsmaxbackups"`
-	LogsMaxAgeInDays int    `mapstructure:"logsmaxageindays"`
+	LogsDirectory    string
+	LogsMaxSizeInMb  int
+	LogsMaxBackups   int
+	LogsMaxAgeInDays int
 
 	// Database settings
-	DatabaseType         string `mapstructure:"dbtype"`
-	DatabaseMaxOpenConns int    `mapstructure:"dbmaxopenconns"`
-	DatabaseMaxIdleConns int    `mapstructure:"dbmaxidleconns"`
+	DatabaseType         string
+	DatabaseMaxOpenConns int
+	DatabaseMaxIdleConns int
 
 	// Job scheduling settings
-	JobIntervalSeconds int `mapstructure:"jobintervalseconds"`
+	JobIntervalSeconds int
 
 	// Data retention settings
-	IngestedEventsRetentionDays int `mapstructure:"ingestedeventsretentiondays"`
+	IngestedEventsRetentionDays int
 }
 
 var (
@@ -80,59 +81,10 @@ var (
 // GetConfig returns the application configuration
 func GetConfig() *Config {
 	once.Do(func() {
-		v := viper.New()
-
-		// Set defaults (matching envconfig defaults)
-		v.SetDefault("appname", "fusionaly")
-		v.SetDefault("appport", "3000")
-		v.SetDefault("environment", Development)
-		v.SetDefault("loglevel", "") // Let cartridge determine based on environment
-		v.SetDefault("privatekey", "88888888888888888888888888888888")
-		v.SetDefault("sessiontimeoutseconds", 1800)
-		v.SetDefault("loginsessiontimeoutseconds", 7776000) // 90 days
-		v.SetDefault("storagepath", "storage")
-		v.SetDefault("geodbpath", "storage/GeoLite2-City.mmdb")
-		v.SetDefault("publicdir", "web/dist/assets")
-		v.SetDefault("publicassetsurlprefix", "/")
-		v.SetDefault("logsdir", "logs")
-		v.SetDefault("logsmaxsizeinmb", 20)
-		v.SetDefault("logsmaxbackups", 10)
-		v.SetDefault("logsmaxageindays", 30)
-		v.SetDefault("dbtype", SQLiteDatabase)
-		v.SetDefault("dbmaxopenconns", 0)
-		v.SetDefault("dbmaxidleconns", 0)
-		v.SetDefault("jobintervalseconds", 60)
-		v.SetDefault("ingestedeventsretentiondays", 90)
-
-		// Bind environment variables (same names as envconfig)
-		v.BindEnv("appname", "FUSIONALY_APP_NAME")
-		v.BindEnv("appport", "FUSIONALY_APP_PORT")
-		v.BindEnv("environment", "FUSIONALY_ENV")
-		v.BindEnv("loglevel", "FUSIONALY_LOG_LEVEL")
-		v.BindEnv("privatekey", "FUSIONALY_PRIVATE_KEY")
-		v.BindEnv("sessiontimeoutseconds", "FUSIONALY_SESSION_TIMEOUT_SECONDS")
-		v.BindEnv("loginsessiontimeoutseconds", "FUSIONALY_LOGIN_SESSION_TIMEOUT_SECONDS")
-		v.BindEnv("adminemail", "FUSIONALY_ADMIN_EMAIL")
-		v.BindEnv("domain", "FUSIONALY_DOMAIN")
-		v.BindEnv("storagepath", "FUSIONALY_STORAGE_PATH")
-		v.BindEnv("geodbpath", "FUSIONALY_GEO_DB_PATH")
-		v.BindEnv("publicdir", "FUSIONALY_PUBLIC_DIR")
-		v.BindEnv("publicassetsurlprefix", "FUSIONALY_PUBLIC_ASSETS_URL_PREFIX")
-		v.BindEnv("logsdir", "FUSIONALY_LOGS_DIR")
-		v.BindEnv("logsmaxsizeinmb", "FUSIONALY_LOGS_MAX_SIZE_IN_MB")
-		v.BindEnv("logsmaxbackups", "FUSIONALY_LOGS_MAX_BACKUPS")
-		v.BindEnv("logsmaxageindays", "FUSIONALY_LOGS_MAX_AGE_IN_DAYS")
-		v.BindEnv("dbtype", "FUSIONALY_DB_TYPE")
-		v.BindEnv("dbmaxopenconns", "FUSIONALY_DB_MAX_OPEN_CONNS")
-		v.BindEnv("dbmaxidleconns", "FUSIONALY_DB_MAX_IDLE_CONNS")
-		v.BindEnv("jobintervalseconds", "FUSIONALY_JOB_INTERVAL_SECONDS")
-		v.BindEnv("ingestedeventsretentiondays", "FUSIONALY_INGESTED_EVENTS_RETENTION_DAYS")
-
-		cfg = &Config{
-			CSRFContextKey: "csrf",
-		}
-		if err := v.Unmarshal(cfg); err != nil {
-			log.Fatalf("config: failed to unmarshal configuration: %v", err)
+		var err error
+		cfg, err = load(os.Getenv)
+		if err != nil {
+			log.Fatalf("config: %v", err)
 		}
 
 		// Validate
@@ -153,6 +105,57 @@ func GetConfig() *Config {
 		}
 	})
 	return cfg
+}
+
+// load builds the configuration from the FUSIONALY_ environment variables
+// that getenv returns, with defaults for the ones that are unset. An empty
+// variable counts as unset.
+func load(getenv func(string) string) (*Config, error) {
+	str := func(name, def string) string {
+		if v := getenv(name); v != "" {
+			return v
+		}
+		return def
+	}
+	var bad error
+	num := func(name string, def int) int {
+		v := getenv(name)
+		if v == "" {
+			return def
+		}
+		n, err := strconv.Atoi(strings.TrimSpace(v))
+		if err != nil && bad == nil {
+			bad = fmt.Errorf("%s must be a whole number, got %q", name, v)
+		}
+		return n
+	}
+
+	c := &Config{
+		AppName:                     str("FUSIONALY_APP_NAME", "fusionaly"),
+		AppPort:                     str("FUSIONALY_APP_PORT", "3000"),
+		Environment:                 str("FUSIONALY_ENV", Development),
+		LogLevel:                    LogLevel(str("FUSIONALY_LOG_LEVEL", "")), // empty: cartridge picks one per environment
+		PrivateKey:                  str("FUSIONALY_PRIVATE_KEY", "88888888888888888888888888888888"),
+		SessionTimeoutSeconds:       num("FUSIONALY_SESSION_TIMEOUT_SECONDS", 1800),
+		LoginSessionTimeoutSeconds:  num("FUSIONALY_LOGIN_SESSION_TIMEOUT_SECONDS", 7776000), // 90 days
+		CSRFContextKey:              "csrf",
+		AdminEmail:                  str("FUSIONALY_ADMIN_EMAIL", ""),
+		Domain:                      str("FUSIONALY_DOMAIN", ""),
+		DatabasePath:                str("FUSIONALY_STORAGE_PATH", "storage"),
+		GeoDBPath:                   str("FUSIONALY_GEO_DB_PATH", "storage/GeoLite2-City.mmdb"),
+		PublicDirectory:             str("FUSIONALY_PUBLIC_DIR", "web/dist/assets"),
+		PublicAssetsUrlPrefix:       str("FUSIONALY_PUBLIC_ASSETS_URL_PREFIX", "/"),
+		LogsDirectory:               str("FUSIONALY_LOGS_DIR", "logs"),
+		LogsMaxSizeInMb:             num("FUSIONALY_LOGS_MAX_SIZE_IN_MB", 20),
+		LogsMaxBackups:              num("FUSIONALY_LOGS_MAX_BACKUPS", 10),
+		LogsMaxAgeInDays:            num("FUSIONALY_LOGS_MAX_AGE_IN_DAYS", 30),
+		DatabaseType:                str("FUSIONALY_DB_TYPE", SQLiteDatabase),
+		DatabaseMaxOpenConns:        num("FUSIONALY_DB_MAX_OPEN_CONNS", 0),
+		DatabaseMaxIdleConns:        num("FUSIONALY_DB_MAX_IDLE_CONNS", 0),
+		JobIntervalSeconds:          num("FUSIONALY_JOB_INTERVAL_SECONDS", 60),
+		IngestedEventsRetentionDays: num("FUSIONALY_INGESTED_EVENTS_RETENTION_DAYS", 90),
+	}
+	return c, bad
 }
 
 // validate checks the configuration for errors
