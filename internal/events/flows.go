@@ -8,12 +8,7 @@ import (
 	"gorm.io/gorm"
 
 	"fusionaly/internal/config"
-	"fusionaly/internal/settings"
 )
-
-// keyFlowTransitionsRebuilt marks that flow_transition_stats was rebuilt
-// with visit-based flows. Versions before it cut a visit at each clock hour.
-const keyFlowTransitionsRebuilt = "flow_transitions_rebuilt_v1"
 
 // FlowTransition counts the visitors who moved from one page to the next at
 // one step of their visit, in one hour.
@@ -199,47 +194,6 @@ func ComputeFlowTransitionsForEvents(db *gorm.DB, logger *slog.Logger, processed
 				slog.Any("error", err))
 		}
 	}
-}
-
-// RebuildFlowTransitionsOnce rebuilds flow_transition_stats from the events
-// table, one time per install, one UTC day at a time.
-func RebuildFlowTransitionsOnce(db *gorm.DB, logger *slog.Logger, maxDepth int) error {
-	if done, _ := settings.GetSetting(db, keyFlowTransitionsRebuilt); done != "" {
-		return nil
-	}
-
-	var first Event
-	err := db.Order("timestamp").Limit(1).Find(&first).Error
-	if err != nil {
-		return fmt.Errorf("failed to find the first event: %w", err)
-	}
-
-	started := time.Now()
-	err = db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Exec("DELETE FROM flow_transition_stats").Error; err != nil {
-			return fmt.Errorf("failed to clear flow transitions: %w", err)
-		}
-		if first.ID == 0 {
-			return nil
-		}
-		end := time.Now().UTC()
-		for day := first.Timestamp.UTC().Truncate(24 * time.Hour); day.Before(end); day = day.Add(24 * time.Hour) {
-			transitions, err := QueryFlowTransitions(tx, 0, day, day.Add(24*time.Hour), maxDepth)
-			if err != nil {
-				return err
-			}
-			if err := insertFlowTransitions(tx, transitions); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-
-	logger.Info("Rebuilt flow transitions", slog.Duration("took", time.Since(started)))
-	return settings.CreateOrUpdateSetting(db, keyFlowTransitionsRebuilt, time.Now().UTC().Format(time.RFC3339))
 }
 
 func insertFlowTransitions(tx *gorm.DB, transitions []FlowTransition) error {

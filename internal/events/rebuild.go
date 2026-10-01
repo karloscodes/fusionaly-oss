@@ -11,15 +11,14 @@ import (
 	"fusionaly/internal/settings"
 )
 
-// keyVisitCountsRebuilt marks that the stored visit counts were rebuilt
-// with the visit rules of v2.6.2. v1 marked the rebuild of v2.4.3, which did
-// not yet count a visit that opens with a custom event.
-const keyVisitCountsRebuilt = "visit_counts_rebuilt_v2"
+// keyVisitCountsRebuilt marks that the stored bounces, exits, and page
+// visitors were rebuilt with the visit rules of v2.4.3.
+const keyVisitCountsRebuilt = "visit_counts_rebuilt_v1"
 
 // RebuildVisitCountsOnce rebuilds the stored visit counts from the events
-// table, one time per install. Versions before v2.6.2 counted them wrong.
-// The event processor calls it, so no event is counted while the rebuild
-// runs.
+// table, one time per install. Versions before v2.4.3 counted them wrong.
+// Later fixes apply forward only and do not run it again. The event
+// processor calls it, so no event is counted while the rebuild runs.
 func RebuildVisitCountsOnce(db *gorm.DB, logger *slog.Logger) error {
 	if done, _ := settings.GetSetting(db, keyVisitCountsRebuilt); done != "" {
 		return nil

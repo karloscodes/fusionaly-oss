@@ -39,9 +39,6 @@ func (j *EventProcessorJob) Run() error {
 	if err := events.RebuildVisitCountsOnce(db, j.logger); err != nil {
 		j.logger.Error("Failed to rebuild visit counts", slog.Any("error", err))
 	}
-	if err := events.RebuildFlowTransitionsOnce(db, j.logger, flowMaxDepth); err != nil {
-		j.logger.Error("Failed to rebuild flow transitions", slog.Any("error", err))
-	}
 
 	// Count unprocessed events
 	var unprocessedCount int64

@@ -246,25 +246,3 @@ func TestComputeFlowTransitionsForHour(t *testing.T) {
 		assert.Len(t, stored, 3)
 	})
 }
-
-func TestRebuildFlowTransitionsOnce(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	db := setupFlowDB(t,
-		pageView("u1", "/a", at("11h59m")),
-		pageView("u1", "/b", at("12h01m")),
-	)
-	stale := analytics.FlowTransitionStat{WebsiteID: 1, StepPosition: 1, SourcePage: "example.com/b", TargetPage: "example.com/x", Transitions: 9, Hour: at("12h")}
-	require.NoError(t, db.Create(&stale).Error)
-
-	require.NoError(t, events.RebuildFlowTransitionsOnce(db, logger, 5))
-
-	assert.Equal(t, []string{"12:00 step1 example.com/a -> example.com/b = 1"}, storedFlows(t, db))
-
-	t.Run("runs one time only", func(t *testing.T) {
-		require.NoError(t, db.Create(&analytics.FlowTransitionStat{WebsiteID: 1, StepPosition: 1, SourcePage: "x", TargetPage: "y", Transitions: 1, Hour: at("13h")}).Error)
-
-		require.NoError(t, events.RebuildFlowTransitionsOnce(db, logger, 5))
-
-		assert.Len(t, storedFlows(t, db), 2)
-	})
-}
