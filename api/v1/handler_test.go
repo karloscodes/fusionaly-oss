@@ -23,6 +23,36 @@ import (
 )
 
 func TestGetSDKHandler(t *testing.T) {
+	t.Run("uses https behind kamal-proxy", func(t *testing.T) {
+		dbManager, _ := testsupport.SetupTestDBManager(t)
+		app := testsupport.CreateMinimalTestApp(t, dbManager.GetConnection())
+		req := httptest.NewRequest("GET", "/y/api/v1/sdk.js", nil)
+		req.Host = "analytics.example.com"
+		req.RemoteAddr = "172.18.0.2:41234" // kamal-proxy in the Docker network
+		req.Header.Set("X-Forwarded-Proto", "https")
+
+		rec := httptest.NewRecorder() // app.Test would replace RemoteAddr
+
+		app.ServeHTTP(rec, req)
+
+		assert.Contains(t, rec.Body.String(), `host:"https://analytics.example.com"`)
+	})
+
+	t.Run("ignores X-Forwarded-Proto from a public peer", func(t *testing.T) {
+		dbManager, _ := testsupport.SetupTestDBManager(t)
+		app := testsupport.CreateMinimalTestApp(t, dbManager.GetConnection())
+		req := httptest.NewRequest("GET", "/y/api/v1/sdk.js", nil)
+		req.Host = "analytics.example.com"
+		req.RemoteAddr = "198.51.100.9:5000"
+		req.Header.Set("X-Forwarded-Proto", "https")
+
+		rec := httptest.NewRecorder() // app.Test would replace RemoteAddr
+
+		app.ServeHTTP(rec, req)
+
+		assert.Contains(t, rec.Body.String(), `host:"http://analytics.example.com"`)
+	})
+
 	t.Run("returns SDK with correct headers", func(t *testing.T) {
 		dbManager, _ := testsupport.SetupTestDBManager(t)
 		db := dbManager.GetConnection()

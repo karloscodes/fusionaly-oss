@@ -52,6 +52,15 @@ func WithManifestData(data []byte) AppOption {
 	}
 }
 
+// TrustedProxies are the peers whose X-Forwarded-Proto cartridge accepts.
+// kamal-proxy runs on the same host and reaches the app over a Docker
+// network, so only private and loopback peers count. This keeps
+// ctx.BaseURL() https in production; the SDK URL needs it.
+var TrustedProxies = []string{
+	"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "127.0.0.0/8",
+	"fc00::/7", "::1/128",
+}
+
 // NewApp creates a new application instance with default settings
 func NewApp(opts ...AppOption) (*Application, error) {
 	cfg := config.GetConfig()
@@ -98,9 +107,10 @@ func NewAppWithConfig(cfg *config.Config, opts ...AppOption) (*Application, erro
 	// admin forms reject cross-site requests (CSRF). Only event ingestion
 	// accepts cross-site requests; see publicAPIConfig in routes.go.
 	serverConfig := cartridge.DefaultServerConfig()
-	// No ProxyHeader: Fiber would trust the leftmost X-Forwarded-For entry,
-	// which the client controls. clientip.FromRequest finds the real address;
-	// the rate limiters and event ingestion use it.
+	serverConfig.TrustedProxies = TrustedProxies
+	// No ProxyHeader: clientip.FromRequest finds the real client address
+	// (it also skips Cloudflare and malformed entries); the rate limiters and
+	// event ingestion use it. ctx.IP() stays the direct peer.
 
 	// Static assets: embedded in production, disk in development
 	if !cfg.IsDevelopment() && options.staticFS != nil {

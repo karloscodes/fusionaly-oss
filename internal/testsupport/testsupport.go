@@ -405,6 +405,7 @@ func CreateMinimalTestApp(t *testing.T, db *gorm.DB) *cartridge.Server {
 	cfg.DBManager = dbManager
 	cfg.StaticDirectory = appConfig.PublicDirectory
 	cfg.StaticPrefix = appConfig.PublicAssetsUrlPrefix
+	cfg.TrustedProxies = internal.TrustedProxies
 	// Keep cartridge's Sec-Fetch-Site defaults, as internal/app.go does, so
 	// tests run the same checks as production.
 
