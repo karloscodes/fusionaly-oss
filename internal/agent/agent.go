@@ -106,14 +106,24 @@ var deniedWords = map[string]bool{
 	"attach": true, "detach": true, "vacuum": true, "reindex": true, "analyze": true,
 	"begin": true, "commit": true, "rollback": true, "savepoint": true, "release": true,
 	"load_extension": true, "writefile": true, "readfile": true,
+	// These build values of any size in one call and can exhaust memory.
+	"zeroblob": true, "randomblob": true, "printf": true, "format": true,
 }
+
+// MaxResultBytes caps the text and blob bytes of one result, so a query
+// cannot build a response that exhausts memory.
+const MaxResultBytes = 5 << 20
 
 // ValidateReadOnlyQuery checks that sqlQuery is one SELECT (or WITH) statement
 // that only reads allowed tables. It tokenizes string literals, quoted
 // identifiers, and comments together, so a "/*" or ";" inside a string cannot
 // hide a second statement.
+//
+// SQLite accepts a string literal as a table name (FROM 'users'), so the
+// content of each literal is checked against the table names too. A literal
+// that is exactly a protected table name is refused, also as a plain value.
 func ValidateReadOnlyQuery(sqlQuery string, tableNames []string) error {
-	words, err := sqlWords(sqlQuery)
+	words, literals, err := sqlWords(sqlQuery)
 	if err != nil {
 		return err
 	}
@@ -137,21 +147,28 @@ func ValidateReadOnlyQuery(sqlQuery string, tableNames []string) error {
 			return fmt.Errorf("table not allowed: %s", w)
 		}
 	}
+	for _, l := range literals {
+		if strings.HasPrefix(l, "pragma_") || strings.HasPrefix(l, "sqlite_") || existing[l] && !AllowedTables[l] {
+			return fmt.Errorf("table not allowed: %s", l)
+		}
+	}
 	return nil
 }
 
-// sqlWords returns the lowercased keywords and identifiers of one statement.
-// String literals are skipped. Comments and a second statement are errors.
-func sqlWords(q string) ([]string, error) {
-	var words []string
+// sqlWords returns the lowercased keywords and identifiers of one statement,
+// and separately the lowercased content of its string literals. Comments and
+// a second statement are errors.
+func sqlWords(q string) (words, literals []string, err error) {
 	for i := 0; i < len(q); {
 		c := q[i]
 		switch {
 		case c == '\'':
 			end := closingQuote(q, i, '\'')
 			if end < 0 {
-				return nil, fmt.Errorf("unterminated string literal")
+				return nil, nil, fmt.Errorf("unterminated string literal")
 			}
+			literal := strings.ReplaceAll(q[i+1:end], "''", "'")
+			literals = append(literals, strings.ToLower(strings.TrimSpace(literal)))
 			i = end + 1
 		case c == '"' || c == '`' || c == '[':
 			closer := c
@@ -160,17 +177,17 @@ func sqlWords(q string) ([]string, error) {
 			}
 			end := closingQuote(q, i, closer)
 			if end < 0 {
-				return nil, fmt.Errorf("unterminated identifier")
+				return nil, nil, fmt.Errorf("unterminated identifier")
 			}
 			words = append(words, strings.ToLower(q[i+1:end]))
 			i = end + 1
 		case strings.HasPrefix(q[i:], "--") || strings.HasPrefix(q[i:], "/*"):
-			return nil, fmt.Errorf("comments not allowed in queries")
+			return nil, nil, fmt.Errorf("comments not allowed in queries")
 		case c == ';':
 			if strings.TrimSpace(q[i+1:]) != "" {
-				return nil, fmt.Errorf("multiple statements not allowed")
+				return nil, nil, fmt.Errorf("multiple statements not allowed")
 			}
-			return words, nil
+			return words, literals, nil
 		case isWordByte(c):
 			start := i
 			for i < len(q) && isWordByte(q[i]) {
@@ -181,7 +198,7 @@ func sqlWords(q string) ([]string, error) {
 			i++
 		}
 	}
-	return words, nil
+	return words, literals, nil
 }
 
 // closingQuote returns the index of the quote that closes the one at start.
@@ -260,6 +277,7 @@ func Query(ctx context.Context, db *gorm.DB, sqlQuery string, timeout time.Durat
 	}
 
 	truncated := false
+	resultBytes := 0
 	for rows.Next() {
 		if len(resultRows) == MaxRows {
 			truncated = true
@@ -271,11 +289,19 @@ func Query(ctx context.Context, db *gorm.DB, sqlQuery string, timeout time.Durat
 
 		row := make([]interface{}, len(columns))
 		for i, val := range values {
-			if b, ok := val.([]byte); ok {
-				row[i] = string(b)
-			} else {
+			switch v := val.(type) {
+			case []byte:
+				resultBytes += len(v)
+				row[i] = string(v)
+			case string:
+				resultBytes += len(v)
+				row[i] = v
+			default:
 				row[i] = val
 			}
+		}
+		if resultBytes > MaxResultBytes {
+			return nil, fmt.Errorf("result too large: over %d MB; select fewer rows or columns", MaxResultBytes>>20)
 		}
 		resultRows = append(resultRows, row)
 	}

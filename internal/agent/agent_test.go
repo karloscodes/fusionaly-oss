@@ -263,3 +263,57 @@ func TestQuery(t *testing.T) {
 		assert.Equal(t, int64(1), count, "an in-memory DB is lost if its last connection closes")
 	})
 }
+
+func TestQueryGuard(t *testing.T) {
+	t.Run("refuses protected tables named as string literals", func(t *testing.T) {
+		dbManager, _ := testsupport.SetupTestDBManager(t)
+		db := dbManager.GetConnection()
+
+		for _, q := range []string{
+			"SELECT * FROM 'users'",
+			"SELECT key, value FROM 'settings'",
+			"SELECT * FROM main.'users'",
+			"SELECT * FROM 'sqlite_master'",
+			"SELECT * FROM 'pragma_table_info'('users')",
+		} {
+			_, err := agent.Query(context.Background(), db, q, 5*time.Second)
+
+			assert.Error(t, err, q)
+		}
+	})
+
+	t.Run("still allows ordinary string values", func(t *testing.T) {
+		dbManager, _ := testsupport.SetupTestDBManager(t)
+		db := dbManager.GetConnection()
+
+		_, err := agent.Query(context.Background(), db, "SELECT * FROM page_stats WHERE pathname = '/users/settings'", 5*time.Second)
+
+		assert.NoError(t, err)
+	})
+
+	t.Run("refuses functions that build huge values", func(t *testing.T) {
+		dbManager, _ := testsupport.SetupTestDBManager(t)
+		db := dbManager.GetConnection()
+
+		for _, q := range []string{
+			"SELECT zeroblob(20000000)",
+			"SELECT randomblob(20000000)",
+			"SELECT printf('%.*c', 20000000, 'x')",
+			"SELECT format('%.*c', 20000000, 'x')",
+		} {
+			_, err := agent.Query(context.Background(), db, q, 5*time.Second)
+
+			assert.Error(t, err, q)
+		}
+	})
+
+	t.Run("refuses a result over the size limit", func(t *testing.T) {
+		dbManager, _ := testsupport.SetupTestDBManager(t)
+		db := dbManager.GetConnection()
+		q := "WITH RECURSIVE n(x, s) AS (SELECT 1, hex(1) UNION ALL SELECT x + 1, s || s FROM n WHERE x < 22) SELECT s FROM n"
+
+		_, err := agent.Query(context.Background(), db, q, 5*time.Second)
+
+		assert.ErrorContains(t, err, "result too large")
+	})
+}
