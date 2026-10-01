@@ -40,7 +40,7 @@ func TestRebuildVisitCountsOnce(t *testing.T) {
 
 		assert.Equal(t, wantSite, siteTotalsFor(t, db, site.ID))
 		assert.Equal(t, wantPages, pageTotalsFor(t, db, site.ID))
-		assert.Equal(t, 2, wantSite.BounceCount, "b's visit and a's later visit are bounces")
+		assert.Equal(t, 1, wantSite.BounceCount, "a's later visit is a bounce; b's signup is engagement")
 	})
 
 	t.Run("runs one time per install", func(t *testing.T) {
@@ -92,5 +92,5 @@ func TestRebuildVisitCountsMatchesLiveCounting(t *testing.T) {
 	assert.Equal(t, wantSite, siteTotalsFor(t, db, site.ID))
 	assert.Equal(t, wantPages, pageTotalsFor(t, db, site.ID))
 	assert.Equal(t, wantRefs, refVisitorsFor(t, db, site.ID))
-	assert.Equal(t, siteTotals{PageViews: 4, Visitors: 2, Sessions: 3, BounceCount: 2}, wantSite)
+	assert.Equal(t, siteTotals{PageViews: 4, Visitors: 2, Sessions: 3, BounceCount: 1}, wantSite, "a's last visit; b's custom event is engagement")
 }

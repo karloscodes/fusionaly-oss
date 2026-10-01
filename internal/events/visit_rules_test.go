@@ -56,11 +56,11 @@ func TestVisitRules(t *testing.T) {
 		arrive(t, dbm, site.ID, "v1", "/", start, events.EventTypeCustomEvent)
 		arrive(t, dbm, site.ID, "v1", "/signup", start.Add(time.Minute), events.EventTypePageView)
 
-		assert.Equal(t, siteTotals{PageViews: 1, Visitors: 1, Sessions: 1, BounceCount: 1}, siteTotalsFor(t, db, site.ID))
+		assert.Equal(t, siteTotals{PageViews: 1, Visitors: 1, Sessions: 1, BounceCount: 0}, siteTotalsFor(t, db, site.ID), "the custom event is engagement: no bounce")
 		assert.Equal(t, pageTotals{Pathname: "/signup", Visitors: 1, PageViews: 1, Entrances: 1, Exits: 1}, pageTotalsFor(t, db, site.ID)["/signup"])
 	})
 
-	t.Run("a second page view takes back the bounce of a visit that opened with a custom event", func(t *testing.T) {
+	t.Run("a second page view of a visit that opened with a custom event takes nothing back", func(t *testing.T) {
 		dbm, _, site := testsupport.SetupTestDBManagerWithWebsite(t, "visits.test")
 		db := dbm.GetConnection()
 
@@ -120,5 +120,75 @@ func TestQueryParameterStats(t *testing.T) {
 		var names []string
 		require.NoError(t, dbm.GetConnection().Table("query_param_stats").Order("param_name").Pluck("param_name", &names).Error)
 		assert.Equal(t, []string{"ref", "source", "via"}, names)
+	})
+}
+
+func customNamed(websiteID uint, visitor, name string, at time.Time) events.IngestedEvent {
+	e := ingested(websiteID, visitor, "/", "", at, at, events.EventTypeCustomEvent)
+	e.CustomEventName = name
+	return e
+}
+
+func pageViewAt(websiteID uint, visitor, path string, at time.Time) events.IngestedEvent {
+	return ingested(websiteID, visitor, path, "", at, at, events.EventTypePageView)
+}
+
+func TestEngagementTakesBackTheBounce(t *testing.T) {
+	start := time.Now().UTC().Add(-3 * time.Hour).Truncate(time.Hour)
+
+	t.Run("a click after the only page view takes back the bounce", func(t *testing.T) {
+		dbm, _, site := testsupport.SetupTestDBManagerWithWebsite(t, "visits.test")
+
+		process(t, dbm, pageViewAt(site.ID, "v1", "/", start))
+		process(t, dbm, customNamed(site.ID, "v1", "click:signup", start.Add(time.Minute)))
+
+		assert.Equal(t, 0, siteTotalsFor(t, dbm.GetConnection(), site.ID).BounceCount)
+	})
+
+	t.Run("an automatic scroll event keeps the bounce", func(t *testing.T) {
+		dbm, _, site := testsupport.SetupTestDBManagerWithWebsite(t, "visits.test")
+
+		process(t, dbm, pageViewAt(site.ID, "v1", "/", start))
+		process(t, dbm, customNamed(site.ID, "v1", "scroll:depth", start.Add(time.Minute)))
+
+		assert.Equal(t, 1, siteTotalsFor(t, dbm.GetConnection(), site.ID).BounceCount)
+	})
+
+	t.Run("a second page view after a click takes nothing back twice", func(t *testing.T) {
+		dbm, _, site := testsupport.SetupTestDBManagerWithWebsite(t, "visits.test")
+		process(t, dbm, pageViewAt(site.ID, "other", "/", start))
+
+		process(t, dbm, pageViewAt(site.ID, "v1", "/", start.Add(time.Minute)))
+		process(t, dbm, customNamed(site.ID, "v1", "click:signup", start.Add(2*time.Minute)))
+		process(t, dbm, pageViewAt(site.ID, "v1", "/welcome", start.Add(3*time.Minute)))
+
+		assert.Equal(t, 1, siteTotalsFor(t, dbm.GetConnection(), site.ID).BounceCount, "only the other visitor's visit is a bounce")
+	})
+
+	t.Run("a visit that opens with a click is no bounce", func(t *testing.T) {
+		dbm, _, site := testsupport.SetupTestDBManagerWithWebsite(t, "visits.test")
+
+		process(t, dbm, customNamed(site.ID, "v1", "click:signup", start))
+		process(t, dbm, pageViewAt(site.ID, "v1", "/", start.Add(time.Minute)))
+
+		assert.Equal(t, siteTotals{PageViews: 1, Visitors: 1, Sessions: 1, BounceCount: 0}, siteTotalsFor(t, dbm.GetConnection(), site.ID))
+	})
+
+	t.Run("the rebuild counts bounces the same way", func(t *testing.T) {
+		dbm, _, site := testsupport.SetupTestDBManagerWithWebsite(t, "visits.test")
+		db := dbm.GetConnection()
+		process(t, dbm, pageViewAt(site.ID, "a", "/", start))
+		process(t, dbm, customNamed(site.ID, "a", "click:signup", start.Add(time.Minute)))
+		process(t, dbm, pageViewAt(site.ID, "b", "/", start))
+		process(t, dbm, customNamed(site.ID, "b", "scroll:depth", start.Add(time.Minute)))
+		process(t, dbm, customNamed(site.ID, "c", "click:signup", start))
+		process(t, dbm, pageViewAt(site.ID, "c", "/", start.Add(time.Minute)))
+		want := siteTotalsFor(t, db, site.ID)
+		zeroVisitCounts(t, db)
+
+		require.NoError(t, events.RebuildVisitCounts(db, site.ID))
+
+		assert.Equal(t, want, siteTotalsFor(t, db, site.ID))
+		assert.Equal(t, 1, want.BounceCount)
 	})
 }

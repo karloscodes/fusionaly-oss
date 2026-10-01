@@ -64,7 +64,8 @@ type visitTally struct {
 //   - a visit ends after SessionTimeoutSeconds without an event of any type
 //   - a visitor and a visit count at their first page view, and the visit's
 //     referrer gets its visitor there; that page view is the visit's entrance
-//   - a visit is a bounce when it has exactly one page view
+//   - a visit is a bounce when it has exactly one page view and no
+//     engagement (a custom event other than scroll:*)
 //   - a visit's last page view is its exit
 //   - a page counts each visitor once, at their first view of it
 //
@@ -92,7 +93,7 @@ func tallyVisits(db *gorm.DB, websiteID uint) (visitTally, error) {
 	timeout := time.Duration(config.GetConfig().SessionTimeoutSeconds) * time.Second
 
 	rows, err := db.Model(&Event{}).
-		Select("user_signature, hostname, pathname, referrer_hostname, referrer_pathname, event_type, timestamp").
+		Select("user_signature, hostname, pathname, referrer_hostname, referrer_pathname, event_type, custom_event_name, timestamp").
 		Where("website_id = ?", websiteID).
 		Order("user_signature, timestamp, id").
 		Rows()
@@ -105,13 +106,14 @@ func tallyVisits(db *gorm.DB, websiteID uint) (visitTally, error) {
 		signature   string
 		lastEvent   time.Time
 		pageViews   int // in the current visit
+		engaged     bool
 		entry       pageBucket
 		lastPage    pageBucket
 		seenPages   map[string]bool
 		visitorSeen bool
 	)
 	endVisit := func() {
-		if pageViews == 1 {
+		if pageViews == 1 && !engaged {
 			tally.bounces[entry.hour]++
 		}
 		if pageViews > 0 {
@@ -130,7 +132,7 @@ func tallyVisits(db *gorm.DB, websiteID uint) (visitTally, error) {
 			if !lastEvent.IsZero() {
 				endVisit()
 			}
-			pageViews = 0
+			pageViews, engaged = 0, false
 		}
 		if newVisitor {
 			signature, seenPages, visitorSeen = e.UserSignature, map[string]bool{}, false
@@ -138,6 +140,7 @@ func tallyVisits(db *gorm.DB, websiteID uint) (visitTally, error) {
 		lastEvent = e.Timestamp
 
 		if e.EventType != EventTypePageView {
+			engaged = engaged || isEngagement(e.CustomEventName)
 			continue
 		}
 		page := pageBucket{e.Hostname, e.Pathname, bucketOf(e.Timestamp)}

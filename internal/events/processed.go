@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"strings"
 	"time"
 
 	"log/slog"
@@ -210,7 +211,7 @@ func prepareEventProcessingData(db *gorm.DB, tempEvent *IngestedEvent, eventID u
 	// arrives; that later page view then corrects it (see visitCorrections).
 	isExit := isPageView
 
-	var isNewPageVisitor bool
+	var isNewPageVisitor, isBounce bool
 	var previousPageView *PageViewRef
 	var unbounceAt *time.Time
 	if isPageView {
@@ -226,13 +227,24 @@ func prepareEventProcessingData(db *gorm.DB, tempEvent *IngestedEvent, eventID u
 			return nil, fmt.Errorf("failed to check page visitor status: %w", err)
 		}
 		if visit.sessionStart != nil {
-			var earlier int
-			earlier, previousPageView, unbounceAt, err = visitCorrections(db, tempEvent.WebsiteID, tempEvent.UserSignature, *visit.sessionStart, tempEvent.Timestamp, eventID)
+			so, err := visitSoFar(db, tempEvent.WebsiteID, tempEvent.UserSignature, *visit.sessionStart, tempEvent.Timestamp, eventID)
 			if err != nil {
-				return nil, fmt.Errorf("failed to check the visit's earlier page views: %w", err)
+				return nil, fmt.Errorf("failed to check the visit's earlier events: %w", err)
 			}
-			isNewSession = earlier == 0
+			isNewSession = len(so.pageViews) == 0
+			isBounce = isNewSession && !so.engaged
+			if len(so.pageViews) > 0 {
+				last := so.pageViews[0]
+				previousPageView = &PageViewRef{Hostname: last.Hostname, Pathname: last.Pathname, Timestamp: last.Timestamp}
+			}
+			unbounceAt = so.bounceToTakeBack()
 		}
+	} else if isEngagement(tempEvent.CustomEventName) && visit.sessionStart != nil {
+		so, err := visitSoFar(db, tempEvent.WebsiteID, tempEvent.UserSignature, *visit.sessionStart, tempEvent.Timestamp, eventID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check the visit's earlier events: %w", err)
+		}
+		unbounceAt = so.bounceToTakeBack()
 	}
 	isEntrance := isNewSession && isPageView
 
@@ -296,6 +308,7 @@ func prepareEventProcessingData(db *gorm.DB, tempEvent *IngestedEvent, eventID u
 		HasUTM:           hasUTM,
 		PreviousPageView: previousPageView,
 		UnbounceAt:       unbounceAt,
+		IsBounce:         isBounce,
 	}, nil
 }
 
@@ -377,32 +390,55 @@ func checkIsNewPageVisitor(db *gorm.DB, websiteID uint, userSignature, hostname,
 	return count == 0, nil
 }
 
-// visitCorrections counts the visit's earlier page views (0, 1, or 2 for
-// "two or more") and returns what this page view takes back. The visit's
-// page views are counted as they arrive, so the processor cannot know yet
-// whether more will follow:
-//   - the visit's previous page view was counted as its exit; it no longer is,
-//   - a visit with one page view was counted as a bounce at that page view;
-//     with a second one it no longer is.
-func visitCorrections(db *gorm.DB, websiteID uint, userSignature string, sessionStart, timestamp time.Time, eventID uint) (int, *PageViewRef, *time.Time, error) {
-	var earlier []Event
-	err := db.Select("hostname", "pathname", "timestamp").
-		Where("website_id = ? AND user_signature = ? AND session_start = ? AND event_type = ? AND timestamp <= ? AND id != ?",
-			websiteID, userSignature, sessionStart.UTC(), EventTypePageView, timestamp, eventID).
+// isEngagement reports whether a custom event shows the visitor interacted:
+// any custom event except the SDK's automatic scroll events.
+func isEngagement(customEventName string) bool {
+	return !strings.HasPrefix(customEventName, "scroll:")
+}
+
+// visitProgress is what a visit holds before an event. The visit's counts
+// are made as its events arrive, so the processor cannot know yet whether
+// more will follow:
+//   - the visit's latest page view was counted as its exit; a later page
+//     view takes that back
+//   - a visit is counted as a bounce at its first page view, unless it had
+//     engagement before; a second page view or the first engagement takes
+//     the bounce back
+type visitProgress struct {
+	pageViews []Event // the latest two, latest first
+	engaged   bool
+}
+
+// bounceToTakeBack returns the bucket time of the visit's bounce when this
+// event is the one that takes it back, or nil.
+func (v visitProgress) bounceToTakeBack() *time.Time {
+	if len(v.pageViews) != 1 || v.engaged {
+		return nil
+	}
+	at := v.pageViews[0].Timestamp
+	return &at
+}
+
+func visitSoFar(db *gorm.DB, websiteID uint, userSignature string, sessionStart, timestamp time.Time, eventID uint) (visitProgress, error) {
+	var progress visitProgress
+	inVisit := db.Where("website_id = ? AND user_signature = ? AND session_start = ? AND timestamp <= ? AND id != ?",
+		websiteID, userSignature, sessionStart.UTC(), timestamp, eventID)
+
+	err := db.Model(&Event{}).Select("hostname", "pathname", "timestamp").
+		Where(inVisit).Where("event_type = ?", EventTypePageView).
 		Order("timestamp DESC, id DESC").
 		Limit(2).
-		Find(&earlier).Error
-	if err != nil || len(earlier) == 0 {
-		return 0, nil, nil, err
+		Find(&progress.pageViews).Error
+	if err != nil {
+		return progress, err
 	}
 
-	previous := &PageViewRef{Hostname: earlier[0].Hostname, Pathname: earlier[0].Pathname, Timestamp: earlier[0].Timestamp}
-	var unbounceAt *time.Time
-	if len(earlier) == 1 {
-		entry := earlier[0].Timestamp
-		unbounceAt = &entry
-	}
-	return len(earlier), previous, unbounceAt, nil
+	var engagements int64
+	err = db.Model(&Event{}).
+		Where(inVisit).Where("event_type = ? AND custom_event_name NOT LIKE 'scroll:%'", EventTypeCustomEvent).
+		Count(&engagements).Error
+	progress.engaged = engagements > 0
+	return progress, err
 }
 
 // checkIsNewEventVisitor checks if this is the first time a visitor triggers a specific custom event

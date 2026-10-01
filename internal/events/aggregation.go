@@ -33,9 +33,9 @@ func truncateToHalfHour(timestamp time.Time) time.Time {
 // UpdateAllAggregatesBatch updates aggregates from processed events.
 func UpdateAllAggregatesBatch(tx *gorm.DB, logger *slog.Logger, dataList []*EventProcessingData) error {
 	for _, data := range dataList {
-		// A visit is a bounce until a second page view arrives; that page view
-		// then takes the bounce back (see applyVisitCorrections).
-		isBounce := data.EventType == EventTypePageView && data.IsNewSession
+		// A visit is a bounce until a second page view or an engagement
+		// arrives; that event then takes the bounce back (see visitProgress).
+		isBounce := data.EventType == EventTypePageView && data.IsBounce
 
 		// Truncate timestamp to half-hour bucket for finer granularity
 		hourTime := truncateToHalfHour(data.Timestamp.UTC())
@@ -86,6 +86,9 @@ func UpdateAllAggregatesBatch(tx *gorm.DB, logger *slog.Logger, dataList []*Even
 
 		// Always process custom events regardless of event type
 		if data.EventType == EventTypeCustomEvent && data.CustomEventName != "" {
+			if err := applyVisitCorrections(tx, data); err != nil {
+				return fmt.Errorf("failed to take back the visit's bounce: %w", err)
+			}
 			// Use event-specific IsNewVisitor for custom events
 			if err := updateEventStat(tx, data.WebsiteID, data.CustomEventName, data.CustomEventKey, hourTime, data.IsNewVisitor); err != nil {
 				return fmt.Errorf("failed to update event stats: %w", err)

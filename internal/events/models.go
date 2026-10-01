@@ -63,7 +63,8 @@ type EventProcessingData struct {
 	// Set when this page view continues a visit whose earlier page views were
 	// counted provisionally (see processed.go).
 	PreviousPageView *PageViewRef // the visit's previous page view: no longer its exit
-	UnbounceAt       *time.Time   // the visit's entry: no longer a bounce
+	UnbounceAt       *time.Time   // the visit's only page view: no longer a bounce
+	IsBounce         bool         // the visit's first page view, with no engagement yet
 }
 
 // PageViewRef identifies an earlier page view by where it was counted.
