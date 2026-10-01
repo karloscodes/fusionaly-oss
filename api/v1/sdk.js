@@ -58,8 +58,13 @@
 		}
 	};
 
-	// Helper function to check if tracking is allowed
+	// Helper function to check if tracking is allowed. Automated browsers
+	// (Puppeteer, Playwright, Selenium) set navigator.webdriver; they are
+	// monitors and scrapers, not visitors.
 	const shouldTrack = () => {
+		if (navigator.webdriver === true) {
+			return false;
+		}
 		return !(
 			navigator.doNotTrack === "1" &&
 			window.Fusionaly.config.respectDoNotTrack
@@ -78,19 +83,27 @@
 		log("Offline, events will be stored locally");
 	});
 
-	// Add SPA support by monitoring navigation
+	// Add SPA support by monitoring navigation. A history change that keeps
+	// the path (an anchor link, a query or hash update) is no new page view.
+	let lastPagePath = null;
+	const sendPageViewIfPathChanged = () => {
+		if (window.location.pathname !== lastPagePath) {
+			sendPageView();
+		}
+	};
+
 	const setupSPATracking = () => {
 		const originalPushState = history.pushState;
 		history.pushState = function (...args) {
 			originalPushState.apply(history, args);
 			if (window.Fusionaly.config.autoSendPageViews) {
-				setTimeout(sendPageView, 50);
+				setTimeout(sendPageViewIfPathChanged, 50);
 			}
 		};
 
 		window.addEventListener("popstate", () => {
 			if (window.Fusionaly.config.autoSendPageViews) {
-				setTimeout(sendPageView, 50);
+				setTimeout(sendPageViewIfPathChanged, 50);
 			}
 		});
 	};
@@ -233,6 +246,7 @@
 			return;
 		}
 
+		lastPagePath = window.location.pathname;
 		bufferEvent({
 			timestamp: new Date().toISOString(),
 			referrer: document.referrer,
@@ -312,7 +326,9 @@
 		return navigator.sendBeacon(`${baseUrl}/x/api/v1/events/beacon`, body);
 	};
 
-	window.addEventListener("beforeunload", () => {
+	// pagehide fires reliably on mobile Safari and keeps the back-forward
+	// cache working, where beforeunload does neither.
+	window.addEventListener("pagehide", () => {
 		if (!shouldTrack()) {
 			return;
 		}
@@ -918,7 +934,12 @@
 	// Initialize: set up SPA tracking and send initial page view
 	setupSPATracking();
 	if (window.Fusionaly.config.autoSendPageViews) {
-		sendPageView();
+		// A prerendered page is not seen until the visitor opens it.
+		if (document.prerendering) {
+			document.addEventListener("prerenderingchange", sendPageView, { once: true });
+		} else {
+			sendPageView();
+		}
 	}
 	if (window.Fusionaly.config.autoInstrumentButtons) {
 		autoInstrumentButtons();

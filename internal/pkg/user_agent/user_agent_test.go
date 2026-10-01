@@ -80,3 +80,16 @@ func TestParseUserAgent(t *testing.T) {
 		})
 	}
 }
+
+func TestHeadlessBrowsersAreBots(t *testing.T) {
+	agents := []string{
+		"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/134.0.0.0 Safari/537.36",
+		"Mozilla/5.0 (Unknown; Linux x86_64) AppleWebKit/538.1 (KHTML, like Gecko) PhantomJS/2.1.1 Safari/538.1",
+	}
+
+	for _, agent := range agents {
+		if !user_agent.ParseUserAgent(agent).Bot {
+			t.Errorf("expected a bot: %s", agent)
+		}
+	}
+}

@@ -38,6 +38,9 @@ module.exports = {
 				viewport: { width: 1280, height: 720 },
 				// Disable animations for more reliable tests
 				reducedMotion: "reduce",
+				// The SDK ignores automated browsers (navigator.webdriver).
+				// Hide the flag, so the tests see the SDK track like a visitor.
+				launchOptions: { args: ["--disable-blink-features=AutomationControlled"] },
 			},
 		},
 		// Add more browsers if needed for cross-browser testing

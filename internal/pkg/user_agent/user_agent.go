@@ -327,8 +327,25 @@ func (p *DeviceDetectorParser) parseDevice(userAgent string) (string, string, bo
 	return "Desktop", "Desktop Device", false, false, true
 }
 
+// headlessBrowsers run pages without a person: monitors, scrapers, and test
+// runners. The device database lists them as browsers.
+var headlessBrowsers = []string{"HeadlessChrome", "PhantomJS"}
+
+func isHeadless(userAgent string) bool {
+	for _, name := range headlessBrowsers {
+		if strings.Contains(userAgent, name) {
+			return true
+		}
+	}
+	return false
+}
+
 func ParseUserAgent(userAgent string) UserAgent {
 	parser := getParser()
+
+	if isHeadless(userAgent) {
+		return UserAgent{UserAgent: userAgent, OS: "Unknown", Browser: "Headless", Device: "Bot", Bot: true}
+	}
 
 	// Check for bots first
 	if bot := parser.parseBot(userAgent); bot != nil {
