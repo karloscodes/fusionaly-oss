@@ -10,13 +10,13 @@ const TOP_PER_STEP = 4;
 // Layout (SVG units; the SVG scales to the card width).
 const WIDTH = 1100;
 const NODE_WIDTH = 12;
-const GAP = 18;
-const TOP = 34;
-const BOTTOM = 8;
+const GAP = 28;
+const TOP = 44;
+const BOTTOM = 16;
 const LEFT = 150;
 const RIGHT = 180;
-const MAX_NODE = 64; // thickest node, so a few visitors don't fill the whole chart
-const MIN_HEIGHT = 140;
+const MAX_NODE = 110; // thickest node, so a few visitors don't fill the whole chart
+const MIN_HEIGHT = 300; // room to breathe even with one path
 
 interface FlowNode {
 	id: string;
@@ -78,9 +78,9 @@ function layout(links: UserFlowLink[]) {
 		[...nodes.values()].filter((n) => n.step === s).sort((a, b) => b.value - a.value),
 	);
 
-	// Fit the busiest column in a 320-unit area, but never draw a node thicker
+	// Fit the busiest column in a 440-unit area, but never draw a node thicker
 	// than MAX_NODE; then size the chart to what is drawn.
-	const fitArea = 320;
+	const fitArea = 440;
 	const maxValue = Math.max(...[...nodes.values()].map((n) => n.value), 1);
 	const scale = Math.min(
 		MAX_NODE / maxValue,
@@ -93,8 +93,10 @@ function layout(links: UserFlowLink[]) {
 
 	const outY = new Map<string, number>();
 	const inY = new Map<string, number>();
+	// Center each column in the drawing area, so a short column does not sit
+	// at the top of a tall chart.
 	columns.forEach((c, ci) => {
-		let y = TOP;
+		let y = TOP + (height - TOP - BOTTOM - columnHeight(c)) / 2;
 		for (const n of c) {
 			n.x = xs[ci];
 			n.y = y;
