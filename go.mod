@@ -54,3 +54,6 @@ require (
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
 )
+
+// Local replace until cartridge v1.2.0 is tagged.
+replace github.com/karloscodes/cartridge => /home/dev/Code/cartridge

@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"fmt"
 	nethttp "net/http"
 	"time"
 
@@ -29,13 +30,17 @@ func MountAppRoutes(srv *cartridge.Server) {
 	cfg := config.GetConfig()
 
 	// Create and set session manager
-	sessionMgr := cartridge.NewSessionManager(cartridge.SessionConfig{
+	sessionMgr, err := cartridge.NewSessionManager(cartridge.SessionConfig{
 		CookieName: cfg.AppName + "_session",
 		Secret:     cfg.GetSessionSecret(),
 		TTL:        time.Duration(cfg.GetLoginSessionTimeout()) * time.Second,
-		Secure:     cfg.IsProduction(),
+		Insecure:   !cfg.IsProduction(),
 		LoginPath:  "/login",
 	})
+	if err != nil {
+		// The app cannot run without sessions. FUSIONALY_PRIVATE_KEY must have 32 bytes or more.
+		panic(fmt.Errorf("session manager: %w", err))
+	}
 	srv.SetSession(sessionMgr)
 
 	// ============================================

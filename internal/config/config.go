@@ -214,11 +214,6 @@ func (c *Config) GetPublicDirectory() string {
 	return c.PublicDirectory
 }
 
-// GetAssetsPrefix returns the URL prefix for static assets (implements cartridge.Config interface).
-func (c *Config) GetAssetsPrefix() string {
-	return c.PublicAssetsUrlPrefix
-}
-
 // GetAppName returns the application name (implements cartridge.FactoryConfig interface).
 func (c *Config) GetAppName() string {
 	return c.AppName
