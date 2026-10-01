@@ -3,6 +3,7 @@ package http
 import (
 	"fusionaly/internal/feed"
 	"net/url"
+	"time"
 
 	"log/slog"
 	"net/http"
@@ -91,6 +92,12 @@ func WebsiteDashboardAction(ctx *cartridge.Context) error {
 	props["websites"] = websitesData
 	props["annotations"] = annotationsList
 	props["share_token"] = website.ShareToken
+
+	liveVisitors, err := analytics.GetLiveVisitors(db, websiteId, time.Now())
+	if err != nil {
+		ctx.Logger.Error("Failed to count live visitors", slog.Any("error", err))
+	}
+	props["live_visitors"] = liveVisitors
 
 	// "What's new": this site's latest activity feed items in the selected range.
 	whatsNew, err := feed.RecentForWebsite(db, uint(websiteId), timeFrame.From, timeFrame.To, 5)

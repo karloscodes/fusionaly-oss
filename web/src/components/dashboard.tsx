@@ -79,6 +79,8 @@ export interface DashboardComponentProps extends Partial<AnalyticsData> {
 	user_flow?: UserFlowLink[];
 	/** Share token for public dashboard URL (null if not shared) */
 	share_token?: string | null;
+	/** Distinct visitors with an event in the last 5 minutes (private dashboard only) */
+	live_visitors?: number;
 }
 
 export const Dashboard = (props: DashboardComponentProps) => {
@@ -679,6 +681,12 @@ export const Dashboard = (props: DashboardComponentProps) => {
 						<p className="text-sm text-gray-500 mt-1">
 							{[props.website_domain, rangeLabel, "compared with the previous period"].filter(Boolean).join(" · ")}
 						</p>
+						{props.live_visitors !== undefined && (
+							<p className="text-sm text-gray-500 mt-1 flex items-center gap-1.5">
+								<span className={`w-2 h-2 rounded-full ${props.live_visitors > 0 ? "bg-emerald-500" : "bg-gray-300"}`} aria-hidden="true" />
+								{formatNumber(props.live_visitors)} {props.live_visitors === 1 ? "visitor" : "visitors"} in the last 5 minutes
+							</p>
+						)}
 					</div>
 					<div className="flex flex-wrap items-center gap-3">
 						{!props.is_public_view && (
