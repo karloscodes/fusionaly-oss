@@ -122,7 +122,9 @@ func processEventBatch(tx *gorm.DB, logger *slog.Logger, batch []IngestedEvent) 
 	for i, tempEvent := range batch {
 		// Parse User Agent early to check for bots
 		parsedUA := ua.ParseUserAgent(tempEvent.UserAgent)
-		if parsedUA.Bot {
+		// A headless browser can send a normal User-Agent, but its client
+		// hints still name it.
+		if parsedUA.Bot || strings.Contains(tempEvent.SecChUa, "HeadlessChrome") {
 			logger.Debug("Skipping bot event", slog.Uint64("ingested_event_id", uint64(uint64(tempEvent.ID))), slog.String("user_agent", tempEvent.UserAgent))
 			continue // Skip processing for bots
 		}

@@ -259,3 +259,16 @@ func TestVisitSource(t *testing.T) {
 		assert.Equal(t, map[string]int{"google.com": 1}, refVisitorsFor(t, dbm.GetConnection(), site.ID))
 	})
 }
+
+func TestHeadlessClientHints(t *testing.T) {
+	t.Run("skips a headless browser that sends a normal user agent", func(t *testing.T) {
+		dbm, _, site := testsupport.SetupTestDBManagerWithWebsite(t, "visits.test")
+		now := time.Now().UTC()
+		event := pageViewAt(site.ID, "v1", "/", now)
+		event.SecChUa = `"Chromium";v="134", "Not:A-Brand";v="24", "HeadlessChrome";v="134"`
+
+		process(t, dbm, event)
+
+		assert.Equal(t, siteTotals{}, siteTotalsFor(t, dbm.GetConnection(), site.ID))
+	})
+}
