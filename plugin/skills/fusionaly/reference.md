@@ -4,7 +4,7 @@
 
 ## Tables
 
-Every `*_stats` table has `website_id`, `hour` (an hourly UTC bucket), and count columns you `SUM()`.
+Every `*_stats` table has `website_id`, `hour` (the start of a 30-minute UTC bucket), and count columns you `SUM()`.
 
 | Table | Columns you use | Notes |
 |-------|-----------------|-------|
@@ -17,7 +17,7 @@ Every `*_stats` table has `website_id`, `hour` (an hourly UTC bucket), and count
 | `os_stats` | `operating_system`, `visitors_count` | |
 | `utm_stats` | `utm_source`, `utm_medium`, `utm_campaign`, `utm_term`, `utm_content`, `visitors_count` | Campaigns. |
 | `query_param_stats` | `param_name`, `param_value`, `visitors_count` | Other query parameters. |
-| `event_stats` | `event_name`, `event_key`, `visitors_count` | Custom events and goals, hourly. |
+| `event_stats` | `event_name`, `event_key`, `visitors_count` | Custom events and goals, per 30 minutes. |
 | `flow_transition_stats` | `step_position`, `source_page`, `target_page`, `transitions` | User flows: page A to page B. |
 | `events` | `pathname`, `referrer_hostname`, `event_type`, `custom_event_name`, `custom_event_meta`, `timestamp` | Raw events. `event_type` 1 is a page view, 2 is a custom event, 3 is a page hide (only marks when a visitor left a page; leave it out of counts). Use it for revenue and event metadata; prefer the stats tables otherwise. |
 | `websites` | `id`, `domain` | |

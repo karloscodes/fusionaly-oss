@@ -39,7 +39,7 @@ No `fusionaly` tools in your tool list? Use the `connect` skill (in Claude Code:
 ## Rules for SQL
 
 - **Always filter `website_id`**, and always bound `hour` (for example `hour >= datetime('now', '-30 days')`).
-- **Stats tables are hourly UTC buckets.** Always `SUM()` the count columns. Group by `DATE(hour)` for days.
+- **Stats tables hold 30-minute UTC buckets.** Always `SUM()` the count columns. For visitors per day, count distinct `user_signature` in `events` (see the reference), not `SUM(visitors)`.
 - **Use the exact names.** `ref_stats.hostname` is the referrer domain. There is no `referrer_domain`, no `referrer_stats`, no `pageviews` table.
 - **Countries are lowercase ISO codes**: "United States" is `'us'`, "UK" is `'gb'`, "Germany" is `'de'`.
 - **Direct traffic** has an empty `hostname` in `ref_stats`. Exclude it with `hostname != ''` when ranking sources.
