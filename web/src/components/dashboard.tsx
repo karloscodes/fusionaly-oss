@@ -661,7 +661,10 @@ export const Dashboard = (props: DashboardComponentProps) => {
 				? `page views: ${formatNumber(totalViews)}`
 				: `visitors: ${formatNumber(totalVisitors)}`;
 	const heroMetrics = (withTrends: boolean) => [
-		createMetric("Visitors", totalVisitors, withTrends ? data.comparison?.visitors_change : undefined, countsOf(data.visitors)),
+		{
+			...createMetric("Visitors", totalVisitors, withTrends ? data.comparison?.visitors_change : undefined, countsOf(data.visitors)),
+			hint: "Unique visitors per day. A range of several days adds the days. A visitor counts again after midnight UTC.",
+		},
 		createMetric("Page Views", totalViews, withTrends ? data.comparison?.views_change : undefined, countsOf(data.page_views)),
 		createMetric("Sessions", totalSessions, withTrends ? data.comparison?.sessions_change : undefined, countsOf(data.sessions)),
 		// Without visits there is no rate or average: show "—", not 0.

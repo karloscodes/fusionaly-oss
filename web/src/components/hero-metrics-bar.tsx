@@ -7,6 +7,7 @@ interface MetricData {
 	series?: number[]; // Values over the selected range, drawn as a sparkline
 	lowerIsBetter?: boolean; // e.g. bounce rate: a drop is good news
 	trendInPoints?: boolean; // trend is percentage points (rates), not percent
+	hint?: string; // Explains how the metric counts; shown on hover over the label
 }
 
 interface HeroMetricsBarProps {
@@ -87,7 +88,10 @@ export const HeroMetricsBar = ({ metrics, trendLoading, highlight }: HeroMetrics
 						className="px-3 sm:px-4 py-3 sm:py-4 flex items-end justify-between gap-2 min-w-0 border-gray-200 border-r last:border-r-0 [&:nth-child(2n)]:border-r-0 md:[&:nth-child(2n)]:border-r md:[&:nth-child(3n)]:border-r-0 lg:[&:nth-child(3n)]:border-r lg:last:border-r-0 [&:nth-child(n+3)]:border-t md:[&:nth-child(n+3)]:border-t-0 md:[&:nth-child(n+4)]:border-t lg:[&:nth-child(n+4)]:border-t-0"
 					>
 						<div className="flex flex-col gap-1 min-w-0">
-							<span className="text-[11px] font-semibold uppercase tracking-[0.08em] whitespace-nowrap text-gray-500">
+							<span
+								title={metric.hint}
+								className={`text-[11px] font-semibold uppercase tracking-[0.08em] whitespace-nowrap text-gray-500 ${metric.hint ? "cursor-help underline decoration-dotted underline-offset-2" : ""}`}
+							>
 								{metric.label}
 							</span>
 							<span className="text-xl sm:text-[26px] leading-tight font-bold tracking-tight text-black whitespace-nowrap">
