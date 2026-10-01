@@ -71,13 +71,13 @@ func CollectEvent(dbManager cartridge.DBManager, logger *slog.Logger, input *Col
 
 	urlData, err := parseInputURL(input.RawUrl, logger)
 	if err != nil {
-		logger.Warn("Failed to parse URL", slog.Any("error", err), slog.String("url", input.RawUrl))
+		logger.Warn("Failed to parse URL", slog.Any("error", err), slog.String("url", urlForLog(input.RawUrl)))
 		return fmt.Errorf("failed to parse URL: %w", err)
 	}
 
 	cfg := config.GetConfig()
 	if urlData.hostname == "localhost" && cfg.Environment == config.Production {
-		logger.Debug("Skipping event for localhost in production environment", slog.String("url", input.RawUrl))
+		logger.Debug("Skipping event for localhost in production environment", slog.String("url", urlForLog(input.RawUrl)))
 		return nil
 	}
 
@@ -187,14 +187,19 @@ func parseInputURL(urlStr string, logger *slog.Logger) (*urlData, error) {
 
 	parsedURL, err := url.Parse(urlStr)
 	if err != nil {
-		logger.Error("Failed to parse URL", slog.String("url", urlStr), slog.Any("error", err))
+		// A *url.Error includes the full URL. Keep only the cause.
+		var urlErr *url.Error
+		if errors.As(err, &urlErr) {
+			err = urlErr.Err
+		}
+		logger.Error("Failed to parse URL", slog.String("url", urlForLog(urlStr)), slog.Any("error", err))
 		return nil, fmt.Errorf("%w: %v", ErrInvalidURL, err)
 	}
 
 	// Ensure the URL has a hostname
 	hostname := parsedURL.Hostname()
 	if hostname == "" {
-		logger.Error("URL missing hostname", slog.String("url", urlStr))
+		logger.Error("URL missing hostname", slog.String("url", urlForLog(urlStr)))
 		return nil, fmt.Errorf("%w: no hostname", ErrInvalidURL)
 	}
 
@@ -208,6 +213,22 @@ func parseInputURL(urlStr string, logger *slog.Logger) (*urlData, error) {
 		pathname: pathname,
 		rawURL:   withSourceParamsOnly(parsedURL),
 	}, nil
+}
+
+// urlForLog returns a URL that is safe to log: the scheme and host when the
+// URL parses, else at most 64 characters without the query and fragment.
+// The path and query can hold personal data.
+func urlForLog(raw string) string {
+	if parsed, err := url.Parse(raw); err == nil && parsed.Host != "" {
+		return parsed.Scheme + "://" + parsed.Host
+	}
+	if i := strings.IndexAny(raw, "?#"); i >= 0 {
+		raw = raw[:i]
+	}
+	if len(raw) > 64 {
+		raw = raw[:64]
+	}
+	return raw
 }
 
 // storedQueryParams are the query parameters that processing reads from
