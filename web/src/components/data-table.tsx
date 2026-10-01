@@ -198,6 +198,13 @@ const DataTable = ({
 								</div>
 							</div>
 						))}
+						{/* Empty rows fill a short page, so the card keeps its height
+						    and the pager stays in place across pages and tabs. */}
+						{Array.from({ length: Math.max(pageSize - currentItems.length, 0) }, (_, i) => (
+							<div key={`filler-${i}`} aria-hidden="true" className="py-1.5 px-2.5">
+								<span className="block text-[13px]">&nbsp;</span>
+							</div>
+						))}
 					</div>
 
 					{/* Pagination controls - always at the bottom */}
