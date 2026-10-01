@@ -121,6 +121,9 @@ router.on('finish', () => hideProgress())
 let appInitialized = false
 
 createInertiaApp({
+  // Fusionaly draws its own progress bar (above). Inertia v3 renders its
+  // built-in bar on top of it, so turn the built-in one off.
+  progress: false,
   resolve: (name) => {
     const page = pages[name]
     if (!page) {
