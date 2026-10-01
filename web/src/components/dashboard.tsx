@@ -666,7 +666,7 @@ export const Dashboard = (props: DashboardComponentProps) => {
 	const heroMetrics = (withTrends: boolean) => [
 		{
 			...createMetric("Visitors", totalVisitors, withTrends ? data.comparison?.visitors_change : undefined, countsOf(data.visitors)),
-			hint: "Unique visitors per day. A range of several days adds the days. A visitor counts again after midnight UTC.",
+			hint: "Unique visitors per day in your time zone. A range of several days adds the days. A visitor's ID resets at midnight UTC, so a visit across it counts twice.",
 		},
 		createMetric("Page Views", totalViews, withTrends ? data.comparison?.views_change : undefined, countsOf(data.page_views)),
 		createMetric("Sessions", totalSessions, withTrends ? data.comparison?.sessions_change : undefined, countsOf(data.sessions)),
@@ -676,7 +676,7 @@ export const Dashboard = (props: DashboardComponentProps) => {
 		{
 			...createMetric("Revenue", `${money}${data.revenue_metrics ? formatNumber(Math.round(data.revenue_metrics.total_revenue)) : '0'}`, withTrends ? data.comparison?.revenue_change : undefined, countsOf(data.revenue)),
 			note: otherCurrencies.length > 0 ? {
-				text: `+ ${otherCurrencies.length} other ${otherCurrencies.length === 1 ? "currency" : "currencies"}`,
+				text: `+ ${otherCurrencies.length} ${otherCurrencies.length === 1 ? "currency" : "currencies"}`,
 				title: otherCurrencies
 					.map((c) => `${formatMoney(c.total_revenue, c.currency)} · ${c.total_sales} ${c.total_sales === 1 ? "sale" : "sales"}`)
 					.join("\n"),
@@ -900,7 +900,6 @@ export const Dashboard = (props: DashboardComponentProps) => {
 								<DataTable
 									data={data.top_countries}
 									showPercentage={true}
-									totalVisitors={totalVisitors}
 									pageSize={8}
 									columns={[
 										{ name: "name", label: "Country" },
@@ -947,7 +946,6 @@ export const Dashboard = (props: DashboardComponentProps) => {
 									<DataTable
 										data={data.top_devices}
 										showPercentage={true}
-										totalVisitors={totalVisitors}
 										pageSize={8}
 										columns={[
 											{ name: "name", label: "Device" },
@@ -959,7 +957,6 @@ export const Dashboard = (props: DashboardComponentProps) => {
 									<DataTable
 										data={data.top_browsers}
 										showPercentage={true}
-										totalVisitors={totalVisitors}
 										pageSize={8}
 										columns={[
 											{ name: "name", label: "Browser" },
@@ -971,7 +968,6 @@ export const Dashboard = (props: DashboardComponentProps) => {
 									<DataTable
 										data={data.top_operating_systems}
 										showPercentage={true}
-										totalVisitors={totalVisitors}
 										pageSize={8}
 										columns={[
 											{ name: "name", label: "Operating System" },

@@ -89,21 +89,25 @@ export const HeroMetricsBar = ({ metrics, trendLoading, highlight }: HeroMetrics
 						className="px-3 sm:px-4 py-3 sm:py-4 flex items-end justify-between gap-2 min-w-0 border-gray-200 border-r last:border-r-0 [&:nth-child(2n)]:border-r-0 md:[&:nth-child(2n)]:border-r md:[&:nth-child(3n)]:border-r-0 lg:[&:nth-child(3n)]:border-r lg:last:border-r-0 [&:nth-child(n+3)]:border-t md:[&:nth-child(n+3)]:border-t-0 md:[&:nth-child(n+4)]:border-t lg:[&:nth-child(n+4)]:border-t-0"
 					>
 						<div className="flex flex-col gap-1 min-w-0">
-							<span
-								title={metric.hint}
-								className={`text-[11px] font-semibold uppercase tracking-[0.08em] whitespace-nowrap text-gray-500 ${metric.hint ? "cursor-help underline decoration-dotted underline-offset-2" : ""}`}
-							>
-								{metric.label}
-							</span>
+							{/* The note shares the label's line, so a tile with a note keeps
+							    the same height and stays clear of the sparkline. */}
+							<div className="flex items-baseline gap-1.5 min-w-0">
+								<span
+									title={metric.hint}
+									className={`text-[11px] font-semibold uppercase tracking-[0.08em] whitespace-nowrap text-gray-500 ${metric.hint ? "cursor-help underline decoration-dotted underline-offset-2" : ""}`}
+								>
+									{metric.label}
+								</span>
+								{metric.note && (
+									<span className="text-[11px] text-gray-400 truncate cursor-help" title={metric.note.title}>
+										{metric.note.text}
+									</span>
+								)}
+							</div>
 							<span className="text-xl sm:text-[26px] leading-tight font-bold tracking-tight text-black whitespace-nowrap">
 								{typeof metric.value === 'number' ? formatNumber(metric.value) : metric.value}
 							</span>
 							<TrendIndicator trend={metric.trend} loading={trendLoading} lowerIsBetter={metric.lowerIsBetter} inPoints={metric.trendInPoints} />
-							{metric.note && (
-								<span className="text-[11px] text-gray-400 whitespace-nowrap cursor-help" title={metric.note.title}>
-									{metric.note.text}
-								</span>
-							)}
 						</div>
 						{metric.series && metric.series.length > 1 && (
 							<Sparkline series={metric.series} highlighted={index === highlight} />
