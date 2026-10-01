@@ -167,7 +167,7 @@ fusionaly/
 Defaults work out of the box for development. For production, set:
 
 - `FUSIONALY_DOMAIN` — your domain name
-- `FUSIONALY_PRIVATE_KEY` — generate with `openssl rand -hex 32`
+- `FUSIONALY_PRIVATE_KEY` — at least 32 characters; generate one with `openssl rand -hex 32`
 
 See the [Installation Guide](https://fusionaly.com/docs/installation/) for Docker setup and [SDK Configuration](https://fusionaly.com/docs/configuration/) for tracking options.
 

@@ -8,7 +8,6 @@ services:
       - FUSIONALY_ENV=test
       - FUSIONALY_DOMAIN=localhost
       - FUSIONALY_APP_PORT=8080
-      - FUSIONALY_LICENSE_KEY=IM-DEVBOX-TEST-ONLY
       # Optional: Better DevBox experience
       - FUSIONALY_LOG_LEVEL=info
       - FUSIONALY_JOB_INTERVAL_SECONDS=3

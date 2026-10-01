@@ -45,7 +45,6 @@ type Config struct {
 	SessionTimeoutSeconds      int
 	LoginSessionTimeoutSeconds int
 	CSRFContextKey             string
-	AdminEmail                 string
 	Domain                     string
 
 	// File paths
@@ -139,7 +138,6 @@ func load(getenv func(string) string) (*Config, error) {
 		SessionTimeoutSeconds:       num("FUSIONALY_SESSION_TIMEOUT_SECONDS", 1800),
 		LoginSessionTimeoutSeconds:  num("FUSIONALY_LOGIN_SESSION_TIMEOUT_SECONDS", 7776000), // 90 days
 		CSRFContextKey:              "csrf",
-		AdminEmail:                  str("FUSIONALY_ADMIN_EMAIL", ""),
 		Domain:                      str("FUSIONALY_DOMAIN", ""),
 		DatabasePath:                str("FUSIONALY_STORAGE_PATH", "storage"),
 		GeoDBPath:                   str("FUSIONALY_GEO_DB_PATH", "storage/GeoLite2-City.mmdb"),

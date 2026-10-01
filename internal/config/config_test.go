@@ -59,7 +59,7 @@ func TestLoad(t *testing.T) {
 			"FUSIONALY_APP_NAME": "acme", "FUSIONALY_APP_PORT": "8080", "FUSIONALY_ENV": Production,
 			"FUSIONALY_LOG_LEVEL": "warn", "FUSIONALY_PRIVATE_KEY": strings.Repeat("k", 64),
 			"FUSIONALY_SESSION_TIMEOUT_SECONDS": "600", "FUSIONALY_LOGIN_SESSION_TIMEOUT_SECONDS": "3600",
-			"FUSIONALY_ADMIN_EMAIL": "a@b.c", "FUSIONALY_DOMAIN": "t.example.com",
+			"FUSIONALY_DOMAIN": "t.example.com",
 			"FUSIONALY_STORAGE_PATH": "/data", "FUSIONALY_GEO_DB_PATH": "/geo.mmdb", "FUSIONALY_PUBLIC_DIR": "/pub",
 			"FUSIONALY_PUBLIC_ASSETS_URL_PREFIX": "/static/", "FUSIONALY_LOGS_DIR": "/logs",
 			"FUSIONALY_LOGS_MAX_SIZE_IN_MB": "5", "FUSIONALY_LOGS_MAX_BACKUPS": "2", "FUSIONALY_LOGS_MAX_AGE_IN_DAYS": "7",
@@ -74,7 +74,6 @@ func TestLoad(t *testing.T) {
 		assert.Equal(t, LogLevelWarn, c.LogLevel)
 		assert.Equal(t, 600, c.SessionTimeoutSeconds)
 		assert.Equal(t, 3600, c.LoginSessionTimeoutSeconds)
-		assert.Equal(t, "a@b.c", c.AdminEmail)
 		assert.Equal(t, "t.example.com", c.Domain)
 		assert.Equal(t, "/data", c.DatabasePath)
 		assert.Equal(t, "/geo.mmdb", c.GeoDBPath)
