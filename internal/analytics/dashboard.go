@@ -18,7 +18,6 @@ type DashboardMetrics struct {
 	PageViews            []TimeSeriesPoint   `json:"page_views"`
 	Visitors             []TimeSeriesPoint   `json:"visitors"`
 	Sessions             []TimeSeriesPoint   `json:"sessions"`
-	GoalConversions      []TimeSeriesPoint   `json:"goal_conversions"`
 	Revenue              []TimeSeriesPoint   `json:"revenue"`
 	TopURLs              []MetricCountResult `json:"top_urls"`
 	TopCountries         []MetricCountResult `json:"top_countries"`
@@ -119,7 +118,6 @@ func FetchDashboardMetrics(db *gorm.DB, tf *timeframe.TimeFrame, websiteId int, 
 		PageViews:            results["pageViews"].Data.([]TimeSeriesPoint),
 		Visitors:             results["visitors"].Data.([]TimeSeriesPoint),
 		Sessions:             results["sessions"].Data.([]TimeSeriesPoint),
-		GoalConversions:      results["revenue"].Data.([]TimeSeriesPoint),
 		Revenue:              results["revenue"].Data.([]TimeSeriesPoint),
 		TopURLs:              ensureNonNil(metricResultsOrEmpty(results, "topUrls")),
 		TopCountries:         ensureNonNil(metricResultsOrEmpty(results, "topCountries")),
