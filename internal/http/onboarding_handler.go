@@ -297,9 +297,7 @@ func OnboardingGeoLiteFormAction(ctx *cartridge.Context) error {
 		}
 	}
 
-	// GeoLite is the last step: create the admin and log in. The optional
-	// OpenRouter key step is gone with Lens hidden; the key can still be set in
-	// Administration > AI when the Lens flag is on.
+	// GeoLite is the last step: create the admin and log in.
 	err = completeOnboarding(db, ctx.Logger, ctx, ctx.Session, session)
 	if err != nil {
 		ctx.Logger.Error("Failed to complete onboarding", slog.Any("error", err))
