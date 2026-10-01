@@ -622,9 +622,16 @@
 	const setupOutboundLinkTracking = () => {
 		const onClick = (event) => {
 			const link = event.target.closest("a[href]");
+			// A left click comes as "click", a middle click as "auxclick".
+			// Some browsers also send "click" for a middle click: count it once.
+			const button = event.type === "click" ? 0 : 1;
 			// Links with data-fusionaly-event-name have their own tracking.
-			// Button 2 opens the context menu, no navigation.
-			if (!link || event.button > 1 || hasDataAttribute(link, "event-name") || !shouldTrack()) {
+			// A cancelled click (event.defaultPrevented) does not navigate.
+			if (!link || event.button !== button || event.defaultPrevented || hasDataAttribute(link, "event-name") || !shouldTrack()) {
+				return;
+			}
+			// The button tracking already sends a link inside or acting as a button.
+			if (window.Fusionaly.config.autoInstrumentButtons && event.target.closest('button,[role="button"]')) {
 				return;
 			}
 			let url;
