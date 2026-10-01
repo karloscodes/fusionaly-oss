@@ -47,12 +47,14 @@ import { copyText } from "@/lib/clipboard";
 // --- Helper Functions ---
 
 // Format session duration in a human-readable format
-const formatSessionDuration = (seconds: number): string => {
+const formatSessionDuration = (rawSeconds: number): string => {
+	// Round first, so 59.6s shows "1m", not "60s", and 119.6s "2m", not "1m 60s".
+	const seconds = Math.round(rawSeconds);
 	if (seconds < 60) {
-		return `${Math.round(seconds)}s`;
+		return `${seconds}s`;
 	}
 	const minutes = Math.floor(seconds / 60);
-	const remainingSeconds = Math.round(seconds % 60);
+	const remainingSeconds = seconds % 60;
 	if (minutes < 60) {
 		return remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`;
 	}
