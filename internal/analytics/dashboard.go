@@ -39,6 +39,7 @@ type DashboardMetrics struct {
 	TopUTMTerms          []MetricCountResult `json:"top_utm_terms"`
 	TopUTMContents       []MetricCountResult `json:"top_utm_contents"`
 	TopRefParams         []MetricCountResult `json:"top_ref_params"`
+	TopChannels          []MetricCountResult `json:"top_channels"`
 	BucketSize           string              `json:"bucket_size"`
 	TotalVisitors        int64               `json:"total_visitors"`
 	TotalViews           int64               `json:"total_views"`
@@ -94,6 +95,7 @@ func FetchDashboardMetrics(db *gorm.DB, tf *timeframe.TimeFrame, websiteId int, 
 		passthroughTask("topUTMTerms", func() (interface{}, error) { return GetTopUTMTermsInTimeFrame(db, queryParams) }),
 		passthroughTask("topUTMContents", func() (interface{}, error) { return GetTopUTMContentsInTimeFrame(db, queryParams) }),
 		passthroughTask("topRefParams", func() (interface{}, error) { return GetTopQueryParamValuesInTimeFrame(db, queryParams, "ref") }),
+		passthroughTask("topChannels", func() (interface{}, error) { return GetTopChannelsInTimeFrame(db, queryParams) }),
 		passthroughTask("totalVisitors", func() (interface{}, error) { return GetTotalVisitorsInTimeFrame(db, queryParams) }),
 		passthroughTask("totalViews", func() (interface{}, error) { return GetTotalPageViewsInTimeFrame(db, queryParams) }),
 		passthroughTask("totalSessions", func() (interface{}, error) { return GetTotalSessionsInTimeFrame(db, queryParams) }),
@@ -139,6 +141,7 @@ func FetchDashboardMetrics(db *gorm.DB, tf *timeframe.TimeFrame, websiteId int, 
 		TopUTMTerms:          ensureNonNil(metricResultsOrEmpty(results, "topUTMTerms")),
 		TopUTMContents:       ensureNonNil(metricResultsOrEmpty(results, "topUTMContents")),
 		TopRefParams:         ensureNonNil(metricResultsOrEmpty(results, "topRefParams")),
+		TopChannels:          ensureNonNil(metricResultsOrEmpty(results, "topChannels")),
 		BucketSize:           string(tf.BucketSize),
 		TotalVisitors:        results["totalVisitors"].Data.(int64),
 		TotalViews:           results["totalViews"].Data.(int64),
