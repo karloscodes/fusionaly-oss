@@ -1,5 +1,10 @@
 ((window) => {
 	window.Fusionaly = window.Fusionaly || {};
+	// A page with two SDK script tags would send every event twice.
+	if (window.Fusionaly.__loaded) {
+		return;
+	}
+	window.Fusionaly.__loaded = true;
 
 	const defaults = {
 		host: "{{.BaseURL}}",
@@ -320,7 +325,10 @@
 					body: body,
 					keepalive: true,
 				}).catch(() => {
-					if (storeOnFailure) {
+					// During unload the browser can reject a keepalive request
+					// that the server still got. Store only while the page is
+					// visible, so a replay never counts the event twice.
+					if (storeOnFailure && document.visibilityState === "visible") {
 						storeEventLocally(eventData);
 					}
 				});
@@ -398,6 +406,14 @@
 		}
 	});
 	window.addEventListener("pagehide", sendPageHide);
+
+	// sameSite reports whether a link host is the page's own site: the same
+	// host with or without "www.", or a parent or child domain of it.
+	const sameSite = (linkHost, pageHost) => {
+		const link = linkHost.replace(/^www\./, "");
+		const page = pageHost.replace(/^www\./, "");
+		return link === page || link.endsWith(`.${page}`) || page.endsWith(`.${link}`);
+	};
 
 	const sanitizeForEventKey = (text) => {
 		if (!text) return "";
@@ -646,7 +662,7 @@
 				return;
 			}
 			// Also skips mailto:, tel:, and javascript: links.
-			if (!/^https?:$/.test(url.protocol) || url.host === window.location.host) {
+			if (!/^https?:$/.test(url.protocol) || sameSite(url.hostname, window.location.hostname)) {
 				return;
 			}
 			const eventData = {
