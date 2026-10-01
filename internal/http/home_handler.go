@@ -1,6 +1,7 @@
 package http
 
 import (
+	_ "embed"
 	"net/http"
 
 	"github.com/karloscodes/cartridge"
@@ -28,7 +29,13 @@ func HomeIndexAction(ctx *cartridge.Context) error {
 	return ctx.Redirect("/login", http.StatusFound)
 }
 
+// demoPage is embedded so /_demo works in the Docker image, which ships only the binary.
+//
+//go:embed demo.html
+var demoPage string
+
 // DemoIndexAction serves the demo page for E2E testing
 func DemoIndexAction(ctx *cartridge.Context) error {
-	return ctx.SendFile("demo.html")
+	ctx.Set("Content-Type", "text/html; charset=utf-8")
+	return ctx.SendString(demoPage)
 }
