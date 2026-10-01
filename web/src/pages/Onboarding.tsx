@@ -6,15 +6,12 @@ import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Progress } from '../components/ui/progress';
+import type { FlashMessage } from '@/types';
 
 interface OnboardingProps {
   step: string;
   email?: string;
-  flash?: {
-    error?: string;
-    success?: string;
-    info?: string;
-  };
+  flash?: FlashMessage;
   [key: string]: unknown;
 }
 
@@ -230,19 +227,11 @@ export default function Onboarding() {
           </CardHeader>
 
           <CardContent>
-            {flash.error && (
-              <Alert className="mb-4 bg-gray-100 border border-gray-200 border-l-4 border-l-red-500">
-                <AlertDescription className="text-gray-700">{flash.error}</AlertDescription>
-              </Alert>
-            )}
-            {flash.success && (
-              <Alert className="mb-4 bg-gray-100 border border-gray-200">
-                <AlertDescription className="text-gray-700">{flash.success}</AlertDescription>
-              </Alert>
-            )}
-            {flash.info && (
-              <Alert className="mb-4 bg-gray-100 border border-gray-200">
-                <AlertDescription className="text-gray-700">{flash.info}</AlertDescription>
+            {flash.message && (
+              <Alert
+                className={`mb-4 bg-gray-100 border border-gray-200${flash.type === 'error' ? ' border-l-4 border-l-red-500' : ''}`}
+              >
+                <AlertDescription className="text-gray-700">{flash.message}</AlertDescription>
               </Alert>
             )}
 
