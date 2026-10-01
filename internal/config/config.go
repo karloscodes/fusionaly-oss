@@ -65,9 +65,6 @@ type Config struct {
 	DatabaseMaxOpenConns int    `mapstructure:"dbmaxopenconns"`
 	DatabaseMaxIdleConns int    `mapstructure:"dbmaxidleconns"`
 
-	// OpenAI API key (optional env fallback; normally set in settings)
-	OpenAIAPIKey string `mapstructure:"openaiapikey"`
-
 	// Job scheduling settings
 	JobIntervalSeconds int `mapstructure:"jobintervalseconds"`
 
@@ -128,7 +125,6 @@ func GetConfig() *Config {
 		v.BindEnv("dbtype", "FUSIONALY_DB_TYPE")
 		v.BindEnv("dbmaxopenconns", "FUSIONALY_DB_MAX_OPEN_CONNS")
 		v.BindEnv("dbmaxidleconns", "FUSIONALY_DB_MAX_IDLE_CONNS")
-		v.BindEnv("openaiapikey", "OPENAI_API_KEY")
 		v.BindEnv("jobintervalseconds", "FUSIONALY_JOB_INTERVAL_SECONDS")
 		v.BindEnv("ingestedeventsretentiondays", "FUSIONALY_INGESTED_EVENTS_RETENTION_DAYS")
 

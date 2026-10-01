@@ -85,14 +85,6 @@ func (dm *DBManager) MigrateDatabase() error {
 		return err
 	}
 
-	// One-time migration for installs upgrading from Fusionaly Pro: copy the
-	// OpenAI API key out of the legacy pro_settings table into OSS settings.
-	// Idempotent and a no-op on fresh installs.
-	if err := MigrateProSettings(db); err != nil {
-		dm.logger.Error("Failed to migrate Pro settings", slog.Any("error", err))
-		return err
-	}
-
 	// One-time cleanup of legacy low-volume traffic_drop feed items left over from
 	// before the drop detector was retuned (see feed.CleanupLegacyDrops). Safe to
 	// run on every boot; it only ever deletes drops the current rule won't produce.

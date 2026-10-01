@@ -172,19 +172,6 @@ func TestCacheConsistency(t *testing.T) {
 	})
 }
 
-func TestOpenAIKeySetting(t *testing.T) {
-	dbManager, _ := testsupport.SetupTestDBManager(t)
-	db := dbManager.GetConnection()
-	settings.SetupDefaultSettings(db)
-
-	err := settings.SaveOpenAIKey(db, "  sk-test123  ")
-	require.NoError(t, err)
-
-	key, err := settings.GetOpenAIKey(db)
-	require.NoError(t, err)
-	assert.Equal(t, "sk-test123", key, "GetOpenAIKey should return the trimmed key")
-}
-
 func TestAgentAPIKey(t *testing.T) {
 	t.Run("generates new API key", func(t *testing.T) {
 		dbManager, _ := testsupport.SetupTestDBManager(t)
@@ -240,7 +227,8 @@ func TestGetAllSettingsForDisplay(t *testing.T) {
 	dbManager, _ := testsupport.SetupTestDBManager(t)
 	db := dbManager.GetConnection()
 	settings.SetupDefaultSettings(db)
-	require.NoError(t, settings.SaveOpenAIKey(db, "sk-secret"))
+	// Old installs keep the openai_api_key row from the removed Ask AI feature.
+	require.NoError(t, settings.CreateOrUpdateSetting(db, "openai_api_key", "sk-secret"))
 	require.NoError(t, settings.SaveGeoLiteCredentials(db, "123456", "license-secret"))
 	_, err := settings.GenerateAgentAPIKey(db)
 	require.NoError(t, err)

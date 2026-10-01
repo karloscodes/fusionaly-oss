@@ -19,7 +19,7 @@ This is a deliberate, pragmatic stance: Go favors explicit, no-magic code, but h
 | SQLite connection, WAL, serialized writes, migrations plumbing | **cartridge/sqlite** + `internal/database` | `dbManager`, `sqlite.PerformWrite` |
 | Background jobs lifecycle (start/stop with the server) | **cartridge** `BackgroundWorker` | `internal/jobs` |
 | Install / update / deploy / backup / image swap (self-hosted ops) | **matcha** | `cmd/manager` |
-| Domain logic (analytics, events, websites, feed, ai, …) | **app** (Phoenix Contexts) | `internal/<domain>/` |
+| Domain logic (analytics, events, websites, feed, agent, …) | **app** (Phoenix Contexts) | `internal/<domain>/` |
 | Frontend | React 19 + Inertia | `web/src` |
 
 ## cartridge: configure, don't reinvent
@@ -52,8 +52,8 @@ Each domain is a package under `internal/<domain>/` exposing **top-level functio
 // internal/settings/setting.go  — a context: plain functions + a model
 type Setting struct { ID uint; Key string; Value string /* ... */ }
 
-func GetOpenAIKey(db *gorm.DB) (string, error) { return GetSetting(db, KeyOpenAIKey) }
-func SaveOpenAIKey(db *gorm.DB, key string) error { /* ... */ }
+func GetAgentAPIKey(db *gorm.DB) (string, error) { /* ... */ }
+func RegenerateAgentAPIKey(db *gorm.DB) (string, error) { /* ... */ }
 ```
 
 ```go
@@ -89,7 +89,7 @@ Jobs are a `BackgroundWorker` registered with cartridge, so they start and stop 
 - **Env:** tests require `FUSIONALY_ENV=test` — run with `make test` (sets it for you), not bare `go test`.
 - **Four phases** with blank lines between: setup, exercise, verify, teardown. Assert with testify `assert`/`require`.
 - **Contexts via `t.Run`** for related scenarios ("with valid key", "with no key"). 
-- **Table-driven only when the cases are open-ended/homogeneous** — e.g. a list of SQL strings each expected to be rejected (`internal/ai/ai_test.go` `TestValidateReadOnlyQuery`). Don't force a table when a few `t.Run` blocks read clearer.
+- **Table-driven only when the cases are open-ended/homogeneous** — e.g. a list of SQL strings each expected to be rejected (`internal/agent/agent_test.go` `TestValidateReadOnlyQuery`). Don't force a table when a few `t.Run` blocks read clearer.
 - E2E (`e2e/`) is Playwright, **sequential** (`workers: 1`, story order 001→…); specs build on each other (onboarding creates the user — setup does not). Wait on conditions, never race `networkidle`.
 
 ## Common mistakes
