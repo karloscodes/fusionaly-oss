@@ -49,6 +49,18 @@ func process(t *testing.T, dbm *testsupport.TestDBManager, evts ...events.Ingest
 func TestVisitRules(t *testing.T) {
 	start := time.Now().UTC().Add(-3 * time.Hour).Truncate(time.Hour)
 
+	t.Run("an outbound link click is engagement and takes back the bounce", func(t *testing.T) {
+		dbm, _, site := testsupport.SetupTestDBManagerWithWebsite(t, "visits.test")
+		db := dbm.GetConnection()
+		process(t, dbm, ingested(site.ID, "v1", "/", "", start, start, events.EventTypePageView))
+		click := ingested(site.ID, "v1", "/", "", start.Add(time.Minute), start.Add(time.Minute), events.EventTypeCustomEvent)
+		click.CustomEventName = "outbound:github.com"
+
+		process(t, dbm, click)
+
+		assert.Equal(t, siteTotals{PageViews: 1, Visitors: 1, Sessions: 1, BounceCount: 0}, siteTotalsFor(t, db, site.ID))
+	})
+
 	t.Run("a visit that opens with a custom event counts at its first page view", func(t *testing.T) {
 		dbm, _, site := testsupport.SetupTestDBManagerWithWebsite(t, "visits.test")
 		db := dbm.GetConnection()

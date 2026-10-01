@@ -16,6 +16,7 @@
 		debug: false,
 		autoInstrumentButtons: true,
 		autoSendPageViews: true,
+		autoTrackOutboundLinks: true,
 		scrollDepthThresholds: [25, 50, 75, 100],
 		scrollDepthEventKey: "scroll:depth",
 		scrollSectionEventKey: "scroll:section",
@@ -606,6 +607,48 @@
 		});
 	};
 
+	// Outbound links: a click on a link to another host sends
+	// "outbound:<hostname>" with the link URL, without its query and hash
+	// (they can hold personal data). It goes by beacon, because the page
+	// can unload right after the click. Like any custom event except
+	// scroll:*, it is engagement and takes back the bounce: the visitor
+	// acted on the page, and for a page made to send people on (a link
+	// list, docs with references) that click is the visit's success.
+	const setupOutboundLinkTracking = () => {
+		const onClick = (event) => {
+			const link = event.target.closest("a[href]");
+			// Links with data-fusionaly-event-name have their own tracking.
+			// Button 2 opens the context menu, no navigation.
+			if (!link || event.button > 1 || hasDataAttribute(link, "event-name") || !shouldTrack()) {
+				return;
+			}
+			let url;
+			try {
+				url = new URL(link.href);
+			} catch (e) {
+				return;
+			}
+			// Also skips mailto:, tel:, and javascript: links.
+			if (!/^https?:$/.test(url.protocol) || url.host === window.location.host) {
+				return;
+			}
+			const eventData = {
+				url: window.location.href,
+				timestamp: new Date().toISOString(),
+				userId: window.Fusionaly.userId || null,
+				eventType: window.Fusionaly.config.eventTypes.customEvent,
+				eventKey: `outbound:${url.hostname}`,
+				eventMetadata: { url: url.origin + url.pathname },
+				userAgent: navigator.userAgent,
+			};
+			if (!sendBeaconEvent(eventData)) {
+				storeEventLocally(eventData);
+			}
+		};
+		document.addEventListener("click", onClick);
+		document.addEventListener("auxclick", onClick);
+	};
+
 	// Helper function to process link events and extract event data
 	const processLinkEvent = (link, href) => {
 		let eventName = getDataAttribute(link, 'event-name');
@@ -989,6 +1032,9 @@
 	}
 	setupFormTracking();
 	setupDataDrivenLinkTracking();
+	if (window.Fusionaly.config.autoTrackOutboundLinks) {
+		setupOutboundLinkTracking();
+	}
 	setupScrollTrackingFromAttributes();
 
 	if (document && typeof document.addEventListener === "function") {
