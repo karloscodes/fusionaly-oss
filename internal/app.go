@@ -76,6 +76,9 @@ func NewAppWithConfig(cfg *config.Config, opts ...AppOption) (*Application, erro
 		inertia.SetManifestData(options.manifestData)
 	}
 
+	// The web client is Inertia v3, which reads the first page from a JSON script element.
+	inertia.SetScriptElement(true)
+
 	// Create logger
 	logger := cartridge.NewLogger(cfg, nil)
 
