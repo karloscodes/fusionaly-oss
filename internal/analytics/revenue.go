@@ -19,40 +19,36 @@ type RevenueMetrics struct {
 	Currency          string  `json:"currency"`
 }
 
+// A purchase is a "revenue:purchased" custom event, in any letter case,
+// with JSON metadata and a price above 0, in cents. Its amount is price times
+// quantity (1 when absent). The tile, the chart, and the top revenue events
+// all use these two expressions, so their numbers always agree.
+const purchaseWhereSQL = `LOWER(custom_event_name) = 'revenue:purchased'
+	AND (CASE WHEN json_valid(custom_event_meta) THEN CAST(json_extract(custom_event_meta, '$.price') AS REAL) ELSE 0 END) > 0`
+
+const purchaseCentsSQL = `CAST(json_extract(custom_event_meta, '$.price') AS REAL) *
+	COALESCE(CAST(json_extract(custom_event_meta, '$.quantity') AS INTEGER), 1)`
+
 // GetRevenueMetrics calculates revenue metrics for events with "revenue:purchased" naming convention
 func GetRevenueMetrics(db *gorm.DB, params WebsiteScopedQueryParams) (*RevenueMetrics, error) {
-	// Get total sales count and revenue from events with revenue naming convention
 	var result struct {
 		TotalRevenue float64
 		TotalSales   int64
+		Buyers       int64
 		Currency     string
 	}
 
 	query := `
-		SELECT 
-			COALESCE(SUM(
-				CASE 
-					WHEN json_valid(custom_event_meta) = 1 AND json_extract(custom_event_meta, '$.price') IS NOT NULL 
-					THEN (CAST(json_extract(custom_event_meta, '$.price') AS REAL) / 100.0) * 
-						 COALESCE(CAST(json_extract(custom_event_meta, '$.quantity') AS INTEGER), 1)
-					ELSE 0 
-				END
-			), 0) as total_revenue,
-			COUNT(*) as total_sales,
-			CASE 
-				WHEN json_valid(custom_event_meta) = 1 
-				THEN COALESCE(json_extract(custom_event_meta, '$.currency'), 'USD')
-				ELSE 'USD'
-			END as currency
-		FROM events 
-		WHERE website_id = ? 
+		SELECT
+			COALESCE(SUM(` + purchaseCentsSQL + `), 0) / 100.0 AS total_revenue,
+			COUNT(*) AS total_sales,
+			COUNT(DISTINCT user_signature) AS buyers,
+			COALESCE(MAX(json_extract(custom_event_meta, '$.currency')), 'USD') AS currency
+		FROM events
+		WHERE website_id = ?
 		AND timestamp BETWEEN ? AND ?
 		AND event_type = ?
-		AND LOWER(custom_event_name) LIKE 'revenue:purchased'
-		AND json_valid(custom_event_meta) = 1
-		AND json_extract(custom_event_meta, '$.price') IS NOT NULL
-		AND CAST(json_extract(custom_event_meta, '$.price') AS REAL) > 0
-	`
+		AND ` + purchaseWhereSQL
 
 	err := db.Raw(query,
 		params.WebsiteID,
@@ -71,15 +67,15 @@ func GetRevenueMetrics(db *gorm.DB, params WebsiteScopedQueryParams) (*RevenueMe
 		averageOrderValue = result.TotalRevenue / float64(result.TotalSales)
 	}
 
-	// Calculate conversion rate (sales / total visitors)
 	totalVisitors, err := GetTotalVisitorsInTimeFrame(db, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get total visitors for conversion rate: %w", err)
 	}
 
+	// The share of visitors who bought: a visitor who buys twice counts once.
 	conversionRate := 0.0
 	if totalVisitors > 0 {
-		conversionRate = (float64(result.TotalSales) / float64(totalVisitors)) * 100
+		conversionRate = (float64(result.Buyers) / float64(totalVisitors)) * 100
 	}
 
 	// Set default currency if none found
@@ -109,7 +105,7 @@ func GetTopRevenueEvents(db *gorm.DB, params WebsiteScopedQueryParams) ([]Metric
 		WHERE website_id = ? 
 		AND timestamp BETWEEN ? AND ?
 		AND event_type = ?
-		AND LOWER(custom_event_name) LIKE 'revenue:purchased'
+		AND ` + purchaseWhereSQL + `
 		GROUP BY custom_event_name
 		ORDER BY count DESC
 		LIMIT ?
@@ -221,27 +217,17 @@ func aggregatedRevenueInTimeFrameRaw(db *gorm.DB, params WebsiteScopedQueryParam
 
 	// Query to sum revenue from revenue:purchased events by extracting price from JSON metadata
 	query := fmt.Sprintf(`
-        SELECT
-            %s AS date,
-            COALESCE(SUM(
-                CASE 
-                    WHEN json_valid(custom_event_meta) = 1 AND json_extract(custom_event_meta, '$.price') IS NOT NULL 
-                    THEN CAST(json_extract(custom_event_meta, '$.price') AS INTEGER)
-                    ELSE 0
-                END
-            ), 0) AS count
-        FROM
-            events
-        WHERE
-            timestamp >= ? AND timestamp <= ?
-            AND website_id = ?
-            AND event_type = ?
-            AND custom_event_name = 'revenue:purchased'
-        GROUP BY
-            %s
-        ORDER BY
-            date ASC
-    `, groupByExpression, groupByExpression)
+		SELECT
+			%s AS date,
+			CAST(ROUND(COALESCE(SUM(`+purchaseCentsSQL+`), 0)) AS INTEGER) AS count
+		FROM events
+		WHERE timestamp >= ? AND timestamp <= ?
+			AND website_id = ?
+			AND event_type = ?
+			AND `+purchaseWhereSQL+`
+		GROUP BY %s
+		ORDER BY date ASC
+	`, groupByExpression, groupByExpression)
 
 	// Execute query
 	err = db.Raw(query, params.TimeFrame.From.UTC(), params.TimeFrame.To.UTC(), params.WebsiteID, events.EventTypeCustomEvent).Scan(&results).Error
