@@ -9,6 +9,7 @@ import (
 	"gorm.io/gorm"
 
 	"fusionaly/internal/analytics"
+	"fusionaly/internal/events"
 	"fusionaly/internal/timeframe"
 )
 
@@ -71,4 +72,27 @@ func TestVisitDuration(t *testing.T) {
 		assert.InDelta(t, 600, averageVisitDuration(t, db, at("09h00m"), at("10h00m")), 0.01)
 		assert.Zero(t, averageVisitDuration(t, db, at("10h00m"), endOfDay))
 	})
+
+	t.Run("a single-page visit lasts until the page is hidden", func(t *testing.T) {
+		db := setupFlowDB(t,
+			pageView("u1", "/", at("10h00m")),
+			pageHide("u1", at("10h03m")),
+		)
+
+		assert.InDelta(t, 180, averageVisitDuration(t, db, at("0h"), endOfDay), 0.01)
+	})
+
+	t.Run("a page hide without a page view is no visit", func(t *testing.T) {
+		db := setupFlowDB(t,
+			pageView("u1", "/", at("10h00m")),
+			pageHide("u1", at("10h03m")),
+			pageHide("u2", at("11h00m")),
+		)
+
+		assert.InDelta(t, 180, averageVisitDuration(t, db, at("0h"), endOfDay), 0.01)
+	})
+}
+
+func pageHide(user string, ts time.Time) events.Event {
+	return events.Event{WebsiteID: 1, UserSignature: user, Hostname: "example.com", Pathname: "/", EventType: events.EventTypePageHide, Timestamp: ts}
 }

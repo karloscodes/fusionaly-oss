@@ -307,7 +307,7 @@ func GetEventCountForWebsite(db *gorm.DB, websiteID uint, daysBack int) (int64, 
 	var count int64
 	timeLimit := time.Now().UTC().AddDate(0, 0, -daysBack)
 	err := db.Model(&Event{}).
-		Where("website_id = ? AND timestamp >= ?", websiteID, timeLimit).
+		Where("website_id = ? AND event_type != ? AND timestamp >= ?", websiteID, EventTypePageHide, timeLimit).
 		Count(&count).Error
 	return count, err
 }

@@ -141,9 +141,11 @@ func tallyVisits(db *gorm.DB, websiteID uint) (visitTally, error) {
 		}
 		lastEvent = e.Timestamp
 
-		if e.EventType != EventTypePageView {
+		if e.EventType == EventTypeCustomEvent {
 			engaged = engaged || isEngagement(e.CustomEventName)
-			continue
+		}
+		if e.EventType != EventTypePageView {
+			continue // a page hide only keeps the visit alive
 		}
 		page := pageBucket{e.Hostname, e.Pathname, bucketOf(e.Timestamp)}
 		if !visitorSeen {

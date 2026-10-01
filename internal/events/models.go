@@ -8,6 +8,11 @@ type EventType int
 const (
 	EventTypePageView    EventType = 1
 	EventTypeCustomEvent EventType = 2
+	// EventTypePageHide marks the time a page view was hidden (tab switch,
+	// close, navigation). It only extends its visit, for the average visit
+	// duration, and keeps the visit alive. It is no page view, no custom
+	// event, and no engagement: no counter, list, or flow reads it.
+	EventTypePageHide EventType = 3
 )
 
 // Event represents a tracked page view or custom event in the main database.

@@ -29,7 +29,7 @@ type EventsResult struct {
 // GetFilteredEvents retrieves filtered and paginated events
 func GetFilteredEvents(db *gorm.DB, filters EventFilters) (EventsResult, error) {
 	query := db.Model(&Event{}).
-		Where("website_id = ?", filters.WebsiteID).
+		Where("website_id = ? AND event_type != ?", filters.WebsiteID, EventTypePageHide).
 		Where("timestamp BETWEEN ? AND ?", filters.FromDate, filters.ToDate)
 
 	// Apply URL filter
@@ -86,7 +86,7 @@ func GetFilteredEvents(db *gorm.DB, filters EventFilters) (EventsResult, error) 
 func GetEventCountInTimeRange(db *gorm.DB, websiteID uint, from, to time.Time) (int64, error) {
 	var count int64
 	err := db.Model(&Event{}).
-		Where("website_id = ? AND timestamp BETWEEN ? AND ?", websiteID, from, to).
+		Where("website_id = ? AND event_type != ? AND timestamp BETWEEN ? AND ?", websiteID, EventTypePageHide, from, to).
 		Count(&count).Error
 	return count, err
 }

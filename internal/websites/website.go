@@ -237,9 +237,11 @@ func GetWebsitesWithStats(db *gorm.DB, daysBack int) ([]WebsiteWithStats, error)
 
 	for i, website := range allWebsites {
 		// Query event count for this website
+		// event_type 3 is events.EventTypePageHide, no event a user sent.
+		// This package cannot import events: events imports websites.
 		var eventCount int64
 		err := db.Table("events").
-			Where("website_id = ? AND timestamp >= ?", website.ID, timeLimit).
+			Where("website_id = ? AND event_type != 3 AND timestamp >= ?", website.ID, timeLimit).
 			Count(&eventCount).Error
 
 		if err != nil {

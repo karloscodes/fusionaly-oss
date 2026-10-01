@@ -12,6 +12,7 @@ import (
 	"github.com/karloscodes/cartridge/inertia"
 	"gorm.io/gorm"
 
+	"fusionaly/internal/events"
 	"fusionaly/internal/feed"
 )
 
@@ -39,7 +40,7 @@ func HomeFeedAction(ctx *cartridge.Context) error {
 	var websiteRows []websiteRow
 	if err := db.Table("websites").
 		Select("websites.id, websites.domain, websites.created_at, COALESCE(COUNT(events.id), 0) as event_count").
-		Joins("LEFT JOIN events ON events.website_id = websites.id").
+		Joins("LEFT JOIN events ON events.website_id = websites.id AND events.event_type != ?", events.EventTypePageHide).
 		Group("websites.id").
 		Order("websites.created_at DESC").
 		Scan(&websiteRows).Error; err != nil {

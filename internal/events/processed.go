@@ -141,6 +141,13 @@ func processEventBatch(tx *gorm.DB, logger *slog.Logger, batch []IngestedEvent) 
 		}
 		tempEvent.Timestamp = visit.at
 
+		if tempEvent.EventType == EventTypePageHide {
+			if err := storePageHide(tx, &tempEvent, visit); err != nil {
+				return nil, nil, err
+			}
+			continue
+		}
+
 		event := &Event{
 			SessionStart:     visit.sessionStart,
 			WebsiteID:        tempEvent.WebsiteID,
@@ -190,6 +197,29 @@ func processEventBatch(tx *gorm.DB, logger *slog.Logger, batch []IngestedEvent) 
 	}
 
 	return events, processingData, nil
+}
+
+// storePageHide stores a page hide in its visit. A page hide only extends a
+// visit that is still open, so a hide after the session timeout, or without
+// an earlier event, is dropped. It updates no counter.
+func storePageHide(tx *gorm.DB, tempEvent *IngestedEvent, visit visit) error {
+	if visit.isNewSession {
+		return nil
+	}
+	event := &Event{
+		SessionStart:  visit.sessionStart,
+		WebsiteID:     tempEvent.WebsiteID,
+		UserSignature: tempEvent.UserSignature,
+		Hostname:      tempEvent.Hostname,
+		Pathname:      tempEvent.Pathname,
+		EventType:     EventTypePageHide,
+		Timestamp:     tempEvent.Timestamp,
+		CreatedAt:     tempEvent.CreatedAt,
+	}
+	if err := tx.Create(event).Error; err != nil {
+		return fmt.Errorf("failed to create page hide: %w", err)
+	}
+	return nil
 }
 
 // prepareEventProcessingData enriches event data for aggregation

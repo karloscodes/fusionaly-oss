@@ -107,7 +107,7 @@ func GetVisitorInfoHandler(ctx *cartridge.Context) error {
 
 	if found {
 		eventRecords := make([]events.Event, 0, visitorEventLimit)
-		if err := db.Where("website_id = ? AND user_signature = ?", websiteID, userSignature).
+		if err := db.Where("website_id = ? AND user_signature = ? AND event_type != ?", websiteID, userSignature, events.EventTypePageHide).
 			Order("timestamp DESC").
 			Limit(visitorEventLimit).
 			Find(&eventRecords).Error; err != nil {
@@ -127,7 +127,7 @@ func GetVisitorInfoHandler(ctx *cartridge.Context) error {
 
 		if len(visitorEvents) == 0 {
 			ingested := make([]events.IngestedEvent, 0, visitorEventLimit)
-			if err := db.Where("website_id = ? AND user_signature = ?", websiteID, userSignature).
+			if err := db.Where("website_id = ? AND user_signature = ? AND event_type != ?", websiteID, userSignature, events.EventTypePageHide).
 				Order("timestamp DESC").
 				Limit(visitorEventLimit).
 				Find(&ingested).Error; err != nil {

@@ -13,6 +13,26 @@ import (
 	"fusionaly/internal/testsupport"
 )
 
+func TestGetWebsitesWithStats(t *testing.T) {
+	t.Run("leaves page hides out of the event count", func(t *testing.T) {
+		dbManager, _ := testsupport.SetupTestDBManager(t)
+		db := dbManager.GetConnection()
+		testsupport.CleanAllTables(db)
+		site := testsupport.CreateTestWebsite(db, "example.com")
+		at := time.Now().UTC().Add(-time.Hour)
+		require.NoError(t, db.Create(&[]events.Event{
+			{WebsiteID: site.ID, UserSignature: "v1", Hostname: "example.com", Pathname: "/", EventType: events.EventTypePageView, Timestamp: at},
+			{WebsiteID: site.ID, UserSignature: "v1", Hostname: "example.com", Pathname: "/", EventType: events.EventTypePageHide, Timestamp: at.Add(time.Minute)},
+		}).Error)
+
+		stats, err := websites.GetWebsitesWithStats(db, 30)
+
+		require.NoError(t, err)
+		require.Len(t, stats, 1)
+		assert.Equal(t, int64(1), stats[0].EventCount)
+	})
+}
+
 func TestGetWebsiteOrNotFound(t *testing.T) {
 	// Set up test database
 	dbManager, _ := testsupport.SetupTestDBManager(t)

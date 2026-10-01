@@ -12,8 +12,9 @@ import (
 
 // visitDurationQuery averages the length of the visits that start in the
 // range: from a visit's first to its last event, of any type. A visit counts
-// at its first page view, like sessions; one with a single page view and no
-// other event lasts 0 seconds.
+// at its first page view, like sessions. A page hide (the SDK sends one when
+// the visitor leaves or hides a page) extends the visit to that time; a visit
+// with a single page view and no other event lasts 0 seconds.
 const visitDurationQuery = `
 WITH ` + events.VisitsCTE + `,
 durations AS (
@@ -77,6 +78,7 @@ func GetTotalEvents(db *gorm.DB, params WebsiteScopedQueryParams, logger *slog.L
 	var count int64
 	query := db.Model(&events.Event{}).
 		Where("website_id = ?", params.WebsiteID).
+		Where("event_type != ?", events.EventTypePageHide).
 		Where("timestamp >= ?", params.TimeFrame.From).
 		Where("timestamp <= ?", params.TimeFrame.To)
 

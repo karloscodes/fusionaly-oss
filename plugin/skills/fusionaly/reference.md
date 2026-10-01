@@ -19,7 +19,7 @@ Every `*_stats` table has `website_id`, `hour` (an hourly UTC bucket), and count
 | `query_param_stats` | `param_name`, `param_value`, `visitors_count` | Other query parameters. |
 | `event_stats` | `event_name`, `event_key`, `visitors_count` | Custom events and goals, hourly. |
 | `flow_transition_stats` | `step_position`, `source_page`, `target_page`, `transitions` | User flows: page A to page B. |
-| `events` | `pathname`, `referrer_hostname`, `event_type`, `custom_event_name`, `custom_event_meta`, `timestamp` | Raw events. `event_type` 1 is a page view, 2 is a custom event. Use it for revenue and event metadata; prefer the stats tables otherwise. |
+| `events` | `pathname`, `referrer_hostname`, `event_type`, `custom_event_name`, `custom_event_meta`, `timestamp` | Raw events. `event_type` 1 is a page view, 2 is a custom event, 3 is a page hide (only marks when a visitor left a page; leave it out of counts). Use it for revenue and event metadata; prefer the stats tables otherwise. |
 | `websites` | `id`, `domain` | |
 | `annotations` | `title`, `annotation_date` | Deploys, campaigns, incidents marked on the timeline. |
 | `feed_items` | `item_type`, `title`, `description`, `period_start` | What `whats_new` returns. |
