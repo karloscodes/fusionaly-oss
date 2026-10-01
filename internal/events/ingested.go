@@ -13,6 +13,7 @@ import (
 	"gorm.io/gorm"
 
 	"fusionaly/internal/config"
+	"fusionaly/internal/pkg/referrers"
 	"fusionaly/internal/settings"
 	"fusionaly/internal/visitors"
 	"fusionaly/internal/websites"
@@ -277,7 +278,9 @@ func prepareTempEvent(db *gorm.DB, logger *slog.Logger, input *CollectEventInput
 	if referrerHostname != DirectOrUnknownReferrer && referrerHostname != "" {
 		sameSite := IsSelfReferral(referrerHostname, urlData.hostname) ||
 			(websites.BaseDomainForHost(referrerHostname) == baseDomain && settings.IsSubdomainTrackingEnabled(db, baseDomain))
-		if sameSite {
+		// A return from a checkout page goes on with the visit that left for
+		// it. After the session timeout it would credit the payment provider.
+		if sameSite || referrers.IsPaymentProvider(referrerHostname) {
 			logger.Debug("Self-referral detected, treating as direct traffic",
 				slog.String("referrer", referrerHostname),
 				slog.String("page_hostname", urlData.hostname))

@@ -1705,4 +1705,8 @@ func TestCollectEventSelfReferral(t *testing.T) {
 	t.Run("the parent domain of a subdomain site is a real referrer", func(t *testing.T) {
 		assert.Equal(t, "example.org", storedReferrer(t, "https://blog.example.org/", "https://example.org/post"))
 	})
+
+	t.Run("a return from a payment page is no new source", func(t *testing.T) {
+		assert.Equal(t, events.DirectOrUnknownReferrer, storedReferrer(t, "https://example.net/thanks", "https://checkout.stripe.com/c/pay/cs_123"))
+	})
 }
