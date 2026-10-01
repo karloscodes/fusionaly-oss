@@ -509,9 +509,16 @@ func TestTotalCounts(t *testing.T) {
 
 	// Test total visitors
 	t.Run("TotalVisitors", func(t *testing.T) {
+		require.NoError(t, db.Create(&[]events.Event{
+			pageView("u1", "/", time.Date(2024, 7, 1, 12, 0, 0, 0, time.UTC)),
+			pageView("u1", "/about", time.Date(2024, 7, 1, 13, 0, 0, 0, time.UTC)),
+			pageView("u2", "/", time.Date(2024, 7, 1, 13, 0, 0, 0, time.UTC)),
+		}).Error)
+
 		totalVisitors, err := analytics.GetTotalVisitorsInTimeFrame(db, queryParams)
+
 		require.NoError(t, err)
-		assert.Equal(t, int64(60), totalVisitors, "Expected 60 total visitors (25+35)")
+		assert.Equal(t, int64(2), totalVisitors, "Visitors come from distinct page view signatures")
 	})
 
 	// Test total sessions

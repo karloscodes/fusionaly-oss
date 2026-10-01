@@ -1,319 +1,185 @@
 package analytics_test
 
 import (
-	"fusionaly/internal/analytics"
-	"fusionaly/internal/timeframe"
-
-	"fmt"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 
+	"fusionaly/internal/analytics"
+	"fusionaly/internal/events"
 	"fusionaly/internal/testsupport"
+	"fusionaly/internal/timeframe"
 )
 
-func TestAggregatedUniqueVisitors(t *testing.T) {
-	tests := []struct {
-		name           string
-		setup          func() // Function to set up site_stats data
-		timeFrameSize  timeframe.TimeFrameSize
-		fromTime       time.Time
-		toTime         time.Time
-		expectedCounts map[string]int // Map date string to expected count
-	}{
-		{
-			name: "Daily Format",
-			setup: func() {
-				dbManager, _ := testsupport.SetupTestDBManager(t)
-				db := dbManager.GetConnection()
-				// Create site_stats entries for testing daily format
-				siteStats := []analytics.SiteStat{
-					{
-						WebsiteID: 1,
-						Visitors:  2,
-						Hour:      time.Date(2024, 7, 1, 12, 0, 0, 0, time.UTC),
-					},
-					{
-						WebsiteID: 1,
-						Visitors:  2,
-						Hour:      time.Date(2024, 7, 2, 12, 0, 0, 0, time.UTC),
-					},
-					{
-						WebsiteID: 1,
-						Visitors:  1,
-						Hour:      time.Date(2024, 7, 3, 12, 0, 0, 0, time.UTC),
-					},
-				}
-				db.CreateInBatches(siteStats, len(siteStats))
-			},
-			timeFrameSize: timeframe.DailyTimeFrame,
-			fromTime:      time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC),
-			toTime:        time.Date(2024, 7, 3, 23, 59, 59, 0, time.UTC),
-			expectedCounts: map[string]int{
-				"2024-07-01T00:00:00Z": 2,
-				"2024-07-02T00:00:00Z": 2,
-				"2024-07-03T00:00:00Z": 1,
-			},
-		},
-		{
-			name: "Weekly Format",
-			setup: func() {
-				dbManager, _ := testsupport.SetupTestDBManager(t)
-				db := dbManager.GetConnection()
-				// Using week 27 and 28 of 2024
-				week27Start := testsupport.GetFirstDayOfISOWeek(2024, 27)
-				week28Start := testsupport.GetFirstDayOfISOWeek(2024, 28)
-
-				// Create site_stats entries for weekly format
-				siteStats := []analytics.SiteStat{
-					{
-						WebsiteID: 1,
-						Visitors:  3,
-						Hour:      week27Start.Add(24 * time.Hour), // Tuesday of week 27
-					},
-					{
-						WebsiteID: 1,
-						Visitors:  2,
-						Hour:      week28Start.Add(48 * time.Hour), // Wednesday of week 28
-					},
-				}
-				db.CreateInBatches(siteStats, len(siteStats))
-			},
-			timeFrameSize: timeframe.WeeklyTimeFrame,
-			fromTime:      testsupport.GetFirstDayOfISOWeek(2024, 27),
-			toTime:        testsupport.GetFirstDayOfISOWeek(2024, 28).Add(7*24*time.Hour - time.Second),
-			expectedCounts: map[string]int{
-				testsupport.GetFirstDayOfISOWeek(2024, 27).Format(time.RFC3339): 3,
-				testsupport.GetFirstDayOfISOWeek(2024, 28).Format(time.RFC3339): 2,
-			},
-		},
-		{
-			name: "Hourly Format",
-			setup: func() {
-				dbManager, _ := testsupport.SetupTestDBManager(t)
-				db := dbManager.GetConnection()
-				// Create site_stats entries for hourly format
-				siteStats := []analytics.SiteStat{
-					{
-						WebsiteID: 1,
-						Visitors:  2,
-						Hour:      time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC),
-					},
-					{
-						WebsiteID: 1,
-						Visitors:  3,
-						Hour:      time.Date(2024, 7, 1, 1, 0, 0, 0, time.UTC),
-					},
-					{
-						WebsiteID: 1,
-						Visitors:  0,
-						Hour:      time.Date(2024, 7, 1, 2, 0, 0, 0, time.UTC),
-					},
-				}
-				db.CreateInBatches(siteStats, len(siteStats))
-			},
-			timeFrameSize: timeframe.HourlyTimeFrame,
-			fromTime:      time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC),
-			toTime:        time.Date(2024, 7, 1, 3, 0, 0, 0, time.UTC),
-			expectedCounts: map[string]int{
-				"2024-07-01T00:00:00Z": 2,
-				"2024-07-01T01:00:00Z": 3,
-				"2024-07-01T02:00:00Z": 0,
-				"2024-07-01T03:00:00Z": 0, // Extra point due to TimeWindowBuffer including endpoint
-			},
-		},
-		{
-			name: "Monthly Format",
-			setup: func() {
-				dbManager, _ := testsupport.SetupTestDBManager(t)
-				db := dbManager.GetConnection()
-				// Create site_stats entries for monthly format
-				siteStats := []analytics.SiteStat{
-					{
-						WebsiteID: 1,
-						Visitors:  3,
-						Hour:      time.Date(2024, 7, 15, 12, 0, 0, 0, time.UTC),
-					},
-					{
-						WebsiteID: 1,
-						Visitors:  2,
-						Hour:      time.Date(2024, 8, 15, 12, 0, 0, 0, time.UTC),
-					},
-				}
-				db.CreateInBatches(siteStats, len(siteStats))
-			},
-			timeFrameSize: timeframe.MonthlyTimeFrame,
-			fromTime:      time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC),
-			toTime:        time.Date(2024, 9, 1, 0, 0, 0, 0, time.UTC),
-			expectedCounts: map[string]int{
-				"2024-07-01T00:00:00Z": 3,
-				"2024-08-01T00:00:00Z": 2,
-				"2024-09-01T00:00:00Z": 0, // Extra point due to TimeWindowBuffer including endpoint
-			},
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			dbManager, _ := testsupport.SetupTestDBManager(t)
-			db := dbManager.GetConnection()
-			testsupport.CleanAllAggregates(db)
-
-			// Set up test data
-			tc.setup()
-
-			timeFrame, err := timeframe.NewTimeFrame(timeframe.TimeFrameParams{
-				FromTime:      tc.fromTime,
-				ToTime:        tc.toTime,
-				TimeFrameSize: tc.timeFrameSize,
-			}, time.UTC)
-			require.NoError(t, err)
-
-			// Create query params with website ID 1
-			queryParams := analytics.NewWebsiteScopedQueryParams(timeFrame, 1)
-			result, err := analytics.AggregatedVisitorsInTimeFrame(db, queryParams)
-			require.NoError(t, err)
-
-			// Check that all expected dates and counts match
-			resultMap := make(map[string]int)
-			for _, item := range result {
-				resultMap[item.Date] = item.Count
-			}
-
-			// Verify expected counts
-			for expectedDate, expectedCount := range tc.expectedCounts {
-				actualCount, exists := resultMap[expectedDate]
-				assert.True(t, exists, "Expected date %v not found in results", expectedDate)
-				assert.Equal(t, expectedCount, actualCount, "Count mismatch for date %v", expectedDate)
-			}
-
-			// Verify no extra dates are present
-			assert.Equal(t, len(tc.expectedCounts), len(resultMap),
-				"Number of dates in result doesn't match expected")
-		})
-	}
+// visit records one event of a visitor at a UTC time.
+func visit(t *testing.T, db *gorm.DB, websiteID uint, signature string, at string, eventType events.EventType) {
+	t.Helper()
+	ts, err := time.Parse(time.RFC3339, at)
+	require.NoError(t, err)
+	require.NoError(t, db.Create(&events.Event{
+		WebsiteID:     websiteID,
+		UserSignature: signature,
+		Hostname:      "example.com",
+		Pathname:      "/",
+		EventType:     eventType,
+		Timestamp:     ts,
+	}).Error)
 }
 
-func TestVisitorsEdgeCases(t *testing.T) {
-	testCases := []struct {
-		name           string
-		setup          func() *timeframe.TimeFrame
-		expectedLength int
-		checkFunc      func(*testing.T, []timeframe.DateStat)
-	}{
-		{
-			name: "Empty dataset",
-			setup: func() *timeframe.TimeFrame {
-				testsupport.SetupTestDBManager(t)
-				timeFrame, err := timeframe.NewTimeFrame(timeframe.TimeFrameParams{
-					FromTime:      time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC),
-					ToTime:        time.Date(2024, 7, 3, 23, 59, 59, 0, time.UTC),
-					TimeFrameSize: timeframe.DailyTimeFrame,
-				}, time.UTC)
-				require.NoError(t, err)
-				return timeFrame
-			},
-			expectedLength: 3, // Should still have 3 data points for the 3 days
-			checkFunc: func(t *testing.T, result []timeframe.DateStat) {
-				for _, point := range result {
-					assert.Equal(t, 0, point.Count, "Count should be zero for empty dataset")
-				}
-			},
-		},
-		{
-			name: "Single-day timeframe",
-			setup: func() *timeframe.TimeFrame {
-				dbManager, _ := testsupport.SetupTestDBManager(t)
-				db := dbManager.GetConnection()
+func visitorParams(t *testing.T, websiteID int, from, to time.Time, size timeframe.TimeFrameSize, tz *time.Location) analytics.WebsiteScopedQueryParams {
+	t.Helper()
+	tf, err := timeframe.NewTimeFrame(timeframe.TimeFrameParams{FromTime: from, ToTime: to, TimeFrameSize: size}, tz)
+	require.NoError(t, err)
+	return analytics.WebsiteScopedQueryParams{TimeFrame: tf, WebsiteID: websiteID}
+}
 
-				// Create site_stats for a single day
-				siteStats := []analytics.SiteStat{
-					{
-						WebsiteID: 1,
-						Visitors:  2,
-						Hour:      time.Date(2024, 7, 1, 10, 0, 0, 0, time.UTC),
-					},
-				}
-				db.CreateInBatches(siteStats, len(siteStats))
-
-				timeFrame, err := timeframe.NewTimeFrame(timeframe.TimeFrameParams{
-					FromTime:      time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC),
-					ToTime:        time.Date(2024, 7, 1, 23, 59, 59, 0, time.UTC),
-					TimeFrameSize: timeframe.DailyTimeFrame,
-				}, time.UTC)
-				require.NoError(t, err)
-				return timeFrame
-			},
-			expectedLength: 1, // Just one day
-			checkFunc: func(t *testing.T, result []timeframe.DateStat) {
-				assert.Equal(t, 2, result[0].Count, "Should count both visitors")
-			},
-		},
-		{
-			name: "Multiple websites",
-			setup: func() *timeframe.TimeFrame {
-				dbManager, _ := testsupport.SetupTestDBManager(t)
-				db := dbManager.GetConnection()
-				// Clean the site_stats table specifically
-				testsupport.CleanTables(db, []string{"site_stats"})
-
-				fromTime := time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC)
-				toTime := time.Date(2024, 7, 1, 23, 59, 59, 0, time.UTC)
-
-				// Insert site_stats for two different websites
-				siteStats := []analytics.SiteStat{
-					{
-						WebsiteID: 1,
-						Visitors:  3,
-						Hour:      time.Date(2024, 7, 1, 12, 0, 0, 0, time.UTC),
-					},
-					{
-						WebsiteID: 2,
-						Visitors:  2,
-						Hour:      time.Date(2024, 7, 1, 12, 0, 0, 0, time.UTC),
-					},
-				}
-
-				// Insert records individually
-				for i, stat := range siteStats {
-					result := db.Create(&stat)
-					if result.Error != nil {
-						panic(fmt.Sprintf("Failed to insert test data %d: %v", i, result.Error))
-					}
-				}
-
-				timeFrame, err := timeframe.NewTimeFrame(timeframe.TimeFrameParams{
-					FromTime:      fromTime,
-					ToTime:        toTime,
-					TimeFrameSize: timeframe.DailyTimeFrame,
-				}, time.UTC)
-				require.NoError(t, err)
-				return timeFrame
-			},
-			expectedLength: 1, // Just one day
-			checkFunc: func(t *testing.T, result []timeframe.DateStat) {
-				// Now we're using a website-scoped query, so we only get visitors for website 1
-				assert.Equal(t, 3, result[0].Count, "Should only count visitors for website ID 1")
-			},
-		},
+func countsByDate(series []timeframe.DateStat, keyLen int) map[string]int {
+	byDate := map[string]int{}
+	for _, point := range series {
+		byDate[point.Date[:keyLen]] = point.Count
 	}
+	return byDate
+}
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			dbManager, _ := testsupport.SetupTestDBManager(t)
-			db := dbManager.GetConnection()
-			testsupport.CleanAllAggregates(db)
+func TestVisitorsCountPerLocalDay(t *testing.T) {
+	dbManager, _ := testsupport.SetupTestDBManager(t)
+	db := dbManager.GetConnection()
+	la, err := time.LoadLocation("America/Los_Angeles")
+	require.NoError(t, err)
 
-			timeFrame := tc.setup()
+	t.Run("a visitor active on two local days of one UTC day counts on both days", func(t *testing.T) {
+		// 21:00 PDT on Jul 1 and 10:00 PDT on Jul 2 are both Jul 2 in UTC.
+		visit(t, db, 1, "alice", "2024-07-02T04:00:00Z", events.EventTypePageView)
+		visit(t, db, 1, "alice", "2024-07-02T17:00:00Z", events.EventTypePageView)
+		params := visitorParams(t, 1,
+			time.Date(2024, 7, 1, 0, 0, 0, 0, la), time.Date(2024, 7, 2, 23, 59, 59, 0, la),
+			timeframe.DailyTimeFrame, la)
 
-			// Create query params with website ID 1
-			queryParams := analytics.NewWebsiteScopedQueryParams(timeFrame, 1)
-			result, err := analytics.AggregatedVisitorsInTimeFrame(db, queryParams)
-			require.NoError(t, err)
-			assert.Equal(t, tc.expectedLength, len(result), "Unexpected number of data points")
-			tc.checkFunc(t, result)
-		})
-	}
+		total, err := analytics.GetTotalVisitorsInTimeFrame(db, params)
+		require.NoError(t, err)
+		series, err := analytics.AggregatedVisitorsInTimeFrame(db, params)
+		require.NoError(t, err)
+
+		assert.Equal(t, int64(2), total)
+		assert.Equal(t, map[string]int{"2024-07-01": 1, "2024-07-02": 1}, countsByDate(series, 10))
+	})
+
+	t.Run("a visitor with many page views on one day counts once", func(t *testing.T) {
+		visit(t, db, 2, "bob", "2024-07-01T09:00:00Z", events.EventTypePageView)
+		visit(t, db, 2, "bob", "2024-07-01T15:00:00Z", events.EventTypePageView)
+		visit(t, db, 2, "carol", "2024-07-01T15:10:00Z", events.EventTypePageView)
+		params := visitorParams(t, 2,
+			time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC), time.Date(2024, 7, 1, 23, 59, 59, 0, time.UTC),
+			timeframe.DailyTimeFrame, time.UTC)
+
+		total, err := analytics.GetTotalVisitorsInTimeFrame(db, params)
+
+		require.NoError(t, err)
+		assert.Equal(t, int64(2), total)
+	})
+
+	t.Run("a range of several days adds the visitors of each day", func(t *testing.T) {
+		visit(t, db, 3, "dave", "2024-07-01T09:00:00Z", events.EventTypePageView)
+		visit(t, db, 3, "dave", "2024-07-02T09:00:00Z", events.EventTypePageView)
+		params := visitorParams(t, 3,
+			time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC), time.Date(2024, 7, 2, 23, 59, 59, 0, time.UTC),
+			timeframe.DailyTimeFrame, time.UTC)
+
+		total, err := analytics.GetTotalVisitorsInTimeFrame(db, params)
+
+		require.NoError(t, err)
+		assert.Equal(t, int64(2), total)
+	})
+
+	t.Run("custom events alone do not make a visitor", func(t *testing.T) {
+		visit(t, db, 4, "erin", "2024-07-01T09:00:00Z", events.EventTypeCustomEvent)
+		params := visitorParams(t, 4,
+			time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC), time.Date(2024, 7, 1, 23, 59, 59, 0, time.UTC),
+			timeframe.DailyTimeFrame, time.UTC)
+
+		total, err := analytics.GetTotalVisitorsInTimeFrame(db, params)
+
+		require.NoError(t, err)
+		assert.Equal(t, int64(0), total)
+	})
+
+	t.Run("months add the visitors of their days", func(t *testing.T) {
+		visit(t, db, 5, "frank", "2024-07-01T09:00:00Z", events.EventTypePageView)
+		visit(t, db, 5, "frank", "2024-07-02T09:00:00Z", events.EventTypePageView)
+		visit(t, db, 5, "frank", "2024-08-01T09:00:00Z", events.EventTypePageView)
+		params := visitorParams(t, 5,
+			time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC), time.Date(2024, 8, 31, 23, 59, 59, 0, time.UTC),
+			timeframe.MonthlyTimeFrame, time.UTC)
+
+		series, err := analytics.AggregatedVisitorsInTimeFrame(db, params)
+
+		require.NoError(t, err)
+		assert.Equal(t, map[string]int{"2024-07": 2, "2024-08": 1}, countsByDate(series, 7))
+	})
+}
+
+func TestVisitorsPerHourCountEveryActiveHour(t *testing.T) {
+	dbManager, _ := testsupport.SetupTestDBManager(t)
+	db := dbManager.GetConnection()
+	visit(t, db, 1, "alice", "2024-07-01T09:05:00Z", events.EventTypePageView)
+	visit(t, db, 1, "alice", "2024-07-01T09:40:00Z", events.EventTypePageView)
+	visit(t, db, 1, "alice", "2024-07-01T15:20:00Z", events.EventTypePageView)
+	params := visitorParams(t, 1,
+		time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC), time.Date(2024, 7, 1, 23, 59, 59, 0, time.UTC),
+		timeframe.HourlyTimeFrame, time.UTC)
+
+	series, err := analytics.AggregatedVisitorsInTimeFrame(db, params)
+
+	require.NoError(t, err)
+	byHour := countsByDate(series, 13)
+	assert.Equal(t, 1, byHour["2024-07-01T09"])
+	assert.Equal(t, 1, byHour["2024-07-01T15"])
+	assert.Equal(t, 0, byHour["2024-07-01T12"])
+	assert.Len(t, series, 24)
+}
+
+func TestVisitorSeriesShape(t *testing.T) {
+	dbManager, _ := testsupport.SetupTestDBManager(t)
+	db := dbManager.GetConnection()
+
+	t.Run("weeks start on Monday and add their days", func(t *testing.T) {
+		week27 := testsupport.GetFirstDayOfISOWeek(2024, 27)
+		week28 := testsupport.GetFirstDayOfISOWeek(2024, 28)
+		visit(t, db, 1, "alice", week27.Add(25*time.Hour).Format(time.RFC3339), events.EventTypePageView)
+		visit(t, db, 1, "alice", week27.Add(49*time.Hour).Format(time.RFC3339), events.EventTypePageView)
+		visit(t, db, 1, "bob", week28.Add(49*time.Hour).Format(time.RFC3339), events.EventTypePageView)
+		params := visitorParams(t, 1, week27, week28.Add(7*24*time.Hour-time.Second), timeframe.WeeklyTimeFrame, time.UTC)
+
+		series, err := analytics.AggregatedVisitorsInTimeFrame(db, params)
+
+		require.NoError(t, err)
+		assert.Equal(t, map[string]int{week27.Format("2006-01-02"): 2, week28.Format("2006-01-02"): 1}, countsByDate(series, 10))
+	})
+
+	t.Run("an empty range has a zero for every day", func(t *testing.T) {
+		params := visitorParams(t, 2,
+			time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC), time.Date(2024, 7, 3, 23, 59, 59, 0, time.UTC),
+			timeframe.DailyTimeFrame, time.UTC)
+
+		series, err := analytics.AggregatedVisitorsInTimeFrame(db, params)
+
+		require.NoError(t, err)
+		assert.Equal(t, map[string]int{"2024-07-01": 0, "2024-07-02": 0, "2024-07-03": 0}, countsByDate(series, 10))
+	})
+
+	t.Run("visitors of another website do not count", func(t *testing.T) {
+		visit(t, db, 3, "carol", "2024-07-01T12:00:00Z", events.EventTypePageView)
+		visit(t, db, 4, "dave", "2024-07-01T12:00:00Z", events.EventTypePageView)
+		params := visitorParams(t, 3,
+			time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC), time.Date(2024, 7, 1, 23, 59, 59, 0, time.UTC),
+			timeframe.DailyTimeFrame, time.UTC)
+
+		total, err := analytics.GetTotalVisitorsInTimeFrame(db, params)
+
+		require.NoError(t, err)
+		assert.Equal(t, int64(1), total)
+	})
 }

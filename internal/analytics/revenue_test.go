@@ -28,8 +28,9 @@ func TestRevenue(t *testing.T) {
 		purchase("u1", "Revenue:Purchased", `{"price":500,"currency":"USD"}`, at("11h")),
 		purchase("u2", "revenue:purchased", `{"price":0,"currency":"USD"}`, at("12h")),
 		purchase("u2", "revenue:purchased", `not json`, at("12h")),
+		pageView("u1", "/", at("10h")),
+		pageView("u2", "/", at("10h")),
 	)
-	require.NoError(t, db.Create(&analytics.SiteStat{WebsiteID: 1, Visitors: 2, PageViews: 2, Sessions: 2, Hour: at("10h")}).Error)
 
 	metrics, err := analytics.GetRevenueMetrics(db, params)
 	require.NoError(t, err)

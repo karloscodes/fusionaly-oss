@@ -198,36 +198,52 @@ func (tf *TimeFrame) GetDBFormat() string {
 // user's local ones (see GenerateDateTimePointsReference), so the expression
 // first shifts each row into the time frame's zone. Hour buckets stay UTC.
 func (tf *TimeFrame) GetSQLiteGroupByExpression() (string, error) {
-	shift := tf.localShiftModifier()
+	return tf.GroupByExpressionFor("hour")
+}
+
+// GroupByExpressionFor is GetSQLiteGroupByExpression for any UTC time column,
+// for example events.timestamp.
+//
+// Hourly charts align to UTC hours. The browser shows each bar at its local
+// time, so a zone with a half-hour offset (India, UTC+5:30) sees bars at :30.
+// The owner accepts this limit.
+func (tf *TimeFrame) GroupByExpressionFor(column string) (string, error) {
+	shift := tf.localShiftModifier(column)
 	switch tf.BucketSize {
 	case TimeFrameBucketSizeHour:
 		// Use consistent format YYYY-MM-DD HH (to match existing tests)
-		return "strftime('%Y-%m-%d %H', hour)", nil
+		return "strftime('%Y-%m-%d %H', " + column + ")", nil
 	case TimeFrameBucketSizeDay:
 		// Use consistent format YYYY-MM-DD
-		return "strftime('%Y-%m-%d', hour" + shift + ")", nil
+		return "strftime('%Y-%m-%d', " + column + shift + ")", nil
 	case TimeFrameBucketSizeWeek:
 		// Use consistent format YYYY-MM-DD for week start
-		return "date(hour" + shift + ", 'start of day', '-' || ((strftime('%w', hour" + shift + ") + 6) % 7) || ' days')", nil
+		return "date(" + column + shift + ", 'start of day', '-' || ((strftime('%w', " + column + shift + ") + 6) % 7) || ' days')", nil
 	case TimeFrameBucketSizeMonth:
 		// Use consistent format YYYY-MM
-		return "strftime('%Y-%m', hour" + shift + ")", nil
+		return "strftime('%Y-%m', " + column + shift + ")", nil
 	case TimeFrameBucketSizeYear:
 		// Use consistent format YYYY
-		return "strftime('%Y', hour" + shift + ")", nil
+		return "strftime('%Y', " + column + shift + ")", nil
 	default:
 		return "", fmt.Errorf("unsupported time frame bucket size: %v", tf.BucketSize)
 	}
 }
 
+// LocalDayExpression returns the SQLite expression for the local day
+// (YYYY-MM-DD) of a UTC time column in the time frame's zone.
+func (tf *TimeFrame) LocalDayExpression(column string) string {
+	return "strftime('%Y-%m-%d', " + column + tf.localShiftModifier(column) + ")"
+}
+
 // localShiftModifier returns a SQLite date modifier (with a leading comma)
-// that moves a UTC hour into the time frame's zone, or "" for UTC.
+// that moves a UTC time column into the time frame's zone, or "" for UTC.
 //
 // SQLite has no time zone database, so the offsets come from Go: one per
 // stretch between offset changes (daylight saving) inside the time frame.
 // Each row gets the offset of its own stretch, so a range across a DST switch
 // still buckets every hour on the right local day.
-func (tf *TimeFrame) localShiftModifier() string {
+func (tf *TimeFrame) localShiftModifier(column string) string {
 	if tf.Tz == nil || tf.Tz == time.UTC {
 		return ""
 	}
@@ -260,7 +276,7 @@ func (tf *TimeFrame) localShiftModifier() string {
 	var b strings.Builder
 	b.WriteString(", CASE")
 	for _, st := range stretches[:len(stretches)-1] {
-		fmt.Fprintf(&b, " WHEN CAST(strftime('%%s', hour) AS INTEGER) < %d THEN %s", st.until, minutes(st.offset))
+		fmt.Fprintf(&b, " WHEN CAST(strftime('%%s', %s) AS INTEGER) < %d THEN %s", column, st.until, minutes(st.offset))
 	}
 	fmt.Fprintf(&b, " ELSE %s END", minutes(stretches[len(stretches)-1].offset))
 	return b.String()

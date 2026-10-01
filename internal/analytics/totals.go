@@ -183,31 +183,6 @@ func GetTotalPageViews(db *gorm.DB) (int64, error) {
 	return result.TotalPageViews, nil
 }
 
-// GetTotalVisitorsInTimeFrame calculates the total number of visitors in the time frame
-func GetTotalVisitorsInTimeFrame(db *gorm.DB, params WebsiteScopedQueryParams) (int64, error) {
-	var result struct {
-		TotalVisitors int64
-	}
-
-	query := `
-    SELECT COALESCE(SUM(visitors), 0) as total_visitors
-    FROM site_stats
-    WHERE hour BETWEEN ? AND ?
-    AND website_id = ?
-    `
-
-	err := db.Raw(query,
-		params.TimeFrame.From.UTC(),
-		params.TimeFrame.To.UTC(),
-		params.WebsiteID,
-	).Scan(&result).Error
-	if err != nil {
-		return 0, fmt.Errorf("error calculating total visitors: %w", err)
-	}
-
-	return result.TotalVisitors, nil
-}
-
 // GetTotalSessionsInTimeFrame calculates the total number of sessions in the time frame
 func GetTotalSessionsInTimeFrame(db *gorm.DB, params WebsiteScopedQueryParams) (int64, error) {
 	var result struct {
