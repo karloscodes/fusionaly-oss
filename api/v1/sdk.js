@@ -305,8 +305,10 @@
 
 	// Send event reliably during page navigation.
 	// Uses fetch+keepalive when configured (avoids ad blocker ping blocking),
-	// falls back to sendBeacon.
-	const sendBeaconEvent = (eventData) => {
+	// falls back to sendBeacon. Returns false when the send fails at once;
+	// the caller then decides to store the event. storeOnFailure stores an
+	// event whose fetch fails later; page hides set it to false.
+	const sendBeaconEvent = (eventData, storeOnFailure = true) => {
 		const body = JSON.stringify(eventData);
 
 		if (window.Fusionaly.config.useKeepaliveFetch) {
@@ -317,10 +319,13 @@
 					headers: { "Content-Type": "application/json" },
 					body: body,
 					keepalive: true,
-				}).catch(() => storeEventLocally(eventData));
+				}).catch(() => {
+					if (storeOnFailure) {
+						storeEventLocally(eventData);
+					}
+				});
 				return true;
 			} catch (e) {
-				storeEventLocally(eventData);
 				return false;
 			}
 		}
@@ -377,7 +382,7 @@
 			timestamp: new Date().toISOString(),
 			eventType: window.Fusionaly.config.eventTypes.pageHide,
 			userAgent: navigator.userAgent,
-		});
+		}, false);
 	};
 
 	document.addEventListener("visibilitychange", () => {
