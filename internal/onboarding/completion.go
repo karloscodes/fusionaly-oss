@@ -4,8 +4,10 @@ import (
 	"errors"
 	"fmt"
 
-	"gorm.io/gorm"
 	"log/slog"
+
+	"github.com/karloscodes/cartridge/sqlite"
+	"gorm.io/gorm"
 
 	"fusionaly/internal/users"
 )
@@ -38,17 +40,21 @@ func CompleteOnboarding(db *gorm.DB, logger *slog.Logger, data CompletionData) (
 	}
 
 	// Setup runs once. Refuse a second admin even if a request gets past the
-	// route guard.
-	required, err := IsOnboardingRequired(db)
-	if err != nil {
+	// route guard. The check and the insert are in one write transaction, so
+	// two requests at the same time cannot both create an admin.
+	err := sqlite.PerformWrite(logger, db, func(tx *gorm.DB) error {
+		required, err := IsOnboardingRequired(tx)
+		if err != nil {
+			return err
+		}
+		if !required {
+			return ErrSetupAlreadyComplete
+		}
+		return tx.Create(&users.User{Email: data.Email, EncryptedPassword: data.PasswordHash}).Error
+	})
+	if errors.Is(err, ErrSetupAlreadyComplete) {
 		return nil, err
 	}
-	if !required {
-		return nil, ErrSetupAlreadyComplete
-	}
-
-	// Create the admin user
-	err = users.CreateAdminUserWithHash(db, data.Email, data.PasswordHash)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create admin user: %w", err)
 	}
