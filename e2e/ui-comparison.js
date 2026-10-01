@@ -37,8 +37,6 @@ const PAGES_TO_CAPTURE = [
 
 // Pro-only pages (original has these, OSS doesn't)
 const PRO_PAGES = [
-  { name: "09-lens", path: "/admin/websites/1/lens", requiresAuth: true },
-  { name: "10-admin-ai", path: "/admin/administration/ai", requiresAuth: true },
 ];
 
 async function login(page) {

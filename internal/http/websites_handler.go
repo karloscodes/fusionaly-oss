@@ -43,7 +43,7 @@ func WebsitesIndexAction(ctx *cartridge.Context) error {
 func WebsiteNewPageAction(ctx *cartridge.Context) error {
 	db := ctx.DB()
 
-	// Fetch available websites for the AI overlay dropdown
+	// Fetch available websites for the website selector
 	websitesData, err := websites.GetWebsitesForSelector(db)
 	if err != nil {
 		ctx.Logger.Error("failed to get websites", slog.Any("error", err))

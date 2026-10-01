@@ -123,15 +123,6 @@ func stripSubdomains(host string) string {
 	return fmt.Sprintf("%s.%s", secondLast, lastPart) // e.g., "example.com"
 }
 
-// GetDistinctWebsites retrieves all websites
-func GetDistinctWebsites(db *gorm.DB) ([]Website, error) {
-	var websites []Website
-	if err := db.Find(&websites).Error; err != nil {
-		return nil, fmt.Errorf("failed to get websites: %w", err)
-	}
-	return websites, nil
-}
-
 // GetAllWebsites retrieves all websites
 func GetAllWebsites(db *gorm.DB) ([]Website, error) {
 	var websites []Website
