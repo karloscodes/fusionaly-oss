@@ -194,8 +194,8 @@ func WebsiteLensSaveAction(ctx *cartridge.Context) error {
 		return ctx.FlashError("Invalid website ID").Redirect("/admin/websites", http.StatusFound)
 	}
 
-	// The route :id is the website id (read via ctx.Params above); this struct
-	// deliberately omits a params tag so Bind's ParamsParser can't overlay it.
+	// Bind reads the body only. The route :id is the website id (read with
+	// ctx.Params above).
 	var in struct {
 		Title        string `json:"title" form:"title"`
 		GeneratedSQL string `json:"generated_sql" form:"generated_sql"`
@@ -240,9 +240,8 @@ func WebsiteLensUpdateAction(ctx *cartridge.Context) error {
 		return ctx.FlashError("Invalid website ID").Redirect("/admin/websites", http.StatusFound)
 	}
 
-	// in.ID is the saved-query id from the form/body. The route :id is the
-	// website id (read via ctx.Params above); this struct deliberately omits a
-	// params tag so Bind's ParamsParser can't overlay in.ID with the website id.
+	// in.ID is the saved-query id from the body. Bind reads the body only, so
+	// the route :id (the website id, read with ctx.Params above) cannot set it.
 	var in struct {
 		ID    string `json:"id" form:"id"`
 		Title string `json:"title" form:"title"`
@@ -291,9 +290,8 @@ func WebsiteLensDeleteAction(ctx *cartridge.Context) error {
 		return ctx.FlashError("Invalid website ID").Redirect("/admin/websites", http.StatusFound)
 	}
 
-	// in.ID is the saved-query id from the form/body. The route :id is the
-	// website id (read via ctx.Params above); this struct deliberately omits a
-	// params tag so Bind's ParamsParser can't overlay in.ID with the website id.
+	// in.ID is the saved-query id from the body. Bind reads the body only, so
+	// the route :id (the website id, read with ctx.Params above) cannot set it.
 	var in struct {
 		ID string `json:"id" form:"id"`
 	}
@@ -320,9 +318,8 @@ func WebsiteLensCloneAction(ctx *cartridge.Context) error {
 		return ctx.FlashError("Invalid website ID").Redirect("/admin/websites", http.StatusFound)
 	}
 
-	// in.ID is the saved-query id from the form/body. The route :id is the
-	// website id (read via ctx.Params above); this struct deliberately omits a
-	// params tag so Bind's ParamsParser can't overlay in.ID with the website id.
+	// in.ID is the saved-query id from the body. Bind reads the body only, so
+	// the route :id (the website id, read with ctx.Params above) cannot set it.
 	var in struct {
 		ID string `json:"id" form:"id"`
 	}

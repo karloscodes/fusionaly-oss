@@ -59,7 +59,7 @@ func SystemExportDatabaseAction(ctx *cartridge.Context) error {
 	ctx.Set("Content-Disposition", fmt.Sprintf("attachment; filename=fusionaly-backup-%s.db", time.Now().UTC().Format("2006-01-02")))
 	ctx.Logger.Info("Database exported", slog.Int64("size", info.Size()))
 
-	// fasthttp sets Content-Length from the size and closes the file when done.
+	// SendStream sets Content-Length from the size and closes the file.
 	return ctx.SendStream(file, int(info.Size()))
 }
 
