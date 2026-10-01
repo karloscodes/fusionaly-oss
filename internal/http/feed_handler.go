@@ -2,6 +2,7 @@ package http
 
 import (
 	"net/http"
+	"net/url"
 
 	"fusionaly/internal/analytics"
 	"log/slog"
@@ -48,7 +49,7 @@ func HomeFeedAction(ctx *cartridge.Context) error {
 
 	// Site cards: visitors per day for the last 15 full days (a 14-day
 	// sparkline plus yesterday against the days before it).
-	daily, err := analytics.DailyVisitorsForWebsites(db, websiteIDs, 15, time.Now())
+	daily, err := analytics.DailyVisitorsForWebsites(db, websiteIDs, 15, time.Now(), viewerLocation(ctx))
 	if err != nil {
 		ctx.Logger.Error("Failed to get daily visitors per site", slog.Any("error", err))
 	}
@@ -132,4 +133,18 @@ func buildVisitorCalendar(db *gorm.DB, websiteIDs []uint) ([]map[string]any, int
 	}
 
 	return calendarData, totalVisitors
+}
+
+// viewerLocation returns the time zone the login form stored in the _tz
+// cookie, or UTC.
+func viewerLocation(ctx *cartridge.Context) *time.Location {
+	name, err := url.QueryUnescape(ctx.Cookies("_tz"))
+	if err != nil || name == "" {
+		return time.UTC
+	}
+	loc, err := time.LoadLocation(name)
+	if err != nil {
+		return time.UTC
+	}
+	return loc
 }

@@ -24,7 +24,7 @@ func TestDailyVisitorsForWebsites(t *testing.T) {
 			{WebsiteID: 1, Visitors: 4, Hour: yesterday.AddDate(0, 0, -2).Add(12 * time.Hour)},
 		}).Error)
 
-		series, err := analytics.DailyVisitorsForWebsites(db, []uint{1}, 4, now)
+		series, err := analytics.DailyVisitorsForWebsites(db, []uint{1}, 4, now, time.UTC)
 
 		require.NoError(t, err)
 		assert.Equal(t, []int64{0, 4, 0, 12}, series[1])
@@ -35,7 +35,7 @@ func TestDailyVisitorsForWebsites(t *testing.T) {
 		db := dbManager.GetConnection()
 		require.NoError(t, db.Create(&analytics.SiteStat{WebsiteID: 1, Visitors: 99, Hour: now.Truncate(time.Hour)}).Error)
 
-		series, err := analytics.DailyVisitorsForWebsites(db, []uint{1}, 3, now)
+		series, err := analytics.DailyVisitorsForWebsites(db, []uint{1}, 3, now, time.UTC)
 
 		require.NoError(t, err)
 		assert.Equal(t, []int64{0, 0, 0}, series[1])
@@ -46,7 +46,7 @@ func TestDailyVisitorsForWebsites(t *testing.T) {
 		db := dbManager.GetConnection()
 		require.NoError(t, db.Create(&analytics.SiteStat{WebsiteID: 2, Visitors: 3, Hour: yesterday.Add(time.Hour)}).Error)
 
-		series, err := analytics.DailyVisitorsForWebsites(db, []uint{1, 2}, 2, now)
+		series, err := analytics.DailyVisitorsForWebsites(db, []uint{1, 2}, 2, now, time.UTC)
 
 		require.NoError(t, err)
 		assert.Equal(t, []int64{0, 0}, series[1])
@@ -56,9 +56,22 @@ func TestDailyVisitorsForWebsites(t *testing.T) {
 	t.Run("returns an empty map for no websites", func(t *testing.T) {
 		dbManager, _ := testsupport.SetupTestDBManager(t)
 
-		series, err := analytics.DailyVisitorsForWebsites(dbManager.GetConnection(), nil, 14, now)
+		series, err := analytics.DailyVisitorsForWebsites(dbManager.GetConnection(), nil, 14, now, time.UTC)
 
 		require.NoError(t, err)
 		assert.Empty(t, series)
+	})
+
+	t.Run("counts days in the viewer's time zone", func(t *testing.T) {
+		dbManager, _ := testsupport.SetupTestDBManager(t)
+		db := dbManager.GetConnection()
+		newYork, err := time.LoadLocation("America/New_York")
+		require.NoError(t, err)
+		require.NoError(t, db.Create(&analytics.SiteStat{WebsiteID: 1, Visitors: 6, Hour: yesterday.Add(2 * time.Hour)}).Error)
+
+		series, err := analytics.DailyVisitorsForWebsites(db, []uint{1}, 3, now, newYork)
+
+		require.NoError(t, err)
+		assert.Equal(t, []int64{0, 6, 0}, series[1], "02:00 UTC on May 23 is the evening of May 22 in New York")
 	})
 }
