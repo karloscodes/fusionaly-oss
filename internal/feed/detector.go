@@ -523,6 +523,7 @@ func (d *Detector) detectMonthlySummary(websiteID uint) {
 		Select("hostname, SUM(visitors_count) as visitors").
 		Where("website_id = ? AND hour >= ? AND hour < ? AND hostname != '' AND hostname != '(direct)' AND hostname != '__direct_or_unknown__'", websiteID, firstOfLastMonth, firstOfThisMonth).
 		Group("hostname").
+		Having("visitors > 0").
 		Order("visitors DESC").
 		Limit(5).
 		Scan(&topSources)

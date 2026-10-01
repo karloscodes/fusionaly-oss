@@ -645,6 +645,8 @@ func TestDetector_MonthlySummary(t *testing.T) {
 
 	// Seed ref stats for last month
 	db.Exec(`INSERT INTO ref_stats (website_id, hostname, visitors_count, hour) VALUES (1, 'google.com', 150, ?)`, firstOfLastMonth.Add(12*time.Hour))
+	// A referrer seen only in the middle of a visit has page views but no visits
+	db.Exec(`INSERT INTO ref_stats (website_id, hostname, visitors_count, hour) VALUES (1, 'polar.sh', 0, ?)`, firstOfLastMonth.Add(12*time.Hour))
 
 	detector := feed.NewDetector(db, testLogger())
 	err = detector.DetectForWebsite(1)
@@ -661,7 +663,7 @@ func TestDetector_MonthlySummary(t *testing.T) {
 	// Verify metadata has top pages and sources
 	metadata := items[0].MetadataMap()
 	assert.NotNil(t, metadata["topPages"])
-	assert.NotNil(t, metadata["topSources"])
+	assert.Equal(t, []any{map[string]any{"hostname": "google.com", "visitors": float64(150)}}, metadata["topSources"])
 }
 
 func TestDetector_MonthlySummary_AnyTrafficGetsSummary(t *testing.T) {
