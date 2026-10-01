@@ -432,6 +432,8 @@ func checkIsNewPageVisitor(db *gorm.DB, websiteID uint, userSignature, hostname,
 
 // isEngagement reports whether a custom event shows the visitor interacted:
 // any custom event except the SDK's automatic scroll events.
+// The prefix check is case-sensitive, like the SQL check in visitSoFar
+// (substr, not LIKE, which ignores case): the SDK sends lowercase names.
 func isEngagement(customEventName string) bool {
 	return !strings.HasPrefix(customEventName, "scroll:")
 }
@@ -475,7 +477,7 @@ func visitSoFar(db *gorm.DB, websiteID uint, userSignature string, sessionStart,
 
 	var engagements int64
 	err = db.Model(&Event{}).
-		Where(inVisit).Where("event_type = ? AND custom_event_name NOT LIKE 'scroll:%'", EventTypeCustomEvent).
+		Where(inVisit).Where("event_type = ? AND substr(custom_event_name, 1, 7) != 'scroll:'", EventTypeCustomEvent).
 		Count(&engagements).Error
 	progress.engaged = engagements > 0
 	return progress, err

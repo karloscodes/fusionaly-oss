@@ -166,6 +166,20 @@ func TestEngagementTakesBackTheBounce(t *testing.T) {
 		assert.Equal(t, 1, siteTotalsFor(t, dbm.GetConnection(), site.ID).BounceCount)
 	})
 
+	t.Run("only lowercase scroll: names are automatic, in live counting and the rebuild alike", func(t *testing.T) {
+		dbm, _, site := testsupport.SetupTestDBManagerWithWebsite(t, "visits.test")
+		db := dbm.GetConnection()
+		process(t, dbm, customNamed(site.ID, "v1", "Scroll:25", start))
+		process(t, dbm, pageViewAt(site.ID, "v1", "/", start.Add(time.Minute)))
+		live := siteTotalsFor(t, db, site.ID)
+		zeroVisitCounts(t, db)
+
+		require.NoError(t, events.RebuildVisitCounts(db, site.ID))
+
+		assert.Equal(t, 0, live.BounceCount, "Scroll:25 is not the SDK's automatic event")
+		assert.Equal(t, live, siteTotalsFor(t, db, site.ID))
+	})
+
 	t.Run("a second page view after a click takes nothing back twice", func(t *testing.T) {
 		dbm, _, site := testsupport.SetupTestDBManagerWithWebsite(t, "visits.test")
 		process(t, dbm, pageViewAt(site.ID, "other", "/", start))
