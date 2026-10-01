@@ -217,7 +217,7 @@ func TestVisitorStatusFunctions(t *testing.T) {
 		assert.Equal(t, user1Sig, result.ProcessingData[0].UserSignature)
 	})
 
-	t.Run("Page view after custom event is not new visitor for website", func(t *testing.T) {
+	t.Run("First page view after a custom event counts the visitor in page-view stats", func(t *testing.T) {
 		testsupport.CleanTables(db, []string{"events", "ingested_events"})
 		// First event: Custom event - with an earlier timestamp
 		firstEventTime := baseTime.Add(-10 * time.Minute)
@@ -239,7 +239,7 @@ func TestVisitorStatusFunctions(t *testing.T) {
 		result, err := events.ProcessUnprocessedEvents(dbManager, logger, 10) // Process page view
 		require.NoError(t, err)
 		require.Len(t, result.ProcessingData, 1, "Expected 1 processed event data for the page view batch")
-		assert.False(t, result.ProcessingData[0].IsNewVisitor, "Page view after custom event should not be marked as new visitor for website")
+		assert.True(t, result.ProcessingData[0].IsNewVisitor, "the visitor's first page view counts them in page-view stats, also after a custom event")
 		assert.Equal(t, user1Sig, result.ProcessingData[0].UserSignature)
 	})
 }

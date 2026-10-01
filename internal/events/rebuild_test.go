@@ -64,3 +64,33 @@ func TestRebuildVisitCountsOnce(t *testing.T) {
 		assert.NoError(t, err)
 	})
 }
+
+// zeroVisitCounts clears every counter the rebuild owns, so only the
+// rebuild can restore them.
+func zeroVisitCounts(t *testing.T, db *gorm.DB) {
+	t.Helper()
+	require.NoError(t, db.Exec("UPDATE page_stats SET exits = 0, visitors_count = 0, entrances = 0").Error)
+	require.NoError(t, db.Exec("UPDATE site_stats SET bounce_count = 0, visitors = 0, sessions = 0").Error)
+	require.NoError(t, db.Exec("UPDATE ref_stats SET visitors_count = 0").Error)
+}
+
+func TestRebuildVisitCountsMatchesLiveCounting(t *testing.T) {
+	start := time.Now().UTC().Add(-3 * time.Hour).Truncate(time.Hour)
+	dbm, _, site := testsupport.SetupTestDBManagerWithWebsite(t, "visits.test")
+	db := dbm.GetConnection()
+	process(t, dbm, ingested(site.ID, "a", "/", "", start, start, events.EventTypeCustomEvent))
+	process(t, dbm, ingested(site.ID, "a", "/signup", "", start.Add(time.Minute), start.Add(time.Minute), events.EventTypePageView))
+	process(t, dbm, ingested(site.ID, "a", "/welcome", "", start.Add(2*time.Minute), start.Add(2*time.Minute), events.EventTypePageView))
+	process(t, dbm, ingested(site.ID, "a", "/", "news.ycombinator.com", start.Add(2*time.Hour), start.Add(2*time.Hour), events.EventTypePageView))
+	process(t, dbm, ingested(site.ID, "b", "/docs", "google.com", start.Add(40*time.Minute), start.Add(40*time.Minute), events.EventTypePageView))
+	process(t, dbm, ingested(site.ID, "b", "/", "", start.Add(41*time.Minute), start.Add(41*time.Minute), events.EventTypeCustomEvent))
+	wantSite, wantPages, wantRefs := siteTotalsFor(t, db, site.ID), pageTotalsFor(t, db, site.ID), refVisitorsFor(t, db, site.ID)
+	zeroVisitCounts(t, db)
+
+	require.NoError(t, events.RebuildVisitCounts(db, site.ID))
+
+	assert.Equal(t, wantSite, siteTotalsFor(t, db, site.ID))
+	assert.Equal(t, wantPages, pageTotalsFor(t, db, site.ID))
+	assert.Equal(t, wantRefs, refVisitorsFor(t, db, site.ID))
+	assert.Equal(t, siteTotals{PageViews: 4, Visitors: 2, Sessions: 3, BounceCount: 2}, wantSite)
+}

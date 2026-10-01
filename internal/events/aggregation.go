@@ -51,7 +51,10 @@ func UpdateAllAggregatesBatch(tx *gorm.DB, logger *slog.Logger, dataList []*Even
 			if err := applyVisitCorrections(tx, data); err != nil {
 				return fmt.Errorf("failed to correct the visit's earlier page views: %w", err)
 			}
-			if err := updateRefStat(tx, data.WebsiteID, data.ReferrerHostname, data.ReferrerPathname, hourTime, data.IsNewVisitor); err != nil {
+			// Traffic sources (referrer, UTM, query parameters such as ref)
+			// get their visitor at the visit's first page view, so each visit
+			// credits the source it came from.
+			if err := updateRefStat(tx, data.WebsiteID, data.ReferrerHostname, data.ReferrerPathname, hourTime, data.IsNewSession); err != nil {
 				return fmt.Errorf("failed to update ref stats: %w", err)
 			}
 			if err := updateDeviceStat(tx, data.WebsiteID, data.DeviceType, hourTime, data.IsNewVisitor); err != nil {
@@ -67,14 +70,14 @@ func UpdateAllAggregatesBatch(tx *gorm.DB, logger *slog.Logger, dataList []*Even
 				return fmt.Errorf("failed to update country stats: %w", err)
 			}
 			if data.HasUTM {
-				if err := updateUTMStat(tx, data.WebsiteID, data.UTMSource, data.UTMMedium, data.UTMCampaign, data.UTMTerm, data.UTMContent, hourTime, data.IsNewVisitor); err != nil {
+				if err := updateUTMStat(tx, data.WebsiteID, data.UTMSource, data.UTMMedium, data.UTMCampaign, data.UTMTerm, data.UTMContent, hourTime, data.IsNewSession); err != nil {
 					return fmt.Errorf("failed to update utm stats: %w", err)
 				}
 			}
 			// Track ALL query parameters
 			for paramName, paramValue := range data.QueryParams {
 				if paramValue != "" {
-					if err := updateQueryParamStat(tx, data.WebsiteID, paramName, paramValue, hourTime, data.IsNewVisitor); err != nil {
+					if err := updateQueryParamStat(tx, data.WebsiteID, paramName, paramValue, hourTime, data.IsNewSession); err != nil {
 						return fmt.Errorf("failed to update query param stats for %s: %w", paramName, err)
 					}
 				}
