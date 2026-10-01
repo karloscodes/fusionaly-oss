@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import type { Event } from "@/types";
 import {
 	Table,
@@ -17,7 +18,8 @@ interface EventsTableProps {
 
 interface SessionGroup {
 	user: string;
-	sessionStart: Date;
+	sessionStart: Date; // the 30-minute bucket, used to group and sort
+	startedAt: Date; // the earliest event in the session, shown to the user
 	events: Event[];
 }
 
@@ -98,12 +100,15 @@ export function EventsTable({ events, isLoading = false, groupBySessions = false
 			const sessionTime = truncateToHalfHour(eventDate);
 			const sessionKey = `${event.user}-${sessionTime.getTime()}`;
 
-			if (sessionMap.has(sessionKey)) {
-				sessionMap.get(sessionKey)!.events.push(event);
+			const session = sessionMap.get(sessionKey);
+			if (session) {
+				session.events.push(event);
+				if (eventDate < session.startedAt) session.startedAt = eventDate;
 			} else {
 				sessionMap.set(sessionKey, {
 					user: event.user,
 					sessionStart: sessionTime,
+					startedAt: eventDate,
 					events: [event],
 				});
 			}
@@ -165,15 +170,15 @@ export function EventsTable({ events, isLoading = false, groupBySessions = false
 						</TableRow>
 					) : groupBySessions ? (
 						sessionGroups.map((session, sessionIdx) => (
-							<>
+							<Fragment key={`session-${sessionIdx}`}>
 								{/* Session header row */}
-								<TableRow key={`session-${sessionIdx}`} className="bg-gray-100 border-t border-gray-300">
+								<TableRow className="bg-gray-100 border-t border-gray-300">
 									<TableCell colSpan={6} className="py-2 px-4">
 										<div className="flex items-center gap-3 text-sm font-medium text-gray-800">
 											<span className="font-semibold">{session.user}</span>
 											<span className="text-gray-500">•</span>
 											<span className="text-gray-600">
-												Session started {formatRelativeTime(session.sessionStart.toISOString())}
+												Session started {formatRelativeTime(session.startedAt.toISOString())}
 											</span>
 											<span className="text-gray-500">•</span>
 											<span className="text-gray-600">
@@ -230,7 +235,7 @@ export function EventsTable({ events, isLoading = false, groupBySessions = false
 										</TableCell>
 									</TableRow>
 								))}
-							</>
+							</Fragment>
 						))
 					) : (
 						events.map((event) => (
