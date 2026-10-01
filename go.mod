@@ -5,7 +5,7 @@ go 1.26
 toolchain go1.26.5
 
 require (
-	github.com/karloscodes/cartridge v1.1.0
+	github.com/karloscodes/cartridge v1.2.0
 	github.com/karloscodes/matcha v0.12.18
 	github.com/oschwald/geoip2-golang v1.13.0
 	github.com/pariz/gountries v0.1.6
@@ -54,6 +54,3 @@ require (
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
 )
-
-// Local replace until cartridge v1.2.0 is tagged.
-replace github.com/karloscodes/cartridge => /home/dev/Code/cartridge
