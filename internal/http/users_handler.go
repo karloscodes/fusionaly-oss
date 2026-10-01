@@ -129,7 +129,14 @@ func LogoutAction(ctx *cartridge.Context) error {
 		slog.Uint64("userID", uint64(userID)),
 		slog.Bool("isAuthenticated", isAuthenticated))
 
-	// Clear the session
+	// End the user's sessions on the server too. A session cookie is signed,
+	// not stored, so clearing the browser's copy alone leaves a copied cookie
+	// working. Fusionaly has one admin, so this signs out every device.
+	if isAuthenticated {
+		if err := users.EndSessions(ctx.DB(), userID); err != nil {
+			ctx.Logger.Error("Failed to end sessions on logout", slog.Any("error", err))
+		}
+	}
 	ctx.Session.ClearSession(ctx)
 
 	// Also clear the timezone cookie for clean logout

@@ -54,6 +54,24 @@ func TestLoginSession(t *testing.T) {
 	})
 }
 
+func TestLogout(t *testing.T) {
+	t.Run("ends the session on the server, also for a copied cookie", func(t *testing.T) {
+		dbManager, _ := testsupport.SetupTestDBManager(t)
+		db := dbManager.GetConnection()
+		testsupport.CleanAllTables(db)
+		testsupport.CreateTestUserForAuth(t, db, "qa@example.com", "QaPassword123!")
+		app := testsupport.CreateMinimalTestApp(t, db)
+		copied := login(t, app, "qa@example.com", "QaPassword123!")
+		req := httptest.NewRequest("POST", "/logout", nil)
+		req.Header.Set("Sec-Fetch-Site", "same-origin")
+		req.AddCookie(copied)
+
+		app.ServeHTTP(httptest.NewRecorder(), req)
+
+		assert.Equal(t, http.StatusFound, adminStatus(t, app, copied), "the copied cookie goes back to the login page")
+	})
+}
+
 func login(t *testing.T, app http.Handler, email, password string) *http.Cookie {
 	t.Helper()
 	req := httptest.NewRequest("POST", "/login", strings.NewReader(`{"email":"`+email+`","password":"`+password+`"}`))

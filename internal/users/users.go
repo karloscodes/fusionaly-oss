@@ -115,6 +115,13 @@ func ChangePassword(dbConn *gorm.DB, email, password string) error {
 	})
 }
 
+// EndSessions ends every session of the user issued before now.
+func EndSessions(dbConn *gorm.DB, userID uint) error {
+	return sqlite.PerformWrite(slog.Default(), dbConn, func(tx *gorm.DB) error {
+		return tx.Model(&User{}).Where("id = ?", userID).Update("sessions_valid_since", time.Now().UTC()).Error
+	})
+}
+
 // SessionStillValid reports whether a session issued at issuedAt may still
 // be used: the user exists and has not ended their sessions since.
 func SessionStillValid(dbConn *gorm.DB, userID uint, issuedAt time.Time) (bool, error) {
