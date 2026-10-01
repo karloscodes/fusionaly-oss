@@ -2,6 +2,9 @@ package analytics
 
 import (
 	"fmt"
+	"regexp"
+	"sort"
+	"strings"
 
 	"gorm.io/gorm"
 )
@@ -44,7 +47,14 @@ func GetTopURLsInTimeFrame(db *gorm.DB, params WebsiteScopedQueryParams) ([]Metr
 	return results, nil
 }
 
-// GetTopBrowsersInTimeFrame fetches top browsers from BrowserStat
+// oldPlaceholderBrand matches what parsers before v2.7 stored for Chromium's
+// placeholder brand ("Not)A;Brand" cut at ";", "Not=A?Brand"). Those rows
+// came from Chromium browsers, so they count as Chrome.
+var oldPlaceholderBrand = regexp.MustCompile(`^not\W`)
+
+// GetTopBrowsersInTimeFrame fetches top browsers from BrowserStat. It cleans
+// up names stored by older versions: placeholder brands count as Chrome, and
+// headless browsers, which are bots, are left out.
 func GetTopBrowsersInTimeFrame(db *gorm.DB, params WebsiteScopedQueryParams) ([]MetricCountResult, error) {
 	var rawResults []struct {
 		Browser string
@@ -52,33 +62,50 @@ func GetTopBrowsersInTimeFrame(db *gorm.DB, params WebsiteScopedQueryParams) ([]
 	}
 
 	query := `
-    SELECT 
-        browser as browser, 
+    SELECT
+        browser as browser,
         SUM(visitors_count) as count
     FROM browser_stats
     WHERE hour BETWEEN ? AND ?
     AND website_id = ?
     GROUP BY browser
     HAVING count > 0
-    ORDER BY count DESC
-    LIMIT ?
     `
 
 	err := db.Raw(query,
 		params.TimeFrame.From.UTC(),
 		params.TimeFrame.To.UTC(),
 		params.WebsiteID,
-		params.Limit,
 	).Scan(&rawResults).Error
 	if err != nil {
 		return nil, fmt.Errorf("error fetching top browsers from BrowserStat: %w", err)
 	}
 
-	results := make([]MetricCountResult, len(rawResults))
-	for i, r := range rawResults {
-		results[i] = MetricCountResult{Name: r.Browser, Count: r.Count}
+	counts := map[string]int64{}
+	for _, r := range rawResults {
+		name := r.Browser
+		switch {
+		case strings.Contains(name, "headless"):
+			continue
+		case name == "not" || oldPlaceholderBrand.MatchString(name):
+			name = "chrome"
+		}
+		counts[name] += r.Count
 	}
 
+	results := make([]MetricCountResult, 0, len(counts))
+	for name, count := range counts {
+		results = append(results, MetricCountResult{Name: name, Count: count})
+	}
+	sort.Slice(results, func(i, j int) bool {
+		if results[i].Count != results[j].Count {
+			return results[i].Count > results[j].Count
+		}
+		return results[i].Name < results[j].Name
+	})
+	if params.Limit > 0 && len(results) > params.Limit {
+		results = results[:params.Limit]
+	}
 	return results, nil
 }
 

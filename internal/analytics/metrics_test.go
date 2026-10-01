@@ -998,3 +998,21 @@ func TestGetEventRevenueTotalsEmpty(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, totals)
 }
+
+func TestTopBrowsersCleanUpOldNames(t *testing.T) {
+	t.Run("merges placeholder brands into Chrome and drops headless rows", func(t *testing.T) {
+		dbManager, _ := testsupport.SetupTestDBManager(t)
+		db := dbManager.GetConnection()
+		hour := time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC)
+		for name, visitors := range map[string]int{"chrome": 59, "safari": 14, "not)a": 5, "not=a?brand": 4, "not:a-brand": 1, "not": 2, "headlesschrome": 1} {
+			require.NoError(t, db.Create(&analytics.BrowserStat{WebsiteID: 1, Browser: name, Hour: hour, VisitorsCount: visitors, PageViewsCount: visitors}).Error)
+		}
+		tf, err := timeframe.NewTimeFrame(timeframe.TimeFrameParams{FromTime: hour.Add(-time.Hour), ToTime: hour.Add(time.Hour), TimeFrameSize: timeframe.HourlyTimeFrame}, time.UTC)
+		require.NoError(t, err)
+
+		results, err := analytics.GetTopBrowsersInTimeFrame(db, analytics.WebsiteScopedQueryParams{WebsiteID: 1, TimeFrame: tf, Limit: 10})
+
+		require.NoError(t, err)
+		assert.Equal(t, []analytics.MetricCountResult{{Name: "chrome", Count: 71}, {Name: "safari", Count: 14}}, results)
+	})
+}
