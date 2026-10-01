@@ -192,3 +192,44 @@ func TestEngagementTakesBackTheBounce(t *testing.T) {
 		assert.Equal(t, 1, want.BounceCount)
 	})
 }
+
+func TestVisitSource(t *testing.T) {
+	now := time.Now().UTC()
+	entry := func(siteID uint, url, referrer string) events.IngestedEvent {
+		e := ingested(siteID, "v1", "/", referrer, now, now, events.EventTypePageView)
+		e.RawURL = url
+		return e
+	}
+
+	t.Run("utm_source names the source of a visit without a referrer", func(t *testing.T) {
+		dbm, _, site := testsupport.SetupTestDBManagerWithWebsite(t, "visits.test")
+
+		process(t, dbm, entry(site.ID, "https://visits.test/?utm_source=newsletter", ""))
+
+		assert.Equal(t, map[string]int{"newsletter": 1}, refVisitorsFor(t, dbm.GetConnection(), site.ID))
+	})
+
+	t.Run("utm_source comes before ref, and ref before the referrer", func(t *testing.T) {
+		dbm, _, site := testsupport.SetupTestDBManagerWithWebsite(t, "visits.test")
+
+		process(t, dbm, entry(site.ID, "https://visits.test/?utm_source=twitter&ref=producthunt", "t.co"))
+
+		assert.Equal(t, map[string]int{"twitter": 1}, refVisitorsFor(t, dbm.GetConnection(), site.ID))
+	})
+
+	t.Run("ref names the source when there is no utm_source", func(t *testing.T) {
+		dbm, _, site := testsupport.SetupTestDBManagerWithWebsite(t, "visits.test")
+
+		process(t, dbm, entry(site.ID, "https://visits.test/?ref=producthunt", "google.com"))
+
+		assert.Equal(t, map[string]int{"producthunt": 1}, refVisitorsFor(t, dbm.GetConnection(), site.ID))
+	})
+
+	t.Run("the referrer names the source otherwise", func(t *testing.T) {
+		dbm, _, site := testsupport.SetupTestDBManagerWithWebsite(t, "visits.test")
+
+		process(t, dbm, entry(site.ID, "https://visits.test/", "google.com"))
+
+		assert.Equal(t, map[string]int{"google.com": 1}, refVisitorsFor(t, dbm.GetConnection(), site.ID))
+	})
+}

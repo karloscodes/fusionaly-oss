@@ -70,6 +70,8 @@ type visitTally struct {
 //   - a page counts each visitor once, at their first view of it
 //
 // UTM and query parameter stats are not rebuilt: events do not keep the URL.
+// For the same reason, the rebuild credits a visit to its referrer, not to
+// its utm_source or ref.
 func RebuildVisitCounts(db *gorm.DB, websiteID uint) error {
 	tally, err := tallyVisits(db, websiteID)
 	if err != nil {

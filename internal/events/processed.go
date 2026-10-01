@@ -278,14 +278,24 @@ func prepareEventProcessingData(db *gorm.DB, tempEvent *IngestedEvent, eventID u
 
 	hasUTM := utmSource != EmptyUTMAttr || utmMedium != EmptyUTMAttr || utmCampaign != EmptyUTMAttr
 
+	// The source of a visit: utm_source, then ref, then the referrer. Whoever
+	// tagged the link named the source; a tagged link without a referrer
+	// (an email, an app) is not direct traffic.
+	sourceHostname, sourcePathname := tempEvent.ReferrerHostname, tempEvent.ReferrerPathname
+	if utmSource != EmptyUTMAttr {
+		sourceHostname, sourcePathname = utmSource, ""
+	} else if ref := queryParams["ref"]; ref != "" {
+		sourceHostname, sourcePathname = ref, ""
+	}
+
 	return &EventProcessingData{
 		EventID:          eventID,
 		WebsiteID:        tempEvent.WebsiteID,
 		UserSignature:    tempEvent.UserSignature,
 		Hostname:         tempEvent.Hostname,
 		Pathname:         tempEvent.Pathname,
-		ReferrerHostname: tempEvent.ReferrerHostname,
-		ReferrerPathname: tempEvent.ReferrerPathname,
+		ReferrerHostname: sourceHostname,
+		ReferrerPathname: sourcePathname,
 		DeviceType:       getDeviceTypeFromParsedUA(parsedUA),
 		Browser:          getBrowserFromParsedUA(parsedUA, tempEvent.SecChUa),
 		OperatingSystem:  getOSFromParsedUA(parsedUA),
