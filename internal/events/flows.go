@@ -26,35 +26,38 @@ type FlowTransition struct {
 	Transitions  int
 }
 
-// flowTransitionsQuery finds the page-to-page moves whose target page view
-// falls in [from, to). The flow rules:
-//   - a visit ends after the session timeout without an event of any type,
-//     the same rule as live processing (visitStatus); the gap is compared in
-//     whole milliseconds, because JULIANDAY is a float
-//   - views of the same page in a row are one step (a reload is no move)
-//   - steps count from the visit's first page view, also before from
+// VisitsCTE splits the events of a range into visits, with the rules of
+// live processing (visitStatus):
+//   - a visit ends after the session timeout without an event of any type;
+//     the gap is compared in whole milliseconds, because JULIANDAY is a float
+//   - it reads the visitors with a page view in [@from, @to], from the start
+//     of @from's UTC day to the end of @to's: the signature rotates at
+//     midnight UTC, so a visit never spans two UTC days and each visit is
+//     read in full
 //
-// The signature rotates at midnight UTC, so a visit never spans two UTC days
-// and the events from the start of from's UTC day give each visit in full.
-const flowTransitionsQuery = `
-WITH visitor_events AS (
+// It defines visits(id, website_id, user_signature, event_type, timestamp,
+// page, visit), where visit numbers a visitor's visits from 1. Parameters:
+// @from, @to, @day_start, @day_end, @website_id (0 = all), @page_view,
+// @timeout.
+const VisitsCTE = `
+visitor_events AS (
 	SELECT id, website_id, user_signature, event_type, timestamp,
 		hostname || pathname AS page,
 		LAG(timestamp) OVER (
 			PARTITION BY website_id, user_signature ORDER BY timestamp, id
 		) AS previous_timestamp
 	FROM events
-	WHERE timestamp >= @day_start AND timestamp < @to
+	WHERE timestamp >= @day_start AND timestamp < @day_end
 		AND (website_id, user_signature) IN (
 			SELECT website_id, user_signature
 			FROM events
-			WHERE timestamp >= @from AND timestamp < @to
+			WHERE timestamp >= @from AND timestamp <= @to
 				AND event_type = @page_view
 				AND (@website_id = 0 OR website_id = @website_id)
 		)
 ),
 visits AS (
-	SELECT *,
+	SELECT id, website_id, user_signature, event_type, timestamp, page,
 		SUM(CASE
 			WHEN previous_timestamp IS NULL
 				OR ROUND((JULIANDAY(timestamp) - JULIANDAY(previous_timestamp)) * 86400000) > @timeout * 1000
@@ -63,7 +66,28 @@ visits AS (
 			PARTITION BY website_id, user_signature ORDER BY timestamp, id
 		) AS visit
 	FROM visitor_events
-),
+)`
+
+// VisitsParams returns the parameters of VisitsCTE.
+func VisitsParams(websiteID uint, from, to time.Time) map[string]any {
+	from, to = from.UTC(), to.UTC()
+	return map[string]any{
+		"from":       from,
+		"to":         to,
+		"day_start":  from.Truncate(24 * time.Hour),
+		"day_end":    to.Truncate(24 * time.Hour).Add(24 * time.Hour),
+		"website_id": websiteID,
+		"page_view":  EventTypePageView,
+		"timeout":    config.GetConfig().SessionTimeoutSeconds,
+	}
+}
+
+// flowTransitionsQuery finds the page-to-page moves whose target page view
+// falls in [from, to). The flow rules, on top of VisitsCTE:
+//   - views of the same page in a row are one step (a reload is no move)
+//   - steps count from the visit's first page view, also before from
+const flowTransitionsQuery = `
+WITH ` + VisitsCTE + `,
 page_views AS (
 	SELECT id, website_id, user_signature, visit, page, timestamp,
 		LAG(page) OVER (
@@ -98,9 +122,6 @@ GROUP BY website_id, hour, step, page, next_page
 // QueryFlowTransitions returns the page-to-page moves whose target page view
 // falls in [from, to), for one website or, with websiteID 0, for all.
 func QueryFlowTransitions(db *gorm.DB, websiteID uint, from, to time.Time, maxDepth int) ([]FlowTransition, error) {
-	from, to = from.UTC(), to.UTC()
-	dayStart := from.Truncate(24 * time.Hour)
-
 	var rows []struct {
 		WebsiteID    uint
 		Hour         string
@@ -109,15 +130,9 @@ func QueryFlowTransitions(db *gorm.DB, websiteID uint, from, to time.Time, maxDe
 		TargetPage   string
 		Transitions  int
 	}
-	err := db.Raw(flowTransitionsQuery, map[string]any{
-		"from":       from,
-		"to":         to,
-		"day_start":  dayStart,
-		"website_id": websiteID,
-		"page_view":  EventTypePageView,
-		"timeout":    config.GetConfig().SessionTimeoutSeconds,
-		"max_depth":  maxDepth,
-	}).Scan(&rows).Error
+	params := VisitsParams(websiteID, from, to)
+	params["max_depth"] = maxDepth
+	err := db.Raw(flowTransitionsQuery, params).Scan(&rows).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to query flow transitions: %w", err)
 	}

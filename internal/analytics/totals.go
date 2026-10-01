@@ -7,81 +7,35 @@ import (
 	"log/slog"
 	"gorm.io/gorm"
 
-	"fusionaly/internal/config"
 	"fusionaly/internal/events"
 )
 
-// GetVisitDurationInTimeFrame calculates the average visit duration
+// visitDurationQuery averages the length of the visits that start in the
+// range: from a visit's first to its last event, of any type. A visit counts
+// at its first page view, like sessions; one with a single page view and no
+// other event lasts 0 seconds.
+const visitDurationQuery = `
+WITH ` + events.VisitsCTE + `,
+durations AS (
+	SELECT
+		MIN(CASE WHEN event_type = @page_view THEN timestamp END) AS first_page_view,
+		(JULIANDAY(MAX(timestamp)) - JULIANDAY(MIN(timestamp))) * 86400 AS seconds
+	FROM visits
+	GROUP BY website_id, user_signature, visit
+)
+SELECT COALESCE(AVG(seconds), 0)
+FROM durations
+WHERE first_page_view >= @from AND first_page_view <= @to
+`
+
+// GetVisitDurationInTimeFrame returns the average visit duration in seconds.
 func GetVisitDurationInTimeFrame(db *gorm.DB, params WebsiteScopedQueryParams) (float64, error) {
-	sessionTimeoutSeconds := config.GetConfig().SessionTimeoutSeconds
-
-	var result struct {
-		AverageDuration float64
-	}
-
-	query := `
-    WITH ranked_views AS (
-        SELECT
-            user_signature,
-            timestamp,
-            LAG(timestamp) OVER (
-                PARTITION BY user_signature
-                ORDER BY timestamp
-            ) as prev_view_time
-        FROM events
-        WHERE timestamp BETWEEN ? AND ?
-        AND event_type = ?
-        AND website_id = ?
-    ),
-    session_breaks AS (
-        SELECT
-            user_signature,
-            timestamp,
-            CASE
-                WHEN prev_view_time IS NULL OR 
-                     CAST((JULIANDAY(timestamp) - JULIANDAY(prev_view_time)) * 86400 as INTEGER) > ?
-                THEN 1
-                ELSE 0
-            END as is_new_session
-        FROM ranked_views
-    ),
-    sessions AS (
-        SELECT
-            user_signature,
-            timestamp,
-            SUM(is_new_session) OVER (
-                PARTITION BY user_signature
-                ORDER BY timestamp
-            ) as session_id
-        FROM session_breaks
-    ),
-    session_durations AS (
-        SELECT
-            user_signature,
-            session_id,
-            MIN(timestamp) as session_start,
-            MAX(timestamp) as session_end,
-            COUNT(*) as event_count,
-            CAST((JULIANDAY(MAX(timestamp)) - JULIANDAY(MIN(timestamp))) * 86400 as INTEGER) as duration_seconds
-        FROM sessions
-        GROUP BY user_signature, session_id
-        HAVING event_count >= 3
-        AND duration_seconds <= ?
-    )
-    SELECT COALESCE(AVG(duration_seconds), 0) as average_duration
-    FROM session_durations
-    WHERE duration_seconds > 0`
-
-	err := db.Raw(query,
-		params.TimeFrame.From.UTC(), params.TimeFrame.To.UTC(), events.EventTypePageView, params.WebsiteID,
-		sessionTimeoutSeconds,
-		sessionTimeoutSeconds,
-	).Scan(&result).Error
-	if err != nil {
+	var seconds float64
+	query := events.VisitsParams(uint(params.WebsiteID), params.TimeFrame.From, params.TimeFrame.To)
+	if err := db.Raw(visitDurationQuery, query).Scan(&seconds).Error; err != nil {
 		return 0, fmt.Errorf("error calculating visit duration: %w", err)
 	}
-
-	return result.AverageDuration, nil
+	return seconds, nil
 }
 
 // GetBounceRateInTimeFrame calculates the bounce rate using SiteStat
