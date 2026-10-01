@@ -19,8 +19,11 @@ type User struct {
 	ResetPasswordToken  sql.NullString
 	ResetPasswordSentAt sql.NullTime
 	RememberCreatedAt   sql.NullTime
-	CreatedAt           time.Time `gorm:"autoCreateTime"`
-	UpdatedAt           time.Time `gorm:"autoUpdateTime"`
+	// SessionsValidSince ends every session issued before it. A password
+	// change sets it, so a stolen session cookie stops working.
+	SessionsValidSince sql.NullTime
+	CreatedAt          time.Time `gorm:"autoCreateTime"`
+	UpdatedAt          time.Time `gorm:"autoUpdateTime"`
 }
 
 // ErrUserExists is returned when attempting to create a user that already exists.
@@ -105,6 +108,22 @@ func ChangePassword(dbConn *gorm.DB, email, password string) error {
 
 	logger := slog.Default()
 	return sqlite.PerformWrite(logger, dbConn, func(tx *gorm.DB) error {
-		return tx.Model(user).Update("encrypted_password", string(hashedPassword)).Error
+		return tx.Model(user).Updates(map[string]any{
+			"encrypted_password":   string(hashedPassword),
+			"sessions_valid_since": time.Now().UTC(),
+		}).Error
 	})
+}
+
+// SessionStillValid reports whether a session issued at issuedAt may still
+// be used: the user exists and has not ended their sessions since.
+func SessionStillValid(dbConn *gorm.DB, userID uint, issuedAt time.Time) (bool, error) {
+	user, err := FindByID(dbConn, userID)
+	if err != nil {
+		return false, err
+	}
+	if !user.SessionsValidSince.Valid {
+		return true, nil
+	}
+	return !issuedAt.Before(user.SessionsValidSince.Time), nil
 }

@@ -56,6 +56,12 @@ func AccountChangePasswordFormAction(ctx *cartridge.Context) error {
 		return ctx.FlashError("Failed to change password").Redirect("/admin/administration/account", http.StatusFound)
 	}
 
+	// The change ended every session, this one too. Keep the person who
+	// changed it signed in with a new session.
+	if err := ctx.Session.SetSession(ctx, user.ID); err != nil {
+		ctx.Logger.Error("Failed to start a new session after the password change", slog.Any("error", err))
+	}
+
 	ctx.Logger.Info("Password changed successfully", slog.Uint64("userID", uint64(userID)), slog.String("email", user.Email))
 	return ctx.FlashSuccess("Password changed successfully").Redirect("/admin/administration/account", http.StatusFound)
 }

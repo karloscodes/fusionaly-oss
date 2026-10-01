@@ -124,6 +124,7 @@ func MountAppRoutes(srv *cartridge.Server) {
 		CustomMiddleware: []cartridge.HandlerFunc{
 			middleware.OnboardingCheck(db, logger),
 			sessionMgr.Middleware(),
+			middleware.ValidSession(db, sessionMgr, logger),
 			middleware.WebsiteFilter(db, logger),
 		},
 	}
@@ -132,6 +133,7 @@ func MountAppRoutes(srv *cartridge.Server) {
 		CustomMiddleware: []cartridge.HandlerFunc{
 			middleware.OnboardingCheck(db, logger),
 			sessionMgr.Middleware(),
+			middleware.ValidSession(db, sessionMgr, logger),
 			middleware.WebsiteFilter(db, logger),
 		},
 	}
