@@ -1660,12 +1660,18 @@ func TestCollectEventTime(t *testing.T) {
 		assert.WithinDuration(t, received, stored, 5*time.Second)
 	})
 
-	t.Run("uses the receive time for a time before the receive day", func(t *testing.T) {
+	t.Run("drops an event sent before the receive day", func(t *testing.T) {
+		db.Exec("DELETE FROM ingested_events")
 		yesterday := time.Now().UTC().Truncate(24 * time.Hour).Add(-time.Minute)
+		input := events.CollectEventInput{IPAddress: "192.168.1.1", UserAgent: "Mozilla/5.0 (test)",
+			EventType: events.EventTypePageView, Timestamp: yesterday, RawUrl: "https://example.com/"}
 
-		stored, _, received := collect(t, yesterday)
+		err := events.CollectEvent(dbManager, logger, &input)
 
-		assert.WithinDuration(t, received, stored, 5*time.Second, "the visitor signature belongs to the receive day")
+		require.NoError(t, err, "the client gets no error, so it does not retry")
+		var count int64
+		db.Model(&events.IngestedEvent{}).Count(&count)
+		assert.Zero(t, count, "a replay from an earlier day would count as today's traffic")
 	})
 }
 

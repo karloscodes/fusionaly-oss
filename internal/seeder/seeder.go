@@ -160,6 +160,7 @@ func (s *Seeder) generateRealisticDataForSingleSite(ctx context.Context, website
 				RawUrl:      fmt.Sprintf("https://%s%s", baseDomain, fullPath),
 			}
 
+			input.ReceivedAt = input.Timestamp // history: received when it happened
 			if err := events.CollectEvent(s.DBManager, s.Logger, input); err != nil {
 				s.Logger.Error("Failed to collect event during seeding", slog.Any("error", err))
 			} else {
@@ -188,6 +189,7 @@ func (s *Seeder) generateRealisticDataForSingleSite(ctx context.Context, website
 				RawUrl:          fmt.Sprintf("https://%s%s", baseDomain, journey[len(journey)-1]),
 			}
 
+			input.ReceivedAt = input.Timestamp // history: received when it happened
 			if err := events.CollectEvent(s.DBManager, s.Logger, input); err != nil {
 				s.Logger.Error("Failed to collect custom event during seeding", slog.Any("error", err))
 			}
@@ -483,6 +485,7 @@ func (s *Seeder) generateRealisticData(ctx context.Context, website *websites.We
 				RawUrl:      fmt.Sprintf("https://%s%s", baseDomain, fullPath),
 			}
 
+			input.ReceivedAt = input.Timestamp // history: received when it happened
 			if err := events.CollectEvent(s.DBManager, s.Logger, input); err != nil {
 				s.Logger.Error("Failed to collect event during seeding", slog.Any("error", err))
 			} else {
@@ -515,6 +518,7 @@ func (s *Seeder) generateRealisticData(ctx context.Context, website *websites.We
 				RawUrl:          fmt.Sprintf("https://%s%s", baseDomain, journey[len(journey)-1]),
 			}
 
+			input.ReceivedAt = input.Timestamp // history: received when it happened
 			if err := events.CollectEvent(s.DBManager, s.Logger, input); err != nil {
 				s.Logger.Error("Failed to collect custom event during seeding", slog.Any("error", err))
 			}

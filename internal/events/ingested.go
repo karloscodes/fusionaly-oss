@@ -50,6 +50,9 @@ type CollectEventInput struct {
 	CustomEventMeta string
 	Timestamp       time.Time
 	RawUrl          string
+	// ReceivedAt is when the server received the event; zero means now.
+	// The seeder sets it to write history.
+	ReceivedAt time.Time
 }
 
 // urlData holds parsed URL components
@@ -85,7 +88,18 @@ func CollectEvent(dbManager cartridge.DBManager, logger *slog.Logger, input *Col
 		return nil
 	}
 
-	input.Timestamp = eventTime(input.Timestamp, time.Now().UTC())
+	received := input.ReceivedAt.UTC()
+	if input.ReceivedAt.IsZero() {
+		received = time.Now().UTC()
+	}
+	if sentBeforeReceiveDay(input.Timestamp, received) {
+		// Browser storage replays failed events later. On another day the
+		// visitor has another signature, so the event would count as new
+		// traffic today. Drop it; the client gets no error and does not retry.
+		logger.Debug("Skipping event sent before the receive day", slog.Time("timestamp", input.Timestamp))
+		return nil
+	}
+	input.Timestamp = eventTime(input.Timestamp, received)
 	country := GetCountryFromIP(input.IPAddress)
 	db := dbManager.GetConnection()
 
@@ -106,15 +120,17 @@ func CollectEvent(dbManager cartridge.DBManager, logger *slog.Logger, input *Col
 	return nil
 }
 
-// eventTime returns the time to store for an event, in UTC. The client
-// sends the time, and the visitor signature belongs to the receive day (UTC).
-// A time that is missing, in the future, or before the receive day becomes
-// the receive time. Clock skew and events replayed from browser storage
-// then stay in the visitor's day.
+// sentBeforeReceiveDay reports whether the client sent a time before the
+// receive day (UTC), the day the visitor signature belongs to.
+func sentBeforeReceiveDay(sent, received time.Time) bool {
+	return !sent.IsZero() && sent.UTC().Before(received.Truncate(24*time.Hour))
+}
+
+// eventTime returns the time to store for an event, in UTC. A missing time,
+// or one in the future (clock skew), becomes the receive time.
 func eventTime(sent, received time.Time) time.Time {
 	sent = sent.UTC()
-	dayStart := received.Truncate(24 * time.Hour)
-	if sent.IsZero() || sent.After(received) || sent.Before(dayStart) {
+	if sent.IsZero() || sent.After(received) {
 		return received
 	}
 	return sent
