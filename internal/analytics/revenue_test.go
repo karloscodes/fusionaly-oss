@@ -82,7 +82,10 @@ func TestRevenueCurrencies(t *testing.T) {
 			purchase("u3", "revenue:purchased", `{"price":9900,"currency":"USD"}`, at("12h")),
 			purchase("u4", "revenue:purchased", `{"price":500,"quantity":2,"currency":"GBP"}`, at("13h")),
 		)
-		require.NoError(t, db.Create(&analytics.SiteStat{WebsiteID: 1, Visitors: 10, PageViews: 10, Sessions: 10, Hour: at("10h")}).Error)
+		// 10 visitors, 4 of them buyers. Visitors count from page views.
+		for _, user := range []string{"u1", "u2", "u3", "u4", "v5", "v6", "v7", "v8", "v9", "v10"} {
+			require.NoError(t, db.Create(&[]events.Event{pageView(user, "/", at("09h"))}).Error)
+		}
 
 		metrics, err := analytics.GetRevenueMetrics(db, params)
 		require.NoError(t, err)
