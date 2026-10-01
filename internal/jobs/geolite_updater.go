@@ -3,10 +3,12 @@ package jobs
 import (
 	"archive/tar"
 	"compress/gzip"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -132,6 +134,12 @@ func (j *GeoLiteUpdaterJob) downloadAndUpdate(licenseKey string) error {
 	downloadURL := fmt.Sprintf(MaxMindDownloadURL, licenseKey)
 	resp, err := geoliteClient.Get(downloadURL)
 	if err != nil {
+		// A *url.Error includes the URL, and the URL holds the license key.
+		// Keep only the cause, so logs and the UI never show the key.
+		var urlErr *url.Error
+		if errors.As(err, &urlErr) {
+			err = urlErr.Err
+		}
 		return fmt.Errorf("failed to download GeoLite database: %w", err)
 	}
 	defer resp.Body.Close()
