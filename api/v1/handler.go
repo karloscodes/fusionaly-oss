@@ -20,6 +20,7 @@ const (
 	msgEventAdded     = "Event added successfully"
 	errInvalidRequest = "Invalid request"
 	errInvalidOrigin  = "Invalid origin"
+	errInvalidEvent   = "Invalid event type"
 
 	// retryAfterSeconds is the Retry-After value sent when the database is busy.
 	// It must exceed the SDK's own first backoff (1s) to change anything, since
@@ -125,6 +126,10 @@ func validateAndParseRequest(c *cartridge.Context, dbManager cartridge.DBManager
 		return nil, err
 	}
 
+	if !params.EventType.Valid() {
+		return nil, cartridge.NewError(http.StatusBadRequest, errInvalidEvent)
+	}
+
 	return &params, nil
 }
 
@@ -213,6 +218,11 @@ func CreateEventBeaconHandler(ctx *cartridge.Context) error {
 	if err := validateOrigin(ctx, ctx.DBManager, ctx.Logger); err != nil {
 		ctx.Logger.Debug("Invalid origin in beacon request")
 		return ctx.SendStatus(http.StatusAccepted) // Always return 202 for beacon requests
+	}
+
+	if !params.EventType.Valid() {
+		ctx.Logger.Debug("Invalid event type in beacon request", slog.Int("eventType", int(params.EventType)))
+		return ctx.Status(http.StatusBadRequest).JSON(cartridge.Map{"error": errInvalidEvent})
 	}
 
 	// Ensure required fields have valid values

@@ -4,6 +4,7 @@ package v1_test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"fusionaly/internal/visitors"
 	"fusionaly/internal/websites"
 	"io"
@@ -838,6 +839,60 @@ func TestIngestionRejectsBadBodies(t *testing.T) {
 			var count int64
 			require.NoError(t, db.Model(&events.IngestedEvent{}).Count(&count).Error)
 			assert.Equal(t, int64(0), count, "Expected no stored event")
+		})
+	}
+}
+
+func TestIngestionEventTypes(t *testing.T) {
+	routes := []string{"/x/api/v1/events", "/x/api/v1/events/beacon"}
+
+	post := func(t *testing.T, route string, eventType int) (int, int64) {
+		dbManager, _ := testsupport.SetupTestDBManager(t)
+		db := dbManager.GetConnection()
+		testsupport.CleanAllTables(db)
+		testsupport.CreateTestWebsite(db, "example.com")
+		app := testsupport.CreateMinimalTestApp(t, db)
+		payload, err := json.Marshal(map[string]interface{}{
+			"url":       "https://example.com/pricing",
+			"timestamp": time.Now(),
+			"eventType": eventType,
+			"eventKey":  "signup",
+			"userAgent": "Mozilla/5.0 (Test Agent)",
+		})
+		require.NoError(t, err)
+		req := httptest.NewRequest("POST", route, bytes.NewReader(payload))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Origin", "https://example.com")
+		req.Header.Set("X-Forwarded-For", "127.0.0.1")
+
+		resp, err := app.Test(req, 30000)
+
+		require.NoError(t, err)
+		var count int64
+		require.NoError(t, db.Model(&events.IngestedEvent{}).Count(&count).Error)
+		return resp.StatusCode, count
+	}
+
+	for _, route := range routes {
+		t.Run(route, func(t *testing.T) {
+			for _, eventType := range []int{0, 4, 99} {
+				t.Run(fmt.Sprintf("rejects event type %d with 400", eventType), func(t *testing.T) {
+					status, count := post(t, route, eventType)
+
+					assert.Equal(t, http.StatusBadRequest, status)
+					assert.Equal(t, int64(0), count, "Expected no stored event")
+				})
+			}
+
+			known := []events.EventType{events.EventTypePageView, events.EventTypeCustomEvent, events.EventTypePageHide}
+			for _, eventType := range known {
+				t.Run(fmt.Sprintf("accepts event type %d", eventType), func(t *testing.T) {
+					status, count := post(t, route, int(eventType))
+
+					assert.Equal(t, http.StatusAccepted, status)
+					assert.Equal(t, int64(1), count, "Expected the event in the ingest database")
+				})
+			}
 		})
 	}
 }

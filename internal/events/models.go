@@ -15,6 +15,11 @@ const (
 	EventTypePageHide EventType = 3
 )
 
+// Valid tells if the event type is one that ingestion accepts.
+func (t EventType) Valid() bool {
+	return t == EventTypePageView || t == EventTypeCustomEvent || t == EventTypePageHide
+}
+
 // Event represents a tracked page view or custom event in the main database.
 type Event struct {
 	ID               uint   `gorm:"primaryKey;autoIncrement"`
