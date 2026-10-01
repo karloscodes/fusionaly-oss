@@ -205,11 +205,13 @@ func FetchComparisonMetrics(db *gorm.DB, tf *timeframe.TimeFrame, websiteId int,
 	if v, ok := results["comparisonVisitsDuration"].Data.(float64); ok {
 		data.PreviousAvgTime = v
 	}
-	if currentMetrics.RevenueMetrics != nil {
-		data.CurrentRevenue = currentMetrics.RevenueMetrics.TotalRevenue
-	}
-	if v, ok := results["comparisonRevenueMetrics"].Data.(*RevenueMetrics); ok && v != nil {
-		data.PreviousRevenue = v.TotalRevenue
+	// Both periods count revenue in the current main currency, so the change
+	// never compares euros with dollars.
+	if current := currentMetrics.RevenueMetrics; current != nil {
+		data.CurrentRevenue = current.TotalRevenue
+		if previous, ok := results["comparisonRevenueMetrics"].Data.(*RevenueMetrics); ok && previous != nil {
+			data.PreviousRevenue = previous.RevenueIn(current.Currency)
+		}
 	}
 
 	return CalculateComparisonMetrics(data)

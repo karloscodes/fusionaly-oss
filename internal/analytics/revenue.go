@@ -3,6 +3,7 @@ package analytics
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"fusionaly/internal/events"
 	"fusionaly/internal/timeframe"
@@ -10,61 +11,141 @@ import (
 	"gorm.io/gorm"
 )
 
-// RevenueMetrics holds revenue-related metrics
+// RevenueMetrics holds revenue-related metrics. The totals count only
+// purchases in the main currency. OtherCurrencies lists the rest.
 type RevenueMetrics struct {
-	TotalRevenue      float64 `json:"total_revenue"`
-	TotalSales        int64   `json:"total_sales"`
-	AverageOrderValue float64 `json:"average_order_value"`
-	ConversionRate    float64 `json:"conversion_rate"`
-	Currency          string  `json:"currency"`
+	TotalRevenue      float64         `json:"total_revenue"`
+	TotalSales        int64           `json:"total_sales"`
+	AverageOrderValue float64         `json:"average_order_value"`
+	ConversionRate    float64         `json:"conversion_rate"`
+	Currency          string          `json:"currency"`
+	OtherCurrencies   []CurrencyTotal `json:"other_currencies"`
 }
+
+// CurrencyTotal is the revenue and the number of sales in one currency.
+type CurrencyTotal struct {
+	Currency     string  `json:"currency"`
+	TotalRevenue float64 `json:"total_revenue"`
+	TotalSales   int64   `json:"total_sales"`
+}
+
+// RevenueIn returns the revenue in the given currency.
+func (m *RevenueMetrics) RevenueIn(currency string) float64 {
+	if m.Currency == currency {
+		return m.TotalRevenue
+	}
+	for _, other := range m.OtherCurrencies {
+		if other.Currency == currency {
+			return other.TotalRevenue
+		}
+	}
+	return 0
+}
+
+const defaultCurrency = "USD"
 
 // A purchase is a "revenue:purchased" custom event, in any letter case,
 // with JSON metadata and a price above 0, in cents. Its amount is price times
-// quantity (1 when absent). The tile, the chart, and the top revenue events
-// all use these two expressions, so their numbers always agree.
+// quantity (1 when absent).
 const purchaseWhereSQL = `LOWER(custom_event_name) = 'revenue:purchased'
 	AND (CASE WHEN json_valid(custom_event_meta) THEN CAST(json_extract(custom_event_meta, '$.price') AS REAL) ELSE 0 END) > 0`
 
 const purchaseCentsSQL = `CAST(json_extract(custom_event_meta, '$.price') AS REAL) *
 	COALESCE(CAST(json_extract(custom_event_meta, '$.quantity') AS INTEGER), 1)`
 
-// GetRevenueMetrics calculates revenue metrics for events with "revenue:purchased" naming convention
-func GetRevenueMetrics(db *gorm.DB, params WebsiteScopedQueryParams) (*RevenueMetrics, error) {
-	var result struct {
-		TotalRevenue float64
-		TotalSales   int64
-		Buyers       int64
-		Currency     string
-	}
+// duplicateLookback is how far before the range we look for an earlier event
+// of the same order. A buyer who reloads the thank-you page just after
+// midnight then does not add the order to the next day again.
+const duplicateLookback = 24 * time.Hour
 
-	query := `
+// purchasesSQL starts a query with three tables:
+//
+//   - purchases: one row per purchase in the range. Events with the same
+//     order_id are one purchase, at the earliest event. Events without an
+//     order_id are one purchase each. The currency is in upper case, USD
+//     when absent.
+//   - main_currency: the currency with the most purchases. A tie goes to
+//     the first currency in alphabetical order.
+//   - main_purchases: the purchases in the main currency.
+//
+// The tile, the chart, the top revenue events, and the event revenue totals
+// all read these tables, so their numbers always agree.
+const purchasesSQL = `
+	WITH purchase_events AS (
 		SELECT
-			COALESCE(SUM(` + purchaseCentsSQL + `), 0) / 100.0 AS total_revenue,
-			COUNT(*) AS total_sales,
-			COUNT(DISTINCT user_signature) AS buyers,
-			COALESCE(MAX(json_extract(custom_event_meta, '$.currency')), 'USD') AS currency
+			id,
+			timestamp,
+			user_signature,
+			custom_event_name,
+			` + purchaseCentsSQL + ` AS cents,
+			UPPER(COALESCE(NULLIF(TRIM(json_extract(custom_event_meta, '$.currency')), ''), '` + defaultCurrency + `')) AS currency,
+			ROW_NUMBER() OVER (
+				PARTITION BY COALESCE(NULLIF(CAST(json_extract(custom_event_meta, '$.order_id') AS TEXT), ''), 'event:' || id)
+				ORDER BY timestamp, id
+			) AS copy
 		FROM events
 		WHERE website_id = ?
 		AND timestamp BETWEEN ? AND ?
 		AND event_type = ?
-		AND ` + purchaseWhereSQL
+		AND ` + purchaseWhereSQL + `
+	),
+	purchases AS (
+		SELECT * FROM purchase_events WHERE copy = 1 AND timestamp >= ?
+	),
+	main_currency AS (
+		SELECT currency FROM purchases GROUP BY currency ORDER BY COUNT(*) DESC, currency ASC LIMIT 1
+	),
+	main_purchases AS (
+		SELECT * FROM purchases WHERE currency = (SELECT currency FROM main_currency)
+	)`
 
-	err := db.Raw(query,
+// purchasesArgs returns the arguments for purchasesSQL.
+func purchasesArgs(params WebsiteScopedQueryParams) []interface{} {
+	from := params.TimeFrame.From.UTC()
+	return []interface{}{
 		params.WebsiteID,
-		params.TimeFrame.From.UTC(),
+		from.Add(-duplicateLookback),
 		params.TimeFrame.To.UTC(),
 		events.EventTypeCustomEvent,
-	).Scan(&result).Error
+		from,
+	}
+}
 
-	if err != nil {
+// GetRevenueMetrics calculates revenue metrics for events with "revenue:purchased" naming convention
+func GetRevenueMetrics(db *gorm.DB, params WebsiteScopedQueryParams) (*RevenueMetrics, error) {
+	var totals []struct {
+		Currency     string
+		TotalRevenue float64
+		TotalSales   int64
+	}
+	query := purchasesSQL + `
+		SELECT currency, SUM(cents) / 100.0 AS total_revenue, COUNT(*) AS total_sales
+		FROM purchases
+		GROUP BY currency
+		ORDER BY total_sales DESC, currency ASC`
+	if err := db.Raw(query, purchasesArgs(params)...).Scan(&totals).Error; err != nil {
 		return nil, fmt.Errorf("error calculating revenue metrics: %w", err)
 	}
 
-	// Calculate average order value
-	averageOrderValue := 0.0
-	if result.TotalSales > 0 {
-		averageOrderValue = result.TotalRevenue / float64(result.TotalSales)
+	var buyers int64
+	query = purchasesSQL + `SELECT COUNT(DISTINCT user_signature) FROM purchases`
+	if err := db.Raw(query, purchasesArgs(params)...).Scan(&buyers).Error; err != nil {
+		return nil, fmt.Errorf("error counting buyers: %w", err)
+	}
+
+	metrics := &RevenueMetrics{Currency: defaultCurrency, OtherCurrencies: []CurrencyTotal{}}
+	for i, total := range totals {
+		if i == 0 {
+			metrics.Currency = total.Currency
+			metrics.TotalRevenue = total.TotalRevenue
+			metrics.TotalSales = total.TotalSales
+			continue
+		}
+		metrics.OtherCurrencies = append(metrics.OtherCurrencies, CurrencyTotal(total))
+	}
+
+	if metrics.TotalSales > 0 {
+		metrics.AverageOrderValue = metrics.TotalRevenue / float64(metrics.TotalSales)
 	}
 
 	totalVisitors, err := GetTotalVisitorsInTimeFrame(db, params)
@@ -72,54 +153,28 @@ func GetRevenueMetrics(db *gorm.DB, params WebsiteScopedQueryParams) (*RevenueMe
 		return nil, fmt.Errorf("failed to get total visitors for conversion rate: %w", err)
 	}
 
-	// The share of visitors who bought: a visitor who buys twice counts once.
-	conversionRate := 0.0
+	// The share of visitors who bought, in any currency. A visitor who buys
+	// twice counts once.
 	if totalVisitors > 0 {
-		conversionRate = (float64(result.Buyers) / float64(totalVisitors)) * 100
+		metrics.ConversionRate = (float64(buyers) / float64(totalVisitors)) * 100
 	}
 
-	// Set default currency if none found
-	currency := result.Currency
-	if currency == "" {
-		currency = "USD"
-	}
-
-	return &RevenueMetrics{
-		TotalRevenue:      result.TotalRevenue,
-		TotalSales:        result.TotalSales,
-		AverageOrderValue: averageOrderValue,
-		ConversionRate:    conversionRate,
-		Currency:          currency,
-	}, nil
+	return metrics, nil
 }
 
 // GetTopRevenueEvents returns the most frequent revenue events
 func GetTopRevenueEvents(db *gorm.DB, params WebsiteScopedQueryParams) ([]MetricCountResult, error) {
 	var results []MetricCountResult
 
-	query := `
-		SELECT 
-			custom_event_name as name,
-			COUNT(*) as count
-		FROM events 
-		WHERE website_id = ? 
-		AND timestamp BETWEEN ? AND ?
-		AND event_type = ?
-		AND ` + purchaseWhereSQL + `
+	query := purchasesSQL + `
+		SELECT custom_event_name AS name, COUNT(*) AS count
+		FROM main_purchases
 		GROUP BY custom_event_name
 		ORDER BY count DESC
-		LIMIT ?
-	`
+		LIMIT ?`
 
-	err := db.Raw(query,
-		params.WebsiteID,
-		params.TimeFrame.From.UTC(),
-		params.TimeFrame.To.UTC(),
-		events.EventTypeCustomEvent,
-		params.Limit,
-	).Scan(&results).Error
-
-	if err != nil {
+	args := append(purchasesArgs(params), params.Limit)
+	if err := db.Raw(query, args...).Scan(&results).Error; err != nil {
 		return nil, fmt.Errorf("error fetching top revenue events: %w", err)
 	}
 
@@ -127,19 +182,24 @@ func GetTopRevenueEvents(db *gorm.DB, params WebsiteScopedQueryParams) ([]Metric
 }
 
 // GetEventRevenueTotals returns the total revenue generated per custom event within the timeframe.
+// Purchases follow the rules of purchasesSQL. Other events with a price count as they are.
 func GetEventRevenueTotals(db *gorm.DB, params WebsiteScopedQueryParams) (map[string]float64, error) {
 	var rows []struct {
 		Name    string
 		Revenue float64
 	}
 
-	query := `
-		SELECT 
+	query := purchasesSQL + `
+		SELECT custom_event_name AS name, SUM(cents) / 100.0 AS revenue
+		FROM main_purchases
+		GROUP BY custom_event_name
+		UNION ALL
+		SELECT
 			custom_event_name AS name,
 			SUM(
 				CASE
 					WHEN json_valid(custom_event_meta) = 1 AND json_extract(custom_event_meta, '$.price') IS NOT NULL
-					THEN (CAST(json_extract(custom_event_meta, '$.price') AS REAL) / 100.0) * 
+					THEN (CAST(json_extract(custom_event_meta, '$.price') AS REAL) / 100.0) *
 						COALESCE(CAST(json_extract(custom_event_meta, '$.quantity') AS INTEGER), 1)
 					ELSE 0
 				END
@@ -148,15 +208,16 @@ func GetEventRevenueTotals(db *gorm.DB, params WebsiteScopedQueryParams) (map[st
 		WHERE website_id = ?
 		AND timestamp BETWEEN ? AND ?
 		AND event_type = ?
-		GROUP BY custom_event_name
-	`
+		AND LOWER(custom_event_name) <> 'revenue:purchased'
+		GROUP BY custom_event_name`
 
-	if err := db.Raw(query,
+	args := append(purchasesArgs(params),
 		params.WebsiteID,
 		params.TimeFrame.From.UTC(),
 		params.TimeFrame.To.UTC(),
 		events.EventTypeCustomEvent,
-	).Scan(&rows).Error; err != nil {
+	)
+	if err := db.Raw(query, args...).Scan(&rows).Error; err != nil {
 		return nil, fmt.Errorf("error fetching event revenue totals: %w", err)
 	}
 
@@ -203,7 +264,7 @@ func AggregatedRevenueInTimeFrame(db *gorm.DB, params WebsiteScopedQueryParams) 
 	return params.TimeFrame.BuildTimeSeriesPoints(result), nil
 }
 
-// aggregatedRevenueInTimeFrameRaw fetches raw aggregated revenue data from Events table
+// aggregatedRevenueInTimeFrameRaw sums the main currency purchases, in cents, per bucket.
 func aggregatedRevenueInTimeFrameRaw(db *gorm.DB, params WebsiteScopedQueryParams) ([]timeframe.DateStat, error) {
 	var results []timeframe.DateStat
 
@@ -215,23 +276,16 @@ func aggregatedRevenueInTimeFrameRaw(db *gorm.DB, params WebsiteScopedQueryParam
 	// Replace 'hour' with 'timestamp' in the group by expression since events table uses timestamp
 	groupByExpression = strings.Replace(groupByExpression, "hour", "timestamp", -1)
 
-	// Query to sum revenue from revenue:purchased events by extracting price from JSON metadata
-	query := fmt.Sprintf(`
+	query := purchasesSQL + fmt.Sprintf(`
 		SELECT
 			%s AS date,
-			CAST(ROUND(COALESCE(SUM(`+purchaseCentsSQL+`), 0)) AS INTEGER) AS count
-		FROM events
-		WHERE timestamp >= ? AND timestamp <= ?
-			AND website_id = ?
-			AND event_type = ?
-			AND `+purchaseWhereSQL+`
+			CAST(ROUND(COALESCE(SUM(cents), 0)) AS INTEGER) AS count
+		FROM main_purchases
 		GROUP BY %s
 		ORDER BY date ASC
 	`, groupByExpression, groupByExpression)
 
-	// Execute query
-	err = db.Raw(query, params.TimeFrame.From.UTC(), params.TimeFrame.To.UTC(), params.WebsiteID, events.EventTypeCustomEvent).Scan(&results).Error
-	if err != nil {
+	if err := db.Raw(query, purchasesArgs(params)...).Scan(&results).Error; err != nil {
 		return nil, fmt.Errorf("error fetching aggregated revenue from Events: %w", err)
 	}
 
