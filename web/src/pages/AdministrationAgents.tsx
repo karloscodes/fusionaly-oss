@@ -18,6 +18,7 @@ import {
 	} from "lucide-react";
 import type { FlashMessage } from "@/types";
 import { AdministrationLayout } from "@/components/administration-layout";
+import { copyText } from "@/lib/clipboard";
 
 interface AdministrationAgentsProps {
 	flash?: FlashMessage;
@@ -65,7 +66,7 @@ export const AdministrationAgentsContent: FC = () => {
 		if (!fullApiKey) return;
 
 		try {
-			await navigator.clipboard.writeText(fullApiKey);
+			await copyText(fullApiKey);
 			setApiKeyCopied(true);
 			setTimeout(() => setApiKeyCopied(false), 2000);
 		} catch {

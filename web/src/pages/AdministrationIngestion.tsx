@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Info, ExternalLink, } from "lucide-react";
 import type { FlashMessage } from "@/types";
 import { AdministrationLayout } from "@/components/administration-layout";
+import { copyText } from "@/lib/clipboard";
 
 interface Setting {
 	key: string;
@@ -62,7 +63,7 @@ export const AdministrationIngestionContent: FC = () => {
 			const data = await response.json();
 			const ip = data.ip;
 
-			await navigator.clipboard.writeText(ip);
+			await copyText(ip);
 			setShowCopySuccess(true);
 			setTimeout(() => setShowCopySuccess(false), 3000);
 

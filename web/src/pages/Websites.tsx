@@ -28,6 +28,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../com
 import type { FlashMessage } from "@/types";
 import { AdminLayout } from "@/components/admin-layout";
 import { formatDistanceToNow } from 'date-fns';
+import { copyText } from '@/lib/clipboard';
 
 interface Website {
   id: number;
@@ -501,7 +502,7 @@ const Websites: React.FC = () => {
                   className="mt-3"
                   onClick={() => {
                     const script = `<script defer src="${window.location.origin}/y/api/v1/sdk.js" data-website-id="${selectedWebsiteForIntegration?.id}"></script>`;
-                    navigator.clipboard.writeText(script);
+                    copyText(script);
                     setCopiedScript(true);
                     setTimeout(() => setCopiedScript(false), 2000);
                   }}

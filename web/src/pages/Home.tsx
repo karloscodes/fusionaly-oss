@@ -29,6 +29,7 @@ import {
 import { AdminLayout } from "@/components/admin-layout";
 import { itemTypeGlyphs, feedTime } from "@/components/feed-item-style";
 import { cn } from "@/lib/utils";
+import { copyText } from "@/lib/clipboard";
 
 interface FeedItem {
   id: number;
@@ -788,7 +789,7 @@ export const Home = () => {
               size="sm"
               onClick={() => {
                 const script = `<script defer src="${window.location.origin}/y/api/v1/sdk.js" data-website-id="${selectedWebsiteForIntegration?.id}"></script>`;
-                navigator.clipboard.writeText(script);
+                copyText(script);
                 setCopiedScript(true);
                 setTimeout(() => setCopiedScript(false), 2000);
               }}

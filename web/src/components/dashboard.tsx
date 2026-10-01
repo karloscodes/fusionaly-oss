@@ -42,6 +42,7 @@ import {
 import { formatNumber } from "@/lib/utils";
 import { convertRangeToDateRange } from "@/utils/date-range-converter";
 import { usePage, Deferred } from "@inertiajs/react";
+import { copyText } from "@/lib/clipboard";
 
 // --- Helper Functions ---
 
@@ -693,7 +694,7 @@ export const Dashboard = (props: DashboardComponentProps) => {
 											type="button"
 											onClick={() => {
 												const shareUrl = `${window.location.origin}/share/${props.share_token}`;
-												navigator.clipboard.writeText(shareUrl);
+												copyText(shareUrl);
 												setShareCopied(true);
 												setTimeout(() => setShareCopied(false), 2000);
 											}}

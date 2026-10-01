@@ -3,6 +3,7 @@ import { usePage, Link } from "@inertiajs/react";
 import { Button } from "@/components/ui/button";
 import { Check, Copy, ArrowRight, Code, BookOpen, Zap } from "lucide-react";
 import { AdminLayout } from "@/components/admin-layout";
+import { copyText } from "@/lib/clipboard";
 
 interface WebsiteSetupProps {
 	website: {
@@ -23,7 +24,7 @@ export function WebsiteSetup() {
 
 	const handleCopy = async () => {
 		try {
-			await navigator.clipboard.writeText(scriptTag);
+			await copyText(scriptTag);
 			setCopied(true);
 			setTimeout(() => setCopied(false), 2000);
 		} catch (err) {
