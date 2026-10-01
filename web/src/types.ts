@@ -38,6 +38,13 @@ export interface RevenueMetrics {
   average_order_value: number;
   conversion_rate: number;
   currency: string;
+  other_currencies?: CurrencyTotal[];
+}
+
+export interface CurrencyTotal {
+  currency: string;
+  total_revenue: number;
+  total_sales: number;
 }
 
 export interface ComparisonMetrics {

@@ -39,7 +39,7 @@ import {
 	TooltipContent,
 	Tooltip as ShadcnTooltip,
 } from "@/components/ui/tooltip";
-import { formatNumber } from "@/lib/utils";
+import { currencySymbol, formatMoney, formatNumber } from "@/lib/utils";
 import { convertRangeToDateRange } from "@/utils/date-range-converter";
 import { usePage, Deferred } from "@inertiajs/react";
 import { copyText } from "@/lib/clipboard";
@@ -240,6 +240,9 @@ export const Dashboard = (props: DashboardComponentProps) => {
 				: 0;
 	const bucketSize = data.bucket_size;
 	const eventRevenueTotals = data.event_revenue_totals || {};
+	// Revenue counts only the main currency. The other currencies show in a note.
+	const money = currencySymbol(data.revenue_metrics?.currency);
+	const otherCurrencies = data.revenue_metrics?.other_currencies || [];
 	const eventConversionRates = data.event_conversion_rates || {};
 
 	const formatDate = (item: PageViewData) => {
@@ -380,7 +383,7 @@ export const Dashboard = (props: DashboardComponentProps) => {
 				visitors: visitorsCount,
 				sessions: sessionsCount,
 				revenue: revenue, // Revenue in cents
-				revenueFormatted: `$${(revenue / 100).toFixed(2)}`, // Convert to dollars for display
+				revenueFormatted: `${money}${(revenue / 100).toFixed(2)}`,
 			};
 		},
 	);
@@ -547,7 +550,7 @@ export const Dashboard = (props: DashboardComponentProps) => {
 					domain={[0, getMaxValue()]}
 					allowDecimals={false}
 					ticks={[0, getMaxValue() / 2, getMaxValue()]}
-					tickFormatter={activeChart === "revenue" ? (value) => `$${Math.round(value / 100)}` : undefined}
+					tickFormatter={activeChart === "revenue" ? (value) => `${money}${Math.round(value / 100)}` : undefined}
 				/>
 				<RechartsTooltip
 					content={({ active, payload, label }) => {
@@ -564,7 +567,7 @@ export const Dashboard = (props: DashboardComponentProps) => {
 											<span className="text-gray-600">{entry.name}</span>
 											<span className="font-medium text-gray-900">
 												{entry.name === "Revenue"
-													? `$${((entry.value as number) / 100).toFixed(2)}`
+													? `${money}${((entry.value as number) / 100).toFixed(2)}`
 													: formatNumber(entry.value as number)
 												}
 											</span>
@@ -656,7 +659,7 @@ export const Dashboard = (props: DashboardComponentProps) => {
 	];
 	const chartTotal =
 		activeChart === "revenue"
-			? `revenue: $${formatNumber(Math.round(chartData.reduce((acc, d) => acc + d.revenue, 0) / 100))}`
+			? `revenue: ${money}${formatNumber(Math.round(chartData.reduce((acc, d) => acc + d.revenue, 0) / 100))}`
 			: activeChart === "views"
 				? `page views: ${formatNumber(totalViews)}`
 				: `visitors: ${formatNumber(totalVisitors)}`;
@@ -670,7 +673,15 @@ export const Dashboard = (props: DashboardComponentProps) => {
 		// Without visits there is no rate or average: show "—", not 0.
 		createMetric("Bounce Rate", totalSessions > 0 ? `${(data.bounce_rate * 100).toFixed(0)}%` : "—", withTrends ? data.comparison?.bounce_rate_change : undefined, undefined, true, true),
 		createMetric("Avg Time", totalSessions > 0 ? formatSessionDuration(data.visits_duration) : "—", withTrends ? data.comparison?.avg_time_change : undefined),
-		createMetric("Revenue", `$${data.revenue_metrics ? formatNumber(Math.round(data.revenue_metrics.total_revenue)) : '0'}`, withTrends ? data.comparison?.revenue_change : undefined, countsOf(data.revenue)),
+		{
+			...createMetric("Revenue", `${money}${data.revenue_metrics ? formatNumber(Math.round(data.revenue_metrics.total_revenue)) : '0'}`, withTrends ? data.comparison?.revenue_change : undefined, countsOf(data.revenue)),
+			note: otherCurrencies.length > 0 ? {
+				text: `+ ${otherCurrencies.length} other ${otherCurrencies.length === 1 ? "currency" : "currencies"}`,
+				title: otherCurrencies
+					.map((c) => `${formatMoney(c.total_revenue, c.currency)} · ${c.total_sales} ${c.total_sales === 1 ? "sale" : "sales"}`)
+					.join("\n"),
+			} : undefined,
+		},
 	];
 
 	return (
@@ -1054,7 +1065,7 @@ export const Dashboard = (props: DashboardComponentProps) => {
 						hideOnMobile: true,
 						render: (item) => {
 							const amount = eventRevenueTotals[item.name] || 0;
-							const text = amount <= 0 ? "—" : `$${formatNumber(Math.round(amount))}`;
+							const text = amount <= 0 ? "—" : `${money}${formatNumber(Math.round(amount))}`;
 							return <span className="font-normal">{text}</span>;
 						},
 					},

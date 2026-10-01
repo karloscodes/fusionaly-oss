@@ -8,6 +8,7 @@ interface MetricData {
 	lowerIsBetter?: boolean; // e.g. bounce rate: a drop is good news
 	trendInPoints?: boolean; // trend is percentage points (rates), not percent
 	hint?: string; // Explains how the metric counts; shown on hover over the label
+	note?: { text: string; title: string }; // Small muted line; title shows on hover
 }
 
 interface HeroMetricsBarProps {
@@ -98,6 +99,11 @@ export const HeroMetricsBar = ({ metrics, trendLoading, highlight }: HeroMetrics
 								{typeof metric.value === 'number' ? formatNumber(metric.value) : metric.value}
 							</span>
 							<TrendIndicator trend={metric.trend} loading={trendLoading} lowerIsBetter={metric.lowerIsBetter} inPoints={metric.trendInPoints} />
+							{metric.note && (
+								<span className="text-[11px] text-gray-400 whitespace-nowrap cursor-help" title={metric.note.title}>
+									{metric.note.text}
+								</span>
+							)}
 						</div>
 						{metric.series && metric.series.length > 1 && (
 							<Sparkline series={metric.series} highlighted={index === highlight} />
