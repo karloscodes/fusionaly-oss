@@ -127,7 +127,9 @@ export const ReferrersCard = ({ data }: ReferrersCardProps) => {
 									"",
 								),
 							},
-							{ name: "count", label: "Visitors" },
+							// Each visit credits the source it came from, so these
+							// rows count visits and add up to Sessions.
+							{ name: "count", label: "Visits" },
 						]}
 						emptyMessage={`No ${getMetricDisplayName(selectedMetricType).toLowerCase()} data available.`}
 					/>
