@@ -28,6 +28,7 @@ type Event struct {
 	Referrer       string           `json:"referrer"`
 	EventType      events.EventType `json:"event_type"`
 	User           string           `json:"user"`
+	Session        string           `json:"session"`
 	CustomEventKey string           `json:"custom_event_key,omitempty"`
 }
 
@@ -95,6 +96,7 @@ func EventsIndexAction(ctx *cartridge.Context) error {
 		return ctx.FlashError("Failed to fetch events").Redirect("/admin/websites", http.StatusFound)
 	}
 
+	sessionKeys := events.SessionKeys(result.Events)
 	mappedEvents := make([]Event, len(result.Events))
 	for i, event := range result.Events {
 		mappedEvents[i] = Event{
@@ -103,6 +105,7 @@ func EventsIndexAction(ctx *cartridge.Context) error {
 			Referrer:       event.ReferrerHostname + event.ReferrerPathname,
 			EventType:      event.EventType,
 			User:           visitors.VisitorAlias(event.UserSignature),
+			Session:        sessionKeys[i],
 			CustomEventKey: event.CustomEventName,
 		}
 	}
@@ -222,6 +225,7 @@ func WebsiteEventsAction(ctx *cartridge.Context) error {
 		return ctx.FlashError("Failed to fetch events").Redirect("/admin/websites", http.StatusFound)
 	}
 
+	sessionKeys := events.SessionKeys(result.Events)
 	mappedEvents := make([]Event, len(result.Events))
 	for i, event := range result.Events {
 		mappedEvents[i] = Event{
@@ -230,6 +234,7 @@ func WebsiteEventsAction(ctx *cartridge.Context) error {
 			Referrer:       event.ReferrerHostname + event.ReferrerPathname,
 			EventType:      event.EventType,
 			User:           visitors.VisitorAlias(event.UserSignature),
+			Session:        sessionKeys[i],
 			CustomEventKey: event.CustomEventName,
 		}
 	}

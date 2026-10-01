@@ -18,8 +18,7 @@ interface EventsTableProps {
 
 interface SessionGroup {
 	user: string;
-	sessionStart: Date; // the 30-minute bucket, used to group and sort
-	startedAt: Date; // the earliest event in the session, shown to the user
+	startedAt: Date; // the earliest listed event in the session, used to sort and shown to the user
 	events: Event[];
 }
 
@@ -81,33 +80,19 @@ export function EventsTable({ events, isLoading = false, groupBySessions = false
 		);
 	};
 
-	// Truncate timestamp to 30-minute buckets (matching backend session logic)
-	const truncateToHalfHour = (date: Date): Date => {
-		const rounded = new Date(date);
-		const minutes = rounded.getMinutes();
-		rounded.setMinutes(minutes < 30 ? 0 : 30);
-		rounded.setSeconds(0);
-		rounded.setMilliseconds(0);
-		return rounded;
-	};
-
-	// Group events by user and 30-minute session windows
+	// Group events by the server's session key, so a group is one real visit
 	const groupEventsBySessions = (events: Event[]): SessionGroup[] => {
 		const sessionMap = new Map<string, SessionGroup>();
 
 		for (const event of events) {
 			const eventDate = new Date(event.timestamp);
-			const sessionTime = truncateToHalfHour(eventDate);
-			const sessionKey = `${event.user}-${sessionTime.getTime()}`;
-
-			const session = sessionMap.get(sessionKey);
+			const session = sessionMap.get(event.session);
 			if (session) {
 				session.events.push(event);
 				if (eventDate < session.startedAt) session.startedAt = eventDate;
 			} else {
-				sessionMap.set(sessionKey, {
+				sessionMap.set(event.session, {
 					user: event.user,
-					sessionStart: sessionTime,
 					startedAt: eventDate,
 					events: [event],
 				});
@@ -116,7 +101,7 @@ export function EventsTable({ events, isLoading = false, groupBySessions = false
 
 		// Convert to array and sort by session start time (newest first)
 		return Array.from(sessionMap.values()).sort(
-			(a, b) => b.sessionStart.getTime() - a.sessionStart.getTime()
+			(a, b) => b.startedAt.getTime() - a.startedAt.getTime()
 		);
 	};
 

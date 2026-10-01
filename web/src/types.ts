@@ -147,6 +147,7 @@ export interface Event {
   referrer: string;
   event_type: number;
   user: string;
+  session: string;
   custom_event_key?: string;
 }
 
