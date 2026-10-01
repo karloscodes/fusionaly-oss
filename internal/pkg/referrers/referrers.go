@@ -2,180 +2,197 @@ package referrers
 
 import "strings"
 
-// Common referrer hostnames mapped to friendly display names
-var knownReferrers = map[string]string{
+// Category is the kind of site a referrer is. The dashboard groups sources
+// into channels by it.
+type Category string
+
+const (
+	Search   Category = "Search"
+	Social   Category = "Social"
+	AI       Category = "AI"
+	Email    Category = "Email"
+	Referral Category = "Referral" // communities, news, blogs, and unknown sites
+)
+
+type referrer struct {
+	Name     string
+	Category Category
+}
+
+// Common referrer hostnames mapped to friendly display names and categories
+var knownReferrers = map[string]referrer{
 	// Search engines
-	"google.com":       "Google",
-	"google.co.uk":     "Google",
-	"google.de":        "Google",
-	"google.fr":        "Google",
-	"google.es":        "Google",
-	"google.it":        "Google",
-	"google.ca":        "Google",
-	"google.com.au":    "Google",
-	"google.co.jp":     "Google",
-	"google.com.br":    "Google",
-	"bing.com":         "Bing",
-	"duckduckgo.com":   "DuckDuckGo",
-	"yahoo.com":        "Yahoo",
-	"baidu.com":        "Baidu",
-	"yandex.ru":        "Yandex",
-	"ecosia.org":       "Ecosia",
-	"kagi.com":         "Kagi",
-	"search.brave.com": "Brave Search",
-	"startpage.com":    "Startpage",
-	"qwant.com":        "Qwant",
-	"yandex.com":       "Yandex",
-	"naver.com":        "Naver",
-	"seznam.cz":        "Seznam",
-	"news.google.com":  "Google News",
+	"google.com":       {"Google", Search},
+	"google.co.uk":     {"Google", Search},
+	"google.de":        {"Google", Search},
+	"google.fr":        {"Google", Search},
+	"google.es":        {"Google", Search},
+	"google.it":        {"Google", Search},
+	"google.ca":        {"Google", Search},
+	"google.com.au":    {"Google", Search},
+	"google.co.jp":     {"Google", Search},
+	"google.com.br":    {"Google", Search},
+	"bing.com":         {"Bing", Search},
+	"duckduckgo.com":   {"DuckDuckGo", Search},
+	"yahoo.com":        {"Yahoo", Search},
+	"baidu.com":        {"Baidu", Search},
+	"yandex.ru":        {"Yandex", Search},
+	"ecosia.org":       {"Ecosia", Search},
+	"kagi.com":         {"Kagi", Search},
+	"search.brave.com": {"Brave Search", Search},
+	"startpage.com":    {"Startpage", Search},
+	"qwant.com":        {"Qwant", Search},
+	"yandex.com":       {"Yandex", Search},
+	"naver.com":        {"Naver", Search},
+	"seznam.cz":        {"Seznam", Search},
+	"news.google.com":  {"Google News", Referral},
 
 	// AI assistants
-	"chatgpt.com":           "ChatGPT",
-	"chat.openai.com":       "ChatGPT",
-	"perplexity.ai":         "Perplexity",
-	"claude.ai":             "Claude",
-	"gemini.google.com":     "Gemini",
-	"bard.google.com":       "Gemini",
-	"copilot.microsoft.com": "Copilot",
-	"chat.deepseek.com":     "DeepSeek",
-	"grok.com":              "Grok",
-	"meta.ai":               "Meta AI",
-	"chat.mistral.ai":       "Mistral",
-	"you.com":               "You.com",
-	"phind.com":             "Phind",
-	"poe.com":               "Poe",
+	"chatgpt.com":           {"ChatGPT", AI},
+	"chat.openai.com":       {"ChatGPT", AI},
+	"perplexity.ai":         {"Perplexity", AI},
+	"claude.ai":             {"Claude", AI},
+	"gemini.google.com":     {"Gemini", AI},
+	"bard.google.com":       {"Gemini", AI},
+	"copilot.microsoft.com": {"Copilot", AI},
+	"chat.deepseek.com":     {"DeepSeek", AI},
+	"grok.com":              {"Grok", AI},
+	"meta.ai":               {"Meta AI", AI},
+	"chat.mistral.ai":       {"Mistral", AI},
+	"you.com":               {"You.com", AI},
+	"phind.com":             {"Phind", AI},
+	"poe.com":               {"Poe", AI},
 
 	// Social media
-	"x.com":           "X/Twitter",
-	"twitter.com":     "X/Twitter",
-	"t.co":            "X/Twitter",
-	"facebook.com":    "Facebook",
-	"fb.com":          "Facebook",
-	"l.facebook.com":  "Facebook",
-	"lm.facebook.com": "Facebook",
-	"instagram.com":   "Instagram",
-	"l.instagram.com": "Instagram",
-	"linkedin.com":    "LinkedIn",
-	"lnkd.in":         "LinkedIn",
-	"tiktok.com":      "TikTok",
-	"pinterest.com":   "Pinterest",
-	"reddit.com":      "Reddit",
-	"old.reddit.com":  "Reddit",
-	"threads.net":     "Threads",
-	"bsky.app":        "Bluesky",
-	"mastodon.social": "Mastodon",
-	"youtube.com":     "YouTube",
-	"youtu.be":        "YouTube",
-	"snapchat.com":    "Snapchat",
-	"discord.com":     "Discord",
-	"discordapp.com":  "Discord",
-	"whatsapp.com":    "WhatsApp",
-	"telegram.org":    "Telegram",
-	"t.me":            "Telegram",
-	"slack.com":       "Slack",
-	"tumblr.com":      "Tumblr",
-	"vk.com":          "VK",
-	"weibo.com":       "Weibo",
-	"xing.com":        "XING",
-	"flipboard.com":   "Flipboard",
+	"x.com":           {"X/Twitter", Social},
+	"twitter.com":     {"X/Twitter", Social},
+	"t.co":            {"X/Twitter", Social},
+	"facebook.com":    {"Facebook", Social},
+	"fb.com":          {"Facebook", Social},
+	"l.facebook.com":  {"Facebook", Social},
+	"lm.facebook.com": {"Facebook", Social},
+	"instagram.com":   {"Instagram", Social},
+	"l.instagram.com": {"Instagram", Social},
+	"linkedin.com":    {"LinkedIn", Social},
+	"lnkd.in":         {"LinkedIn", Social},
+	"tiktok.com":      {"TikTok", Social},
+	"pinterest.com":   {"Pinterest", Social},
+	"reddit.com":      {"Reddit", Social},
+	"old.reddit.com":  {"Reddit", Social},
+	"threads.net":     {"Threads", Social},
+	"bsky.app":        {"Bluesky", Social},
+	"mastodon.social": {"Mastodon", Social},
+	"youtube.com":     {"YouTube", Social},
+	"youtu.be":        {"YouTube", Social},
+	"snapchat.com":    {"Snapchat", Social},
+	"discord.com":     {"Discord", Social},
+	"discordapp.com":  {"Discord", Social},
+	"whatsapp.com":    {"WhatsApp", Social},
+	"telegram.org":    {"Telegram", Social},
+	"t.me":            {"Telegram", Social},
+	"slack.com":       {"Slack", Social},
+	"tumblr.com":      {"Tumblr", Social},
+	"vk.com":          {"VK", Social},
+	"weibo.com":       {"Weibo", Social},
+	"xing.com":        {"XING", Social},
+	"flipboard.com":   {"Flipboard", Social},
 
 	// Tech communities
-	"news.ycombinator.com": "Hacker News",
-	"hn.algolia.com":       "Hacker News",
-	"lobste.rs":            "Lobsters",
-	"producthunt.com":      "Product Hunt",
-	"indiehackers.com":     "Indie Hackers",
-	"dev.to":               "DEV Community",
-	"hashnode.com":         "Hashnode",
-	"medium.com":           "Medium",
-	"substack.com":         "Substack",
-	"hackernoon.com":       "HackerNoon",
-	"slashdot.org":         "Slashdot",
-	"techcrunch.com":       "TechCrunch",
-	"theverge.com":         "The Verge",
-	"arstechnica.com":      "Ars Technica",
-	"wired.com":            "Wired",
-	"github.com":           "GitHub",
-	"gitlab.com":           "GitLab",
-	"stackoverflow.com":    "Stack Overflow",
-	"quora.com":            "Quora",
+	"news.ycombinator.com": {"Hacker News", Referral},
+	"hn.algolia.com":       {"Hacker News", Referral},
+	"lobste.rs":            {"Lobsters", Referral},
+	"producthunt.com":      {"Product Hunt", Referral},
+	"indiehackers.com":     {"Indie Hackers", Referral},
+	"dev.to":               {"DEV Community", Referral},
+	"hashnode.com":         {"Hashnode", Referral},
+	"medium.com":           {"Medium", Referral},
+	"substack.com":         {"Substack", Referral},
+	"hackernoon.com":       {"HackerNoon", Referral},
+	"slashdot.org":         {"Slashdot", Referral},
+	"techcrunch.com":       {"TechCrunch", Referral},
+	"theverge.com":         {"The Verge", Referral},
+	"arstechnica.com":      {"Ars Technica", Referral},
+	"wired.com":            {"Wired", Referral},
+	"github.com":           {"GitHub", Referral},
+	"gitlab.com":           {"GitLab", Referral},
+	"stackoverflow.com":    {"Stack Overflow", Referral},
+	"quora.com":            {"Quora", Referral},
 
 	// News
-	"nytimes.com":        "NY Times",
-	"washingtonpost.com": "Washington Post",
-	"theguardian.com":    "The Guardian",
-	"bbc.com":            "BBC",
-	"bbc.co.uk":          "BBC",
-	"cnn.com":            "CNN",
-	"reuters.com":        "Reuters",
-	"bloomberg.com":      "Bloomberg",
-	"forbes.com":         "Forbes",
-	"wsj.com":            "WSJ",
-	"ft.com":             "Financial Times",
+	"nytimes.com":        {"NY Times", Referral},
+	"washingtonpost.com": {"Washington Post", Referral},
+	"theguardian.com":    {"The Guardian", Referral},
+	"bbc.com":            {"BBC", Referral},
+	"bbc.co.uk":          {"BBC", Referral},
+	"cnn.com":            {"CNN", Referral},
+	"reuters.com":        {"Reuters", Referral},
+	"bloomberg.com":      {"Bloomberg", Referral},
+	"forbes.com":         {"Forbes", Referral},
+	"wsj.com":            {"WSJ", Referral},
+	"ft.com":             {"Financial Times", Referral},
 
 	// Email providers (for newsletter clicks)
-	"mail.google.com":    "Gmail",
-	"outlook.live.com":   "Outlook",
-	"outlook.office.com": "Outlook",
-	"mail.yahoo.com":     "Yahoo Mail",
-	"protonmail.com":     "Proton Mail",
-	"mail.proton.me":     "Proton Mail",
+	"mail.google.com":    {"Gmail", Email},
+	"outlook.live.com":   {"Outlook", Email},
+	"outlook.office.com": {"Outlook", Email},
+	"mail.yahoo.com":     {"Yahoo Mail", Email},
+	"protonmail.com":     {"Proton Mail", Email},
+	"mail.proton.me":     {"Proton Mail", Email},
 
 	// Newsletter platforms
-	"beehiiv.com":          "Beehiiv",
-	"buttondown.com":       "Buttondown",
-	"buttondown.email":     "Buttondown",
-	"kit.com":              "Kit",
-	"convertkit.com":       "Kit",
-	"list-manage.com":      "Mailchimp",
-	"campaign-archive.com": "Mailchimp",
+	"beehiiv.com":          {"Beehiiv", Email},
+	"buttondown.com":       {"Buttondown", Email},
+	"buttondown.email":     {"Buttondown", Email},
+	"kit.com":              {"Kit", Email},
+	"convertkit.com":       {"Kit", Email},
+	"list-manage.com":      {"Mailchimp", Email},
+	"campaign-archive.com": {"Mailchimp", Email},
 
 	// Mobile apps send their package name as the referrer
-	"com.google.android.googlequicksearchbox": "Google",
-	"com.google.android.gm":                   "Gmail",
-	"com.google.android.youtube":              "YouTube",
-	"com.facebook.katana":                     "Facebook",
-	"com.facebook.facebook":                   "Facebook",
-	"com.twitter.android":                     "X/Twitter",
-	"com.linkedin.android":                    "LinkedIn",
-	"com.reddit.frontpage":                    "Reddit",
-	"com.reddit.redditswe":                    "Reddit",
-	"com.instagram.android":                   "Instagram",
-	"com.medium.reader":                       "Medium",
-	"com.duckduckgo.mobile.android":           "DuckDuckGo",
-	"com.zhiliaoapp.musically":                "TikTok",
-	"com.whatsapp":                            "WhatsApp",
-	"discord.gg":                              "Discord",
+	"com.google.android.googlequicksearchbox": {"Google", Search},
+	"com.google.android.gm":                   {"Gmail", Email},
+	"com.google.android.youtube":              {"YouTube", Social},
+	"com.facebook.katana":                     {"Facebook", Social},
+	"com.facebook.facebook":                   {"Facebook", Social},
+	"com.twitter.android":                     {"X/Twitter", Social},
+	"com.linkedin.android":                    {"LinkedIn", Social},
+	"com.reddit.frontpage":                    {"Reddit", Social},
+	"com.reddit.redditswe":                    {"Reddit", Social},
+	"com.instagram.android":                   {"Instagram", Social},
+	"com.medium.reader":                       {"Medium", Referral},
+	"com.duckduckgo.mobile.android":           {"DuckDuckGo", Search},
+	"com.zhiliaoapp.musically":                {"TikTok", Social},
+	"com.whatsapp":                            {"WhatsApp", Social},
+	"discord.gg":                              {"Discord", Social},
 
 	// Link shorteners
-	"bit.ly":      "Bitly",
-	"tinyurl.com": "TinyURL",
-	"goo.gl":      "Google Links",
-	"ow.ly":       "Hootsuite",
+	"bit.ly":      {"Bitly", Referral},
+	"tinyurl.com": {"TinyURL", Referral},
+	"goo.gl":      {"Google Links", Referral},
+	"ow.ly":       {"Hootsuite", Referral},
 
 	// Common utm_source words, so a tagged link and its host name the
 	// same source
-	"google":      "Google",
-	"bing":        "Bing",
-	"twitter":     "X/Twitter",
-	"x":           "X/Twitter",
-	"facebook":    "Facebook",
-	"fb":          "Facebook",
-	"instagram":   "Instagram",
-	"ig":          "Instagram",
-	"linkedin":    "LinkedIn",
-	"reddit":      "Reddit",
-	"youtube":     "YouTube",
-	"tiktok":      "TikTok",
-	"bluesky":     "Bluesky",
-	"mastodon":    "Mastodon",
-	"hackernews":  "Hacker News",
-	"hn":          "Hacker News",
-	"producthunt": "Product Hunt",
-	"github":      "GitHub",
-	"chatgpt":     "ChatGPT",
-	"perplexity":  "Perplexity",
+	"google":      {"Google", Search},
+	"bing":        {"Bing", Search},
+	"twitter":     {"X/Twitter", Social},
+	"x":           {"X/Twitter", Social},
+	"facebook":    {"Facebook", Social},
+	"fb":          {"Facebook", Social},
+	"instagram":   {"Instagram", Social},
+	"ig":          {"Instagram", Social},
+	"linkedin":    {"LinkedIn", Social},
+	"reddit":      {"Reddit", Social},
+	"youtube":     {"YouTube", Social},
+	"tiktok":      {"TikTok", Social},
+	"bluesky":     {"Bluesky", Social},
+	"mastodon":    {"Mastodon", Social},
+	"hackernews":  {"Hacker News", Referral},
+	"hn":          {"Hacker News", Referral},
+	"producthunt": {"Product Hunt", Referral},
+	"github":      {"GitHub", Referral},
+	"chatgpt":     {"ChatGPT", AI},
+	"perplexity":  {"Perplexity", AI},
 }
 
 // paymentProviders are checkout pages a visitor returns from. A return is
@@ -195,9 +212,9 @@ func IsPaymentProvider(hostname string) bool {
 }
 
 // countryDomainBrands have a site per country (google.de, amazon.co.uk).
-var countryDomainBrands = map[string]string{
-	"google": "Google",
-	"amazon": "Amazon",
+var countryDomainBrands = map[string]referrer{
+	"google": {"Google", Search},
+	"amazon": {"Amazon", Referral},
 }
 
 // FriendlyName returns a human-friendly name for a referrer hostname, or the
@@ -209,12 +226,26 @@ func FriendlyName(hostname string) string {
 	return strings.TrimPrefix(strings.ToLower(hostname), "www.")
 }
 
-// Lookup returns the friendly name of a known referrer. It tries the full
-// hostname, then each parent domain (a.m.youtube.com, m.youtube.com,
-// youtube.com), so the longest known match wins and the result never
-// depends on map order. It matches whole labels only: evilgoogle.com is not
-// Google.
+// Lookup returns the friendly name of a known referrer.
 func Lookup(hostname string) (string, bool) {
+	ref, ok := find(hostname)
+	return ref.Name, ok
+}
+
+// CategoryOf returns the category of a referrer hostname or utm_source.
+// An unknown one is a Referral.
+func CategoryOf(hostname string) Category {
+	if ref, ok := find(hostname); ok {
+		return ref.Category
+	}
+	return Referral
+}
+
+// find returns a known referrer. It tries the full hostname, then each
+// parent domain (a.m.youtube.com, m.youtube.com, youtube.com), so the
+// longest known match wins and the result never depends on map order. It
+// matches whole labels only: evilgoogle.com is not Google.
+func find(hostname string) (referrer, bool) {
 	host := strings.TrimSuffix(strings.ToLower(strings.TrimSpace(hostname)), ".")
 	whole := host
 	for host != "" {
@@ -223,11 +254,11 @@ func Lookup(hostname string) (string, bool) {
 		if !strings.Contains(host, ".") && host != whole {
 			break
 		}
-		if name, ok := knownReferrers[host]; ok {
-			return name, true
+		if ref, ok := knownReferrers[host]; ok {
+			return ref, true
 		}
-		if name, ok := countryDomain(host); ok {
-			return name, true
+		if ref, ok := countryDomain(host); ok {
+			return ref, true
 		}
 		dot := strings.IndexByte(host, '.')
 		if dot < 0 {
@@ -235,25 +266,25 @@ func Lookup(hostname string) (string, bool) {
 		}
 		host = host[dot+1:]
 	}
-	return "", false
+	return referrer{}, false
 }
 
 // countryDomain matches google.de, google.co.in, amazon.com.br: a known brand
 // followed by one or two short country labels.
-func countryDomain(host string) (string, bool) {
+func countryDomain(host string) (referrer, bool) {
 	brand, rest, found := strings.Cut(host, ".")
-	name, known := countryDomainBrands[brand]
+	ref, known := countryDomainBrands[brand]
 	if !found || !known {
-		return "", false
+		return referrer{}, false
 	}
 	labels := strings.Split(rest, ".")
 	if len(labels) > 2 {
-		return "", false
+		return referrer{}, false
 	}
 	for _, label := range labels {
 		if label == "" || len(label) > 3 {
-			return "", false
+			return referrer{}, false
 		}
 	}
-	return name, true
+	return ref, true
 }

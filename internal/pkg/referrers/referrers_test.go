@@ -99,3 +99,44 @@ func TestIsPaymentProvider(t *testing.T) {
 		}
 	}
 }
+
+func TestCategoryOf(t *testing.T) {
+	t.Run("with a known referrer", func(t *testing.T) {
+		tests := map[string]Category{
+			"www.google.com":         Search,
+			"google.co.in":           Search,
+			"duckduckgo.com":         Search,
+			"chatgpt.com":            AI,
+			"perplexity.ai":          AI,
+			"t.co":                   Social,
+			"m.facebook.com":         Social,
+			"youtube.com":            Social,
+			"mail.google.com":        Email,
+			"newsletter.beehiiv.com": Email,
+			"news.ycombinator.com":   Referral,
+			"nytimes.com":            Referral,
+			"bit.ly":                 Referral,
+			"amazon.co.uk":           Referral,
+			"com.google.android.gm":  Email,
+			"com.reddit.frontpage":   Social,
+			"twitter":                Social,
+			"chatgpt":                AI,
+		}
+
+		for host, want := range tests {
+			got := CategoryOf(host)
+
+			if got != want {
+				t.Errorf("CategoryOf(%q) = %q, want %q", host, got, want)
+			}
+		}
+	})
+
+	t.Run("with an unknown referrer", func(t *testing.T) {
+		got := CategoryOf("myblog.io")
+
+		if got != Referral {
+			t.Errorf("CategoryOf(myblog.io) = %q, want %q", got, Referral)
+		}
+	})
+}
