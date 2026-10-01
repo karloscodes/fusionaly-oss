@@ -29,6 +29,7 @@ import type { FlashMessage } from "@/types";
 import { AdminLayout } from "@/components/admin-layout";
 import { formatDistanceToNow } from 'date-fns';
 import { copyText } from '@/lib/clipboard';
+import { faviconUrl } from '@/lib/favicon';
 
 interface Website {
   id: number;
@@ -248,7 +249,7 @@ const Websites: React.FC = () => {
                 >
                   <div className="flex items-center gap-3">
                     <img
-                      src={`https://www.google.com/s2/favicons?domain=${website.domain}&sz=32`}
+                      src={faviconUrl(website.domain)}
                       alt=""
                       className="h-8 w-8 rounded-lg bg-gray-100 p-1"
                       onError={(e) => {
@@ -316,7 +317,7 @@ const Websites: React.FC = () => {
                       <div className="flex items-center gap-4 flex-1 min-w-0">
                         <div className="flex-shrink-0">
                           <img
-                            src={`https://www.google.com/s2/favicons?domain=${website.domain}&sz=32`}
+                            src={faviconUrl(website.domain)}
                             alt=""
                             className="h-8 w-8 rounded-lg bg-gray-100 p-1"
                             onError={(e) => {
