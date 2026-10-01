@@ -42,6 +42,36 @@ func TestFriendlyName(t *testing.T) {
 		{"com.google.android.googlequicksearchbox", "Google"},
 		{"discord.gg", "Discord"},
 
+		// AI assistants
+		{"chatgpt.com", "ChatGPT"},
+		{"chat.openai.com", "ChatGPT"},
+		{"www.perplexity.ai", "Perplexity"},
+		{"claude.ai", "Claude"},
+		{"gemini.google.com", "Gemini"},
+		{"copilot.microsoft.com", "Copilot"},
+		{"chat.deepseek.com", "DeepSeek"},
+
+		// Newsletters
+		{"beehiiv.com", "Beehiiv"},
+		{"newsletter.beehiiv.com", "Beehiiv"},
+		{"buttondown.com", "Buttondown"},
+		{"us21.campaign-archive.com", "Mailchimp"},
+
+		// More search and social
+		{"search.brave.com", "Brave Search"},
+		{"startpage.com", "Startpage"},
+		{"news.google.com", "Google News"},
+
+		// utm_source words name the same source as its hosts
+		{"twitter", "X/Twitter"},
+		{"fb", "Facebook"},
+		{"linkedin", "LinkedIn"},
+		{"hackernews", "Hacker News"},
+		{"chatgpt", "ChatGPT"},
+		{"newsletter", "newsletter"},
+		{"example.hn", "example.hn"}, // a country domain, not Hacker News
+		{"shop.x", "shop.x"},
+
 		// Case insensitive
 		{"GOOGLE.COM", "Google"},
 		{"News.Ycombinator.Com", "Hacker News"},
@@ -54,5 +84,18 @@ func TestFriendlyName(t *testing.T) {
 				t.Errorf("FriendlyName(%q) = %q, want %q", tt.hostname, got, tt.expected)
 			}
 		})
+	}
+}
+
+func TestIsPaymentProvider(t *testing.T) {
+	for _, host := range []string{"checkout.stripe.com", "buy.stripe.com", "www.paypal.com", "paypal.com", "checkout.paddle.com", "myshop.lemonsqueezy.com"} {
+		if !IsPaymentProvider(host) {
+			t.Errorf("IsPaymentProvider(%q) = false, want true", host)
+		}
+	}
+	for _, host := range []string{"stripe.dev", "news.ycombinator.com", "notpaypal.com"} {
+		if IsPaymentProvider(host) {
+			t.Errorf("IsPaymentProvider(%q) = true, want false", host)
+		}
 	}
 }
