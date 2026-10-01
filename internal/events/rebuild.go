@@ -42,8 +42,7 @@ func RebuildVisitCountsOnce(db *gorm.DB, logger *slog.Logger) error {
 	return settings.CreateOrUpdateSetting(db, keyVisitCountsRebuilt, time.Now().UTC().Format(time.RFC3339))
 }
 
-// pageBucket is one row of page_stats: a page in one half hour. ref_stats
-// rows use it too, with the referrer's hostname and pathname.
+// pageBucket is one row of page_stats: a page in one half hour.
 type pageBucket struct {
 	hostname, pathname string
 	hour               int64 // Unix seconds of the half-hour bucket
@@ -56,22 +55,21 @@ type visitTally struct {
 	entrances   map[pageBucket]int
 	exits       map[pageBucket]int
 	pageVisitor map[pageBucket]int
-	refVisitors map[pageBucket]int
 }
 
 // RebuildVisitCounts recounts one website's visit counts with the same
 // rules as live processing:
 //   - a visit ends after SessionTimeoutSeconds without an event of any type
-//   - a visitor and a visit count at their first page view, and the visit's
-//     referrer gets its visitor there; that page view is the visit's entrance
+//   - a visitor and a visit count at their first page view; that page view
+//     is the visit's entrance
 //   - a visit is a bounce when it has exactly one page view and no
 //     engagement (a custom event other than scroll:*)
 //   - a visit's last page view is its exit
 //   - a page counts each visitor once, at their first view of it
 //
-// UTM and query parameter stats are not rebuilt: events do not keep the URL.
-// For the same reason, the rebuild credits a visit to its referrer, not to
-// its utm_source or ref.
+// Source stats (ref_stats, utm_stats, query_param_stats) are not rebuilt.
+// A visit's source can be its utm_source or ref, and events keep neither
+// the URL nor the source, only the raw referrer.
 func RebuildVisitCounts(db *gorm.DB, websiteID uint) error {
 	tally, err := tallyVisits(db, websiteID)
 	if err != nil {
@@ -90,12 +88,12 @@ func tallyVisits(db *gorm.DB, websiteID uint) (visitTally, error) {
 	tally := visitTally{
 		visitors: map[int64]int{}, sessions: map[int64]int{}, bounces: map[int64]int{},
 		entrances: map[pageBucket]int{}, exits: map[pageBucket]int{},
-		pageVisitor: map[pageBucket]int{}, refVisitors: map[pageBucket]int{},
+		pageVisitor: map[pageBucket]int{},
 	}
 	timeout := time.Duration(config.GetConfig().SessionTimeoutSeconds) * time.Second
 
 	rows, err := db.Model(&Event{}).
-		Select("user_signature, hostname, pathname, referrer_hostname, referrer_pathname, event_type, custom_event_name, timestamp").
+		Select("user_signature, hostname, pathname, event_type, custom_event_name, timestamp").
 		Where("website_id = ?", websiteID).
 		Order("user_signature, timestamp, id").
 		Rows()
@@ -156,7 +154,6 @@ func tallyVisits(db *gorm.DB, websiteID uint) (visitTally, error) {
 			entry = page
 			tally.sessions[page.hour]++
 			tally.entrances[page]++
-			tally.refVisitors[pageBucket{e.ReferrerHostname, e.ReferrerPathname, page.hour}]++
 		}
 		pageViews++
 		lastPage = page
@@ -196,17 +193,6 @@ func writeVisitTally(tx *gorm.DB, websiteID uint, tally visitTally) error {
 		}).Error
 		if err != nil {
 			return fmt.Errorf("failed to update page stat %d: %w", p.ID, err)
-		}
-	}
-
-	var refs []statRow
-	if err := tx.Table("ref_stats").Select("id, hostname, pathname, hour").Where("website_id = ?", websiteID).Scan(&refs).Error; err != nil {
-		return fmt.Errorf("failed to read ref stats: %w", err)
-	}
-	for _, r := range refs {
-		key := pageBucket{r.Hostname, r.Pathname, bucketOf(r.Hour)}
-		if err := tx.Table("ref_stats").Where("id = ?", r.ID).Update("visitors_count", tally.refVisitors[key]).Error; err != nil {
-			return fmt.Errorf("failed to update ref stat %d: %w", r.ID, err)
 		}
 	}
 

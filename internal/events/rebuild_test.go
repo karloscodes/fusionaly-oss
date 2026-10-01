@@ -66,12 +66,12 @@ func TestRebuildVisitCountsOnce(t *testing.T) {
 }
 
 // zeroVisitCounts clears every counter the rebuild owns, so only the
-// rebuild can restore them.
+// rebuild can restore them. Source visits (ref_stats) are not the
+// rebuild's: it leaves them as they are.
 func zeroVisitCounts(t *testing.T, db *gorm.DB) {
 	t.Helper()
 	require.NoError(t, db.Exec("UPDATE page_stats SET exits = 0, visitors_count = 0, entrances = 0").Error)
 	require.NoError(t, db.Exec("UPDATE site_stats SET bounce_count = 0, visitors = 0, sessions = 0").Error)
-	require.NoError(t, db.Exec("UPDATE ref_stats SET visitors_count = 0").Error)
 }
 
 func TestRebuildVisitCountsMatchesLiveCounting(t *testing.T) {
@@ -93,4 +93,18 @@ func TestRebuildVisitCountsMatchesLiveCounting(t *testing.T) {
 	assert.Equal(t, wantPages, pageTotalsFor(t, db, site.ID))
 	assert.Equal(t, wantRefs, refVisitorsFor(t, db, site.ID))
 	assert.Equal(t, siteTotals{PageViews: 4, Visitors: 2, Sessions: 3, BounceCount: 1}, wantSite, "a's last visit; b's custom event is engagement")
+}
+
+func TestRebuildKeepsSourceVisits(t *testing.T) {
+	start := time.Now().UTC().Add(-3 * time.Hour).Truncate(time.Hour)
+	dbm, _, site := testsupport.SetupTestDBManagerWithWebsite(t, "visits.test")
+	db := dbm.GetConnection()
+	tagged := ingested(site.ID, "a", "/", "", start, start, events.EventTypePageView)
+	tagged.RawURL = "https://visits.test/?utm_source=newsletter"
+	process(t, dbm, tagged)
+
+	require.NoError(t, events.RebuildVisitCounts(db, site.ID))
+
+	assert.Equal(t, map[string]int{"newsletter": 1}, refVisitorsFor(t, db, site.ID),
+		"events keep the referrer, not the utm_source, so the rebuild cannot recount sources")
 }
