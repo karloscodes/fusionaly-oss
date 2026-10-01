@@ -1,6 +1,8 @@
 package visitors_test
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
 	"fusionaly/internal/visitors"
@@ -53,6 +55,23 @@ func TestVisitorAlias(t *testing.T) {
 			alias := visitors.VisitorAlias(sig)
 			assert.NotEmpty(t, alias, "Alias should not be empty for signature: %s", sig)
 			assert.Contains(t, alias, " ", "Alias should contain space for signature: %s", sig)
+		}
+	})
+
+	t.Run("uses 64 adjectives and 64 animals, each with one meaning", func(t *testing.T) {
+		adjectives := make(map[string]bool)
+		animals := make(map[string]bool)
+
+		for i := 0; i < 100000; i++ {
+			adjective, animal, _ := strings.Cut(visitors.VisitorAlias(fmt.Sprintf("signature-%d", i)), " ")
+			adjectives[adjective] = true
+			animals[animal] = true
+		}
+
+		assert.Len(t, adjectives, 64)
+		assert.Len(t, animals, 64)
+		for word := range adjectives {
+			assert.False(t, animals[word], "%q is both an adjective and an animal", word)
 		}
 	})
 
