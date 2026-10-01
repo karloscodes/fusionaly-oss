@@ -35,7 +35,7 @@ export default function Onboarding() {
   const { props } = usePage<OnboardingProps>();
   const currentStep = (props.step || 'user_account') as Step;
   const email = props.email || '';
-  const flash = props.flash || {};
+  const flash = props.flash;
 
   // Set timezone cookie on mount
   useEffect(() => {
@@ -227,11 +227,11 @@ export default function Onboarding() {
           </CardHeader>
 
           <CardContent>
-            {flash.message && (
+            {flash?.message && (
               <Alert
-                className={`mb-4 bg-gray-100 border border-gray-200${flash.type === 'error' ? ' border-l-4 border-l-red-500' : ''}`}
+                className={`mb-4 bg-gray-100 border border-gray-200${flash?.type === 'error' ? ' border-l-4 border-l-red-500' : ''}`}
               >
-                <AlertDescription className="text-gray-700">{flash.message}</AlertDescription>
+                <AlertDescription className="text-gray-700">{flash?.message}</AlertDescription>
               </Alert>
             )}
 
