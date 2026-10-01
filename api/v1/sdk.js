@@ -350,9 +350,9 @@
 
 	// Page hide: tells the server when the visitor left or hid the page, so
 	// Avg Time includes the time on the last page. The server only extends
-	// the visit with it; it counts nowhere else. One per page view, and only
-	// after 1 s of visible time. A failed send is not stored: a late page
-	// hide has the wrong time.
+	// the visit with it; it counts nowhere else. One per visible stretch of
+	// at least 1 s, so the last hide of a page view counts too. A failed
+	// send is not stored: a late page hide has the wrong time.
 	let visibleMs = 0;
 	let visibleSince = null;
 	let pageHideSent = true; // until the first page view
@@ -385,6 +385,11 @@
 			sendPageHide();
 		} else if (visibleSince === null) {
 			visibleSince = Date.now();
+			// A new visible stretch: allow a new page hide after a page view.
+			if (lastPagePath !== null) {
+				visibleMs = 0;
+				pageHideSent = false;
+			}
 		}
 	});
 	window.addEventListener("pagehide", sendPageHide);
