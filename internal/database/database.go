@@ -6,7 +6,6 @@ import (
 	"github.com/karloscodes/cartridge/sqlite"
 	"gorm.io/gorm"
 
-	"fusionaly/internal/ai"
 	"fusionaly/internal/analytics"
 	"fusionaly/internal/annotations"
 	"fusionaly/internal/config"
@@ -79,8 +78,6 @@ func (dm *DBManager) MigrateDatabase() error {
 			&onboarding.OnboardingSession{},
 			&annotations.Annotation{},
 			&feed.FeedItem{},
-			&ai.SavedQuery{},
-			&ai.AIQueryCache{},
 		)
 	})
 	if err != nil {
