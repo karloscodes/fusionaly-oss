@@ -28,31 +28,42 @@ type visitorEvent struct {
 }
 
 // GetVisitorInfoHandler returns current visitor metadata based on the request context.
+//
+// A browser script on another site sends an Origin header. Then only the Origin
+// selects the website, and the website must be registered. The response
+// allows only that exact origin, so one site cannot read visits to another site.
+// Without an Origin (direct navigation), no other site can read the response.
 func GetVisitorInfoHandler(ctx *cartridge.Context) error {
-	requestURL := resolveVisitorContextURL(ctx)
-	hostParam := strings.TrimSpace(ctx.Query("w"))
-	var host string
-	switch {
-	case strings.EqualFold(strings.TrimSpace(ctx.Get("Early-Data")), "1"):
+	if strings.EqualFold(strings.TrimSpace(ctx.Get("Early-Data")), "1") {
 		ctx.Logger.Info("Received early data request, returning 425 to force replay",
 			slog.String("path", ctx.Path()))
 		return ctx.Status(http.StatusTooEarly).JSON(cartridge.Map{
 			"error": "Replay required",
 			"code":  "TOO_EARLY",
 		})
-	case hostParam != "":
-		host = hostParam
-	case requestURL != "":
-		parsedURL, err := url.Parse(requestURL)
-		if err != nil || parsedURL.Host == "" {
+	}
+
+	ctx.Vary("Origin")
+	db := ctx.DBManager.GetConnection()
+
+	var host string
+	if origin := strings.TrimSpace(ctx.Get("Origin")); origin != "" {
+		if !allowVisitorOrigin(ctx, db, origin) {
+			return ctx.Status(http.StatusForbidden).JSON(cartridge.Map{
+				"error": "Origin is not a tracked website",
+				"code":  "ORIGIN_NOT_ALLOWED",
+			})
+		}
+		host = originHostname(origin)
+	} else {
+		var ok bool
+		host, ok = visitorHostWithoutOrigin(ctx)
+		if !ok {
 			return ctx.Status(http.StatusBadRequest).JSON(cartridge.Map{
 				"error": "Invalid origin context",
 				"code":  "INVALID_CONTEXT",
 			})
 		}
-		host = parsedURL.Hostname()
-	default:
-		host = strings.TrimSpace(ctx.Hostname())
 	}
 	if host == "" {
 		return ctx.Status(http.StatusBadRequest).JSON(cartridge.Map{
@@ -60,7 +71,6 @@ func GetVisitorInfoHandler(ctx *cartridge.Context) error {
 			"code":  "MISSING_CONTEXT",
 		})
 	}
-	db := ctx.DBManager.GetConnection()
 
 	websiteID, resolvedDomain, found, err := resolveWebsiteForHost(db, host)
 	if err != nil {
@@ -156,19 +166,61 @@ func GetVisitorInfoHandler(ctx *cartridge.Context) error {
 	})
 }
 
-func resolveVisitorContextURL(c *cartridge.Context) string {
-	for _, candidate := range []string{
-		c.Get("Origin"),
-		c.Query("url"),
-		c.Get("Referer"),
-	} {
+// VisitorInfoPreflightHandler answers CORS preflight requests. It allows only
+// the origin of a registered website.
+func VisitorInfoPreflightHandler(ctx *cartridge.Context) error {
+	ctx.Vary("Origin")
+	origin := strings.TrimSpace(ctx.Get("Origin"))
+	if origin != "" && allowVisitorOrigin(ctx, ctx.DBManager.GetConnection(), origin) {
+		ctx.Set("Access-Control-Allow-Methods", "GET,OPTIONS")
+		ctx.Set("Access-Control-Allow-Headers", "Accept, Content-Type")
+	}
+	return ctx.SendStatus(http.StatusNoContent)
+}
+
+// allowVisitorOrigin sets Access-Control-Allow-Origin to the exact origin when
+// the origin belongs to a registered website.
+func allowVisitorOrigin(ctx *cartridge.Context, db *gorm.DB, origin string) bool {
+	host := originHostname(origin)
+	if host == "" {
+		return false
+	}
+	_, _, found, err := resolveWebsiteForHost(db, host)
+	if err != nil || !found {
+		return false
+	}
+	ctx.Set("Access-Control-Allow-Origin", origin)
+	return true
+}
+
+// originHostname returns the host of an Origin header, or "" when the origin
+// is "null" or not a valid http(s) origin.
+func originHostname(origin string) string {
+	parsed, err := url.Parse(origin)
+	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		return ""
+	}
+	return parsed.Hostname()
+}
+
+// visitorHostWithoutOrigin selects the host for a request without Origin, in
+// this order: the w parameter, the url parameter, the Referer, the Host header.
+func visitorHostWithoutOrigin(c *cartridge.Context) (string, bool) {
+	if w := strings.TrimSpace(c.Query("w")); w != "" {
+		return w, true
+	}
+	for _, candidate := range []string{c.Query("url"), c.Get("Referer")} {
 		value := strings.TrimSpace(candidate)
 		if value == "" || strings.EqualFold(value, "null") {
 			continue
 		}
-		return value
+		parsed, err := url.Parse(value)
+		if err != nil || parsed.Host == "" {
+			return "", false
+		}
+		return parsed.Hostname(), true
 	}
-	return ""
+	return strings.TrimSpace(c.Hostname()), true
 }
 
 func resolveWebsiteForHost(db *gorm.DB, host string) (uint, string, bool, error) {

@@ -163,14 +163,16 @@ func MountAppRoutes(srv *cartridge.Server) {
 	srv.Options("/x/api/v1/events/beacon", func(ctx *cartridge.Context) error {
 		return ctx.SendStatus(nethttp.StatusNoContent)
 	}, publicAPIConfig)
-	srv.Get("/x/api/v1/me", v1.GetVisitorInfoHandler, publicAPIConfig)
-	srv.Options("/x/api/v1/me", func(ctx *cartridge.Context) error {
-		return ctx.SendStatus(nethttp.StatusNoContent)
-	}, publicAPIConfig)
-	srv.Get("/x/api/v1/you", v1.GetVisitorInfoHandler, publicAPIConfig)
-	srv.Options("/x/api/v1/you", func(ctx *cartridge.Context) error {
-		return ctx.SendStatus(nethttp.StatusNoContent)
-	}, publicAPIConfig)
+	// The visitor info endpoint sets its own CORS headers: it allows only the
+	// origin of a registered website, never "*".
+	visitorInfoConfig := &cartridge.RouteConfig{
+		EnableSecFetchSite: cartridge.Bool(false),
+		CustomMiddleware:   []cartridge.HandlerFunc{publicRateLimiter},
+	}
+	srv.Get("/x/api/v1/me", v1.GetVisitorInfoHandler, visitorInfoConfig)
+	srv.Options("/x/api/v1/me", v1.VisitorInfoPreflightHandler, visitorInfoConfig)
+	srv.Get("/x/api/v1/you", v1.GetVisitorInfoHandler, visitorInfoConfig)
+	srv.Options("/x/api/v1/you", v1.VisitorInfoPreflightHandler, visitorInfoConfig)
 
 	// === SDK ROUTES ===
 	srv.Get("/y/api/v1/sdk.js", v1.GetSDKAction, sdkConfig)

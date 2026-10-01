@@ -16,6 +16,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 
 	"fusionaly/internal/config"
 	"fusionaly/internal/events"
@@ -665,7 +666,7 @@ func TestGetVisitorInfoHandler(t *testing.T) {
 		assert.Len(t, eventsRaw, 1)
 	})
 
-	t.Run("returns empty events for unregistered website", func(t *testing.T) {
+	t.Run("returns empty events for unregistered website without Origin", func(t *testing.T) {
 		dbManager, _ := testsupport.SetupTestDBManager(t)
 		db := dbManager.GetConnection()
 		testsupport.CleanAllTables(db)
@@ -673,7 +674,6 @@ func TestGetVisitorInfoHandler(t *testing.T) {
 		app := testsupport.CreateMinimalTestApp(t, db)
 
 		req := httptest.NewRequest("GET", "/x/api/v1/me?url=https://unknown-domain.com", nil)
-		req.Header.Set("Origin", "https://unknown-domain.com")
 		req.Header.Set("User-Agent", "Test-Agent")
 		req.Header.Set("X-Forwarded-For", "1.2.3.4")
 
@@ -694,6 +694,7 @@ func TestGetVisitorInfoHandler(t *testing.T) {
 		eventsRaw, ok := payload["events"].([]interface{})
 		require.True(t, ok)
 		assert.Len(t, eventsRaw, 0)
+		assert.Empty(t, resp.Header.Get("Access-Control-Allow-Origin"))
 	})
 
 	t.Run("falls back to ingested events when processed events empty", func(t *testing.T) {
@@ -895,4 +896,109 @@ func TestIngestionEventTypes(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestVisitorInfoOriginRules(t *testing.T) {
+	visitedAt := time.Date(2026, 3, 10, 12, 0, 0, 0, time.UTC)
+
+	seedVisit := func(t *testing.T, db *gorm.DB, domain, path string) {
+		t.Helper()
+		website := testsupport.CreateTestWebsite(db, domain)
+		signature := visitors.BuildUniqueVisitorId(domain, "1.2.3.4", "Origin-Agent", config.GetConfig().PrivateKey)
+		event := events.Event{
+			WebsiteID:        website.ID,
+			UserSignature:    signature,
+			Hostname:         domain,
+			Pathname:         path,
+			ReferrerHostname: events.DirectOrUnknownReferrer,
+			EventType:        events.EventTypePageView,
+			Timestamp:        visitedAt,
+			CreatedAt:        visitedAt,
+		}
+		require.NoError(t, db.Create(&event).Error)
+	}
+
+	request := func(target, origin string) *http.Request {
+		req := httptest.NewRequest("GET", target, nil)
+		if origin != "" {
+			req.Header.Set("Origin", origin)
+		}
+		req.Header.Set("User-Agent", "Origin-Agent")
+		req.Header.Set("X-Forwarded-For", "1.2.3.4")
+		return req
+	}
+
+	t.Run("with Origin of a site that is not tracked, it gives no data", func(t *testing.T) {
+		dbManager, _ := testsupport.SetupTestDBManager(t)
+		db := dbManager.GetConnection()
+		testsupport.CleanAllTables(db)
+		seedVisit(t, db, "example.com", "/private-page")
+		app := testsupport.CreateMinimalTestApp(t, db)
+
+		resp, err := app.Test(request("/x/api/v1/me?w=example.com&url=https://example.com/", "https://evil.com"), 30000)
+
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusForbidden, resp.StatusCode)
+		assert.Empty(t, resp.Header.Get("Access-Control-Allow-Origin"))
+		body, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		assert.NotContains(t, string(body), "private-page")
+		assert.NotContains(t, string(body), "visitorId")
+	})
+
+	t.Run("with Origin null, it gives no data", func(t *testing.T) {
+		dbManager, _ := testsupport.SetupTestDBManager(t)
+		db := dbManager.GetConnection()
+		testsupport.CleanAllTables(db)
+		seedVisit(t, db, "example.com", "/private-page")
+		app := testsupport.CreateMinimalTestApp(t, db)
+
+		resp, err := app.Test(request("/x/api/v1/me?w=example.com", "null"), 30000)
+
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusForbidden, resp.StatusCode)
+		assert.Empty(t, resp.Header.Get("Access-Control-Allow-Origin"))
+	})
+
+	t.Run("with Origin of the tracked site, it gives only that site's data", func(t *testing.T) {
+		dbManager, _ := testsupport.SetupTestDBManager(t)
+		db := dbManager.GetConnection()
+		testsupport.CleanAllTables(db)
+		seedVisit(t, db, "example.com", "/own-page")
+		seedVisit(t, db, "other.com", "/other-page")
+		app := testsupport.CreateMinimalTestApp(t, db)
+
+		resp, err := app.Test(request("/x/api/v1/me?w=other.com", "https://example.com"), 30000)
+
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		assert.Equal(t, "https://example.com", resp.Header.Get("Access-Control-Allow-Origin"))
+		assert.Contains(t, resp.Header.Get("Vary"), "Origin")
+		body, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		assert.Contains(t, string(body), "example.com/own-page")
+		assert.NotContains(t, string(body), "other-page")
+	})
+
+	t.Run("with preflight from the tracked site, it allows that origin only", func(t *testing.T) {
+		dbManager, _ := testsupport.SetupTestDBManager(t)
+		db := dbManager.GetConnection()
+		testsupport.CleanAllTables(db)
+		testsupport.CreateTestWebsite(db, "example.com")
+		app := testsupport.CreateMinimalTestApp(t, db)
+		allowed := httptest.NewRequest("OPTIONS", "/x/api/v1/me", nil)
+		allowed.Header.Set("Origin", "https://example.com")
+		allowed.Header.Set("Access-Control-Request-Method", "GET")
+		denied := httptest.NewRequest("OPTIONS", "/x/api/v1/me", nil)
+		denied.Header.Set("Origin", "https://evil.com")
+		denied.Header.Set("Access-Control-Request-Method", "GET")
+
+		allowedResp, err := app.Test(allowed, 30000)
+		require.NoError(t, err)
+		deniedResp, err := app.Test(denied, 30000)
+		require.NoError(t, err)
+
+		assert.Equal(t, "https://example.com", allowedResp.Header.Get("Access-Control-Allow-Origin"))
+		assert.Empty(t, deniedResp.Header.Get("Access-Control-Allow-Origin"))
+	})
 }
