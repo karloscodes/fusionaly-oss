@@ -2,6 +2,7 @@ package http
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -77,7 +78,10 @@ func WebsiteCreateAction(ctx *cartridge.Context) error {
 
 	if err := websites.CreateWebsite(db, &website); err != nil {
 		ctx.Logger.Error("Failed to create website", slog.Any("error", err), slog.String("domain", domain))
-		return ctx.FlashError("Failed to create website: "+err.Error()).Redirect("/admin/websites/new", http.StatusFound)
+		if errors.Is(err, websites.ErrWebsiteExists) {
+			return ctx.FlashError(domain+" is already registered").Redirect("/admin/websites/new", http.StatusFound)
+		}
+		return ctx.FlashError("Failed to create website").Redirect("/admin/websites/new", http.StatusFound)
 	}
 
 	// Log success

@@ -1,12 +1,16 @@
 package websites
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	"gorm.io/gorm"
 )
+
+// ErrWebsiteExists means a website with the same domain is already registered.
+var ErrWebsiteExists = errors.New("a website with this domain already exists")
 
 // WebsiteNotFoundError represents an error when a website is not found
 type WebsiteNotFoundError struct {
@@ -156,6 +160,14 @@ func GetWebsiteByDomain(db *gorm.DB, domain string) (*Website, error) {
 
 // CreateWebsite creates a new website
 func CreateWebsite(db *gorm.DB, website *Website) error {
+	var existing int64
+	if err := db.Model(&Website{}).Where("domain = ?", website.Domain).Count(&existing).Error; err != nil {
+		return err
+	}
+	if existing > 0 {
+		return ErrWebsiteExists
+	}
+
 	// Set creation time and defaults
 	website.CreatedAt = time.Now().UTC()
 

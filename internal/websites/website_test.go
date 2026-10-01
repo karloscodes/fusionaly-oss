@@ -141,3 +141,26 @@ func TestStripSubdomains(t *testing.T) {
 		})
 	}
 }
+
+func TestCreateWebsite(t *testing.T) {
+	dbManager, _ := testsupport.SetupTestDBManager(t)
+	db := dbManager.GetConnection()
+	testsupport.CleanAllTables(db)
+
+	t.Run("creates a new domain", func(t *testing.T) {
+		site := websites.Website{Domain: "new.example.com"}
+
+		err := websites.CreateWebsite(db, &site)
+
+		require.NoError(t, err)
+		assert.NotZero(t, site.ID)
+	})
+
+	t.Run("rejects a domain that already exists", func(t *testing.T) {
+		require.NoError(t, websites.CreateWebsite(db, &websites.Website{Domain: "dup.example.com"}))
+
+		err := websites.CreateWebsite(db, &websites.Website{Domain: "dup.example.com"})
+
+		assert.ErrorIs(t, err, websites.ErrWebsiteExists)
+	})
+}
