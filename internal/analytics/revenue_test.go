@@ -196,6 +196,36 @@ func TestRevenueComparisonUsesTheMainCurrency(t *testing.T) {
 	assert.InDelta(t, 100.0, *comparison.RevenueChange, 0.001, "20 USD now against 10 USD before")
 }
 
+func TestRevenueWithoutSalesInThePeriod(t *testing.T) {
+	today := &timeframe.TimeFrame{From: at("24h"), To: at("48h").Add(-time.Nanosecond), BucketSize: timeframe.TimeFrameBucketSizeHour, Tz: time.UTC}
+	params := analytics.WebsiteScopedQueryParams{WebsiteID: 1, TimeFrame: today, Limit: 10}
+
+	t.Run("with sales in the previous period, the currency is the main currency of that period", func(t *testing.T) {
+		db := setupFlowDB(t,
+			purchase("u1", "revenue:purchased", `{"price":1000,"currency":"EUR"}`, at("10h")),
+		)
+
+		metrics, err := analytics.GetRevenueMetrics(db, params)
+
+		require.NoError(t, err)
+		assert.Equal(t, "EUR", metrics.Currency)
+		assert.Zero(t, metrics.TotalRevenue)
+	})
+
+	t.Run("with sales in the previous period, the revenue change is -100%", func(t *testing.T) {
+		db := setupFlowDB(t,
+			purchase("u1", "revenue:purchased", `{"price":1000,"currency":"EUR"}`, at("10h")),
+		)
+		current, err := analytics.GetRevenueMetrics(db, params)
+		require.NoError(t, err)
+
+		comparison := analytics.FetchComparisonMetrics(db, today, 1, &analytics.DashboardMetrics{RevenueMetrics: current}, slog.Default())
+
+		require.NotNil(t, comparison.RevenueChange)
+		assert.InDelta(t, -100.0, *comparison.RevenueChange, 0.001, "0 EUR now against 10 EUR before")
+	})
+}
+
 func TestRevenueDuplicateOrders(t *testing.T) {
 	tf, err := timeframe.NewTimeFrame(timeframe.TimeFrameParams{
 		FromTime: at("0h"), ToTime: at("24h").Add(-time.Nanosecond), TimeFrameSize: timeframe.HourlyTimeFrame,

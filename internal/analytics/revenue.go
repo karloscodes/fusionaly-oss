@@ -144,6 +144,18 @@ func GetRevenueMetrics(db *gorm.DB, params WebsiteScopedQueryParams) (*RevenueMe
 		metrics.OtherCurrencies = append(metrics.OtherCurrencies, CurrencyTotal(total))
 	}
 
+	// Without sales, the main currency comes from the previous period. A shop
+	// that sells in euros then shows 0 euros, and the change is -100%.
+	if len(totals) == 0 {
+		currency, err := previousMainCurrency(db, params)
+		if err != nil {
+			return nil, err
+		}
+		if currency != "" {
+			metrics.Currency = currency
+		}
+	}
+
 	if metrics.TotalSales > 0 {
 		metrics.AverageOrderValue = metrics.TotalRevenue / float64(metrics.TotalSales)
 	}
@@ -160,6 +172,25 @@ func GetRevenueMetrics(db *gorm.DB, params WebsiteScopedQueryParams) (*RevenueMe
 	}
 
 	return metrics, nil
+}
+
+// previousMainCurrency returns the main currency of the period before
+// params, or "" when that period has no purchases.
+func previousMainCurrency(db *gorm.DB, params WebsiteScopedQueryParams) (string, error) {
+	from, to := PreviousPeriod(params.TimeFrame.From, params.TimeFrame.To, params.TimeFrame.Tz)
+	previous := *params.TimeFrame
+	previous.From, previous.To = from, to
+	params.TimeFrame = &previous
+
+	var currencies []string
+	query := purchasesSQL + `SELECT currency FROM main_currency`
+	if err := db.Raw(query, purchasesArgs(params)...).Scan(&currencies).Error; err != nil {
+		return "", fmt.Errorf("error finding the previous main currency: %w", err)
+	}
+	if len(currencies) == 0 {
+		return "", nil
+	}
+	return currencies[0], nil
 }
 
 // GetTopRevenueEvents returns the most frequent revenue events
