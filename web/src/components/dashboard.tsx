@@ -662,8 +662,9 @@ export const Dashboard = (props: DashboardComponentProps) => {
 		createMetric("Visitors", totalVisitors, withTrends ? data.comparison?.visitors_change : undefined, countsOf(data.visitors)),
 		createMetric("Page Views", totalViews, withTrends ? data.comparison?.views_change : undefined, countsOf(data.page_views)),
 		createMetric("Sessions", totalSessions, withTrends ? data.comparison?.sessions_change : undefined, countsOf(data.sessions)),
-		createMetric("Bounce Rate", `${(data.bounce_rate * 100).toFixed(0)}%`, withTrends ? data.comparison?.bounce_rate_change : undefined, undefined, true, true),
-		createMetric("Avg Time", formatSessionDuration(data.visits_duration), withTrends ? data.comparison?.avg_time_change : undefined),
+		// Without visits there is no rate or average: show "—", not 0.
+		createMetric("Bounce Rate", totalSessions > 0 ? `${(data.bounce_rate * 100).toFixed(0)}%` : "—", withTrends ? data.comparison?.bounce_rate_change : undefined, undefined, true, true),
+		createMetric("Avg Time", totalSessions > 0 ? formatSessionDuration(data.visits_duration) : "—", withTrends ? data.comparison?.avg_time_change : undefined),
 		createMetric("Revenue", `$${data.revenue_metrics ? formatNumber(Math.round(data.revenue_metrics.total_revenue)) : '0'}`, withTrends ? data.comparison?.revenue_change : undefined, countsOf(data.revenue)),
 	];
 
