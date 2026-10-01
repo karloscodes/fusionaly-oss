@@ -37,4 +37,14 @@ func TestLiveVisitors(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, int64(0), live)
 	})
+
+	t.Run("leaves out page hides, because a hide means the visitor left", func(t *testing.T) {
+		visit(t, db, 4, "erin", "2024-07-01T11:50:00Z", events.EventTypePageView)
+		visit(t, db, 4, "erin", "2024-07-01T11:58:00Z", events.EventTypePageHide)
+
+		live, err := analytics.GetLiveVisitors(db, 4, now)
+
+		require.NoError(t, err)
+		assert.Equal(t, int64(0), live)
+	})
 }
