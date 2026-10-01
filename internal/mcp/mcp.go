@@ -122,7 +122,7 @@ var Tools = []map[string]any{
 	},
 	{
 		"name": "get_schema",
-		"description": "The analytics tables and their columns, plus how to use them: hourly UTC buckets, " +
+		"description": "The analytics tables and their columns, plus how to use them: 30-minute UTC buckets, " +
 			"always SUM the count columns, always filter website_id. Read it before your first query.",
 		"inputSchema": map[string]any{"type": "object", "properties": map[string]any{}},
 	},
