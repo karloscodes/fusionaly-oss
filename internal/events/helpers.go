@@ -3,8 +3,8 @@ package events
 import (
 	"encoding/json"
 	"net"
+	"regexp"
 	"strings"
-
 
 	"fusionaly/internal/pkg/geoip"
 	ua "fusionaly/internal/pkg/user_agent"
@@ -62,62 +62,43 @@ func getBrowserFromParsedUA(ua ua.UserAgent, secChUa string) string {
 	}
 }
 
+// clientHintBrand matches one brand name in Sec-CH-UA. Names are quoted
+// and can hold ";" or ",", so the header is never split on them.
+var clientHintBrand = regexp.MustCompile(`"([^"]*)"\s*;\s*v\s*=`)
+
+// greaseBrand matches the placeholder brand Chromium adds to Sec-CH-UA
+// ("Not-A.Brand", "Not)A;Brand", ...). Its punctuation changes per release.
+var greaseBrand = regexp.MustCompile(`(?i)^not.a.brand$`)
+
+// clientHintBrands maps known browser brands to their display names.
+var clientHintBrands = map[string]string{
+	"google chrome":    "chrome",
+	"brave":            "brave",
+	"microsoft edge":   "microsoft edge",
+	"opera":            "opera",
+	"vivaldi":          "vivaldi",
+	"arc":              "arc",
+	"samsung internet": "samsung browser",
+	"yandex":           "yandex browser",
+}
+
 // parseBrowserFromClientHints extracts the real browser name from the Sec-CH-UA header.
 // Returns empty string if the header is absent or can't be parsed.
 //
 // Example header: "Chromium";v="146", "Brave";v="146", "Not-A.Brand";v="24"
 // Returns: "brave"
 func parseBrowserFromClientHints(secChUa string) string {
-	if secChUa == "" {
-		return ""
-	}
-
-	// Known brand names to skip — these appear in every Chromium browser
-	skip := map[string]bool{
-		"chromium":      true,
-		"not-a.brand":   true,
-		"not a;brand":   true,
-		"not/a)brand":   true,
-		"not_a brand":   true,
-		"not?a_brand":   true,
-	}
-
-	// Known browser brands and their display names
-	brands := map[string]string{
-		"google chrome":  "chrome",
-		"brave":          "brave",
-		"microsoft edge": "microsoft edge",
-		"opera":          "opera",
-		"vivaldi":        "vivaldi",
-		"arc":            "arc",
-		"samsung internet": "samsung browser",
-		"yandex":         "yandex browser",
-	}
-
-	for _, part := range strings.Split(secChUa, ",") {
-		part = strings.TrimSpace(part)
-		// Extract brand name from "Brand";v="version" format
-		idx := strings.Index(part, ";")
-		if idx == -1 {
-			idx = len(part)
-		}
-		brand := strings.Trim(part[:idx], `" `)
-		brandLower := strings.ToLower(brand)
-
-		if skip[brandLower] {
+	for _, match := range clientHintBrand.FindAllStringSubmatch(secChUa, -1) {
+		brand := strings.ToLower(strings.TrimSpace(match[1]))
+		if brand == "" || brand == "chromium" || greaseBrand.MatchString(brand) {
 			continue
 		}
-
-		if name, ok := brands[brandLower]; ok {
+		if name, ok := clientHintBrands[brand]; ok {
 			return name
 		}
-
-		// Unknown brand that isn't Chromium or grease — return it lowercased
-		if brand != "" {
-			return strings.ToLower(brand)
-		}
+		// An unknown brand that is not Chromium or grease: a Chromium fork.
+		return brand
 	}
-
 	return ""
 }
 
