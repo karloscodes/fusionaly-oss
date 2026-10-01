@@ -91,4 +91,20 @@ func TestCalculateComparisonMetrics(t *testing.T) {
 		require.NotNil(t, got.VisitorsChange)
 		assert.InDelta(t, 50.0, *got.VisitorsChange, 0.0001)
 	})
+
+	t.Run("no change when the previous period is too small to compare", func(t *testing.T) {
+		got := analytics.CalculateComparisonMetrics(analytics.ComparisonData{
+			CurrentVisitors: 3, PreviousVisitors: 1,
+			CurrentViews: 9, PreviousViews: 4,
+			CurrentSessions: 3, PreviousSessions: 1,
+			CurrentBounceRate: 0.5, PreviousBounceRate: 1,
+			CurrentAvgTime: 60, PreviousAvgTime: 10,
+		})
+
+		assert.Nil(t, got.VisitorsChange, "1 to 3 is not +200%")
+		assert.Nil(t, got.ViewsChange)
+		assert.Nil(t, got.SessionsChange)
+		assert.Nil(t, got.BounceRateChange)
+		assert.Nil(t, got.AvgTimeChange)
+	})
 }

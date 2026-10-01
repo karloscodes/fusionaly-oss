@@ -26,64 +26,43 @@ type ComparisonData struct {
 	PreviousRevenue    float64
 }
 
+// minComparable is the smallest previous count a change is shown for.
+// Below it a change is noise: 1 visitor to 3 is not "+200%".
+const minComparable = 10
+
 // CalculateComparisonMetrics computes period-over-period percentage changes
 func CalculateComparisonMetrics(data ComparisonData) *ComparisonMetrics {
 	comparison := &ComparisonMetrics{}
 
-	// Helper function to calculate percentage change
-	calculatePercentageChange := func(current, previous float64) *float64 {
-		if previous > 0 {
-			change := ((current - previous) / previous) * 100
-			return &change
-		}
-		return nil
+	percentageChange := func(current, previous float64) *float64 {
+		change := ((current - previous) / previous) * 100
+		return &change
 	}
 
-	// Visitors change
-	if data.PreviousVisitors > 0 {
-		comparison.VisitorsChange = calculatePercentageChange(
-			float64(data.CurrentVisitors),
-			float64(data.PreviousVisitors),
-		)
+	if data.PreviousVisitors >= minComparable {
+		comparison.VisitorsChange = percentageChange(float64(data.CurrentVisitors), float64(data.PreviousVisitors))
 	}
-
-	// Views change
-	if data.PreviousViews > 0 {
-		comparison.ViewsChange = calculatePercentageChange(
-			float64(data.CurrentViews),
-			float64(data.PreviousViews),
-		)
+	if data.PreviousViews >= minComparable {
+		comparison.ViewsChange = percentageChange(float64(data.CurrentViews), float64(data.PreviousViews))
 	}
-
-	// Sessions change
-	if data.PreviousSessions > 0 {
-		comparison.SessionsChange = calculatePercentageChange(
-			float64(data.CurrentSessions),
-			float64(data.PreviousSessions),
-		)
+	if data.PreviousSessions >= minComparable {
+		comparison.SessionsChange = percentageChange(float64(data.CurrentSessions), float64(data.PreviousSessions))
 	}
 
 	// Bounce rate change, in percentage points: 40% -> 46% is +6 points, not
 	// +15%. A rate of 0% in a period with visits is still a real rate.
-	if data.PreviousSessions > 0 && data.CurrentSessions > 0 {
+	if data.PreviousSessions >= minComparable && data.CurrentSessions > 0 {
 		points := (data.CurrentBounceRate - data.PreviousBounceRate) * 100
 		comparison.BounceRateChange = &points
 	}
 
-	// Average time change
-	if data.PreviousAvgTime > 0 {
-		comparison.AvgTimeChange = calculatePercentageChange(
-			data.CurrentAvgTime,
-			data.PreviousAvgTime,
-		)
+	// Average time is an average over visits: it needs enough of them.
+	if data.PreviousSessions >= minComparable && data.PreviousAvgTime > 0 {
+		comparison.AvgTimeChange = percentageChange(data.CurrentAvgTime, data.PreviousAvgTime)
 	}
 
-	// Revenue change
 	if data.PreviousRevenue > 0 {
-		comparison.RevenueChange = calculatePercentageChange(
-			data.CurrentRevenue,
-			data.PreviousRevenue,
-		)
+		comparison.RevenueChange = percentageChange(data.CurrentRevenue, data.PreviousRevenue)
 	}
 
 	return comparison
