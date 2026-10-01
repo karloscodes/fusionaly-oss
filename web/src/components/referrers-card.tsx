@@ -92,7 +92,7 @@ export const ReferrersCard = ({ data }: ReferrersCardProps) => {
 							</DropdownMenuTrigger>
 							<DropdownMenuContent
 								align="end"
-								className="max-h-[300px] overflow-y-auto"
+								className="max-h-[var(--radix-dropdown-menu-content-available-height)] overflow-y-auto"
 							>
 								{MENU_GROUPS.map((group, gi) => (
 									<DropdownMenuGroup key={group.label}>
