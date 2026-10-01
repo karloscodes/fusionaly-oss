@@ -78,9 +78,13 @@ func main() {
 
 func newMatcha() *matcha.Matcha {
 	return matcha.New(matcha.Config{
-		Name:           "fusionaly",
-		AppImage:       "karloscodes/fusionaly:latest",
-		HealthPath:     "/_health",
+		Name:       "fusionaly",
+		AppImage:   "karloscodes/fusionaly:latest",
+		HealthPath: "/_health",
+		// The first start after an update runs migrations, which can build an
+		// index on a large events table (about 2-3 s per million events).
+		// matcha's default of 30 s would roll back such an update every night.
+		HealthTimeout:  120,
 		Volumes:        []string{"/app/storage", "/app/logs"},
 		CronUpdates:    true,
 		Backups:        true,
@@ -331,4 +335,3 @@ func printUsage() {
 	fmt.Println("  check                       Check server security")
 	fmt.Println("  help                        Show this help message")
 }
-
