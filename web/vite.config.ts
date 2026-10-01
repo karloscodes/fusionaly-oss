@@ -43,7 +43,7 @@ export default defineConfig({
   build: {
     // Generate manifest for Inertia.js to find hashed assets
     manifest: true,
-    // Increase limit to 1200 KB since charts library (Vega) is inherently large
+    // Increase limit to 1200 KB since the charts library is large
     // We've already optimized by splitting into separate chunks
     chunkSizeWarningLimit: 1200,
     rollupOptions: {

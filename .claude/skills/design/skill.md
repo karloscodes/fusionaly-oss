@@ -171,51 +171,6 @@ const getDynamicColor = (index: number): string => {
 </BarChart>
 ```
 
-### Vega-Lite Defaults
-
-```json
-{
-  "config": {
-    "axis": {
-      "labelColor": "#374151",
-      "titleColor": "#111827"
-    },
-    "legend": {
-      "labelColor": "#374151"
-    }
-  }
-}
-```
-
-## Model Selector Pattern
-
-```tsx
-// Three-option toggle for AI models
-const AI_MODELS = [
-  { id: "gpt-4.1", label: "Fast", icon: Zap },
-  { id: "gpt-5.2", label: "Smart", icon: Sparkles },
-  { id: "gpt-5.2-thinking", label: "Deep", icon: Brain },
-];
-
-<div className="flex items-center gap-1 p-0.5 bg-black/5 rounded-lg w-fit">
-  {AI_MODELS.map((m) => (
-    <button
-      key={m.id}
-      className={cn(
-        "flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md transition-all",
-        isSelected
-          ? "bg-white text-black shadow-sm"
-          : "text-black/60 hover:text-black",
-        disabled && "opacity-50 cursor-not-allowed"
-      )}
-    >
-      <Icon className="h-3 w-3" />
-      <span>{label}</span>
-    </button>
-  ))}
-</div>
-```
-
 ## Chip/Tag Buttons
 
 ```tsx
