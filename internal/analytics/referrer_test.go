@@ -67,6 +67,8 @@ func TestIsSelfReferral(t *testing.T) {
 		{"example.com", "example.com", true},
 		{"", "", false},
 		{"example.com", "sub.example.com", false},
+		{"www.example.com", "example.com", true},
+		{"example.com", "www.example.com", true},
 	}
 
 	for _, test := range tests {

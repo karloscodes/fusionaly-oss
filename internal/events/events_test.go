@@ -1668,3 +1668,35 @@ func TestCollectEventTime(t *testing.T) {
 		assert.WithinDuration(t, received, stored, 5*time.Second, "the visitor signature belongs to the receive day")
 	})
 }
+
+func TestCollectEventSelfReferral(t *testing.T) {
+	dbManager, logger := testsupport.SetupTestDBManager(t)
+	db := dbManager.GetConnection()
+	testsupport.CleanAllTables(db)
+	testsupport.CreateTestWebsite(db, "www.example.com")
+	testsupport.CreateTestWebsite(db, "blog.example.org")
+	testsupport.CreateTestWebsite(db, "example.net")
+
+	storedReferrer := func(t *testing.T, page, referrer string) string {
+		t.Helper()
+		db.Exec("DELETE FROM ingested_events")
+		input := events.CollectEventInput{IPAddress: "192.168.1.1", UserAgent: "Mozilla/5.0 (test)",
+			EventType: events.EventTypePageView, Timestamp: time.Now().UTC(), RawUrl: page, ReferrerURL: referrer}
+		require.NoError(t, events.CollectEvent(dbManager, logger, &input))
+		var saved events.IngestedEvent
+		require.NoError(t, db.First(&saved).Error)
+		return saved.ReferrerHostname
+	}
+
+	t.Run("a page of a www site is no referrer for the next one", func(t *testing.T) {
+		assert.Equal(t, events.DirectOrUnknownReferrer, storedReferrer(t, "https://www.example.com/b", "https://www.example.com/a"))
+	})
+
+	t.Run("the same host without www is the same site", func(t *testing.T) {
+		assert.Equal(t, events.DirectOrUnknownReferrer, storedReferrer(t, "https://example.net/b", "https://www.example.net/a"))
+	})
+
+	t.Run("the parent domain of a subdomain site is a real referrer", func(t *testing.T) {
+		assert.Equal(t, "example.org", storedReferrer(t, "https://blog.example.org/", "https://example.org/post"))
+	})
+}

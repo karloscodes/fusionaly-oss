@@ -227,7 +227,6 @@ func prepareTempEvent(db *gorm.DB, logger *slog.Logger, input *CollectEventInput
 	}
 
 	baseDomain := websites.BaseDomainForHost(urlData.hostname)
-	websiteDomain := baseDomain
 
 	if err != nil {
 		// If not found, try with the stripped subdomain (base domain)
@@ -256,12 +255,16 @@ func prepareTempEvent(db *gorm.DB, logger *slog.Logger, input *CollectEventInput
 			return nil, err
 		}
 	}
-	// Check for self-referral and filter it out
+	// A referrer from the site itself is internal navigation, not a source:
+	// the page's own host (with or without www.), or with subdomain tracking
+	// any host under the site's base domain.
 	if referrerHostname != DirectOrUnknownReferrer && referrerHostname != "" {
-		if IsSelfReferral(referrerHostname, websiteDomain) {
+		sameSite := IsSelfReferral(referrerHostname, urlData.hostname) ||
+			(websites.BaseDomainForHost(referrerHostname) == baseDomain && settings.IsSubdomainTrackingEnabled(db, baseDomain))
+		if sameSite {
 			logger.Debug("Self-referral detected, treating as direct traffic",
 				slog.String("referrer", referrerHostname),
-				slog.String("website_domain", websiteDomain))
+				slog.String("page_hostname", urlData.hostname))
 
 			referrerHostname = DirectOrUnknownReferrer
 			referrerPathname = ""
