@@ -1,12 +1,14 @@
 package analytics_test
 
 import (
+	"fmt"
 	"io"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 	"log/slog"
 
 	"fusionaly/internal/analytics"
@@ -68,108 +70,201 @@ func TestGetUserFlowDataFromAggregates(t *testing.T) {
 	assert.Equal(t, int64(10), results[0].Value)
 }
 
-func TestGetUserFlowDataFallbackToEvents(t *testing.T) {
+// flowDay is a fixed UTC day, so no test depends on the wall clock.
+var flowDay = time.Date(2026, 9, 15, 0, 0, 0, 0, time.UTC)
+
+func at(clock string) time.Time {
+	d, err := time.ParseDuration(clock)
+	if err != nil {
+		panic(err)
+	}
+	return flowDay.Add(d)
+}
+
+func pageView(user, path string, ts time.Time) events.Event {
+	return events.Event{WebsiteID: 1, UserSignature: user, Hostname: "example.com", Pathname: path, EventType: events.EventTypePageView, Timestamp: ts}
+}
+
+func customEvent(user string, ts time.Time) events.Event {
+	return events.Event{WebsiteID: 1, UserSignature: user, Hostname: "example.com", Pathname: "/", EventType: events.EventTypeCustomEvent, CustomEventName: "signup", Timestamp: ts}
+}
+
+func setupFlowDB(t *testing.T, evts ...events.Event) *gorm.DB {
 	dbManager, _ := testsupport.SetupTestDBManager(t)
 	db := dbManager.GetConnection()
-
-	// Clean up any existing data
 	testsupport.CleanAllTables(db)
-
-	// Create events but no flow_transition_stats (to test fallback)
-	now := time.Now().UTC()
-	evts := []events.Event{
-		{
-			WebsiteID:     1,
-			UserSignature: "user1",
-			Hostname:      "example.com",
-			Pathname:      "/home",
-			EventType:     events.EventTypePageView,
-			Timestamp:     now,
-		},
-		{
-			WebsiteID:     1,
-			UserSignature: "user1",
-			Hostname:      "example.com",
-			Pathname:      "/products",
-			EventType:     events.EventTypePageView,
-			Timestamp:     now.Add(time.Minute),
-		},
+	if len(evts) > 0 {
+		require.NoError(t, db.Create(&evts).Error)
 	}
-	db.CreateInBatches(evts, len(evts))
+	return db
+}
 
-	// Query should fallback to events since flow_transition_stats is empty
-	params := analytics.WebsiteScopedQueryParams{
-		WebsiteID: 1,
-		TimeFrame: &timeframe.TimeFrame{
-			From: now.Add(-time.Hour),
-			To:   now.Add(time.Hour),
-		},
-	}
-
-	results, err := analytics.GetUserFlowData(db, params, 5)
+func flowLinks(t *testing.T, db *gorm.DB, from, to time.Time) []string {
+	params := analytics.WebsiteScopedQueryParams{WebsiteID: 1, TimeFrame: &timeframe.TimeFrame{From: from, To: to}}
+	results, err := analytics.GetUserFlowDataFromEvents(db, params, 5)
 	require.NoError(t, err)
-	// Should have one transition from /home to /products
-	assert.Len(t, results, 1)
-	assert.Equal(t, "step1:example.com/home", results[0].Source)
-	assert.Equal(t, "step2:example.com/products", results[0].Target)
+	links := make([]string, 0, len(results))
+	for _, r := range results {
+		links = append(links, fmt.Sprintf("%s -> %s = %d", r.Source, r.Target, r.Value))
+	}
+	return links
+}
+
+func storedFlows(t *testing.T, db *gorm.DB) []string {
+	var stats []analytics.FlowTransitionStat
+	require.NoError(t, db.Order("hour, step_position, source_page, target_page").Find(&stats).Error)
+	rows := make([]string, 0, len(stats))
+	for _, s := range stats {
+		rows = append(rows, fmt.Sprintf("%s step%d %s -> %s = %d", s.Hour.UTC().Format("15:04"), s.StepPosition, s.SourcePage, s.TargetPage, s.Transitions))
+	}
+	return rows
+}
+
+func TestUserFlowsFollowVisits(t *testing.T) {
+	t.Run("a visit that crosses an hour boundary keeps its move", func(t *testing.T) {
+		db := setupFlowDB(t,
+			pageView("u1", "/home", at("11h59m")),
+			pageView("u1", "/products", at("12h01m")),
+		)
+
+		links := flowLinks(t, db, at("0h"), at("24h"))
+
+		assert.Equal(t, []string{"step1:example.com/home -> step2:example.com/products = 1"}, links)
+	})
+
+	t.Run("steps count from the start of the visit, also before the range", func(t *testing.T) {
+		db := setupFlowDB(t,
+			pageView("u1", "/home", at("10h50m")),
+			pageView("u1", "/products", at("10h55m")),
+			pageView("u1", "/cart", at("11h05m")),
+		)
+
+		links := flowLinks(t, db, at("11h"), at("12h"))
+
+		assert.Equal(t, []string{"step2:example.com/products -> step3:example.com/cart = 1"}, links)
+	})
+
+	t.Run("a gap longer than the session timeout starts a new visit", func(t *testing.T) {
+		db := setupFlowDB(t,
+			pageView("u1", "/home", at("10h00m")),
+			pageView("u1", "/products", at("10h31m")),
+		)
+
+		links := flowLinks(t, db, at("0h"), at("24h"))
+
+		assert.Empty(t, links)
+	})
+
+	t.Run("a custom event keeps the visit going", func(t *testing.T) {
+		db := setupFlowDB(t,
+			pageView("u1", "/home", at("10h00m")),
+			customEvent("u1", at("10h25m")),
+			pageView("u1", "/products", at("10h50m")),
+		)
+
+		links := flowLinks(t, db, at("0h"), at("24h"))
+
+		assert.Equal(t, []string{"step1:example.com/home -> step2:example.com/products = 1"}, links)
+	})
+
+	t.Run("a reload is not a step", func(t *testing.T) {
+		db := setupFlowDB(t,
+			pageView("u1", "/home", at("10h00m")),
+			pageView("u1", "/home", at("10h01m")),
+			pageView("u1", "/products", at("10h02m")),
+		)
+
+		links := flowLinks(t, db, at("0h"), at("24h"))
+
+		assert.Equal(t, []string{"step1:example.com/home -> step2:example.com/products = 1"}, links)
+	})
+
+	t.Run("other websites do not count", func(t *testing.T) {
+		other := pageView("u1", "/products", at("10h01m"))
+		other.WebsiteID = 2
+		db := setupFlowDB(t,
+			pageView("u1", "/home", at("10h00m")),
+			other,
+		)
+
+		links := flowLinks(t, db, at("0h"), at("24h"))
+
+		assert.Empty(t, links)
+	})
 }
 
 func TestComputeFlowTransitionsForHour(t *testing.T) {
-	dbManager, _ := testsupport.SetupTestDBManager(t)
-	db := dbManager.GetConnection()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
-	// Clean up any existing data
-	testsupport.CleanAllTables(db)
+	t.Run("stores each move in the hour of its target page view", func(t *testing.T) {
+		db := setupFlowDB(t,
+			pageView("u1", "/a", at("11h59m")),
+			pageView("u1", "/b", at("12h01m")),
+			pageView("u2", "/a", at("12h10m")),
+			pageView("u2", "/b", at("12h11m")),
+		)
 
-	// Create events for testing
-	now := time.Now().UTC().Truncate(time.Hour)
-	evts := []events.Event{
-		{
-			WebsiteID:     1,
-			UserSignature: "user1",
-			Hostname:      "example.com",
-			Pathname:      "/page-a",
-			EventType:     events.EventTypePageView,
-			Timestamp:     now.Add(time.Minute),
-		},
-		{
-			WebsiteID:     1,
-			UserSignature: "user1",
-			Hostname:      "example.com",
-			Pathname:      "/page-b",
-			EventType:     events.EventTypePageView,
-			Timestamp:     now.Add(2 * time.Minute),
-		},
-		{
-			WebsiteID:     1,
-			UserSignature: "user2",
-			Hostname:      "example.com",
-			Pathname:      "/page-a",
-			EventType:     events.EventTypePageView,
-			Timestamp:     now.Add(3 * time.Minute),
-		},
-		{
-			WebsiteID:     1,
-			UserSignature: "user2",
-			Hostname:      "example.com",
-			Pathname:      "/page-b",
-			EventType:     events.EventTypePageView,
-			Timestamp:     now.Add(4 * time.Minute),
-		},
-	}
-	db.CreateInBatches(evts, len(evts))
+		require.NoError(t, events.ComputeFlowTransitionsForHour(db, logger, at("11h"), 5))
+		require.NoError(t, events.ComputeFlowTransitionsForHour(db, logger, at("12h"), 5))
 
-	// Compute flow transitions
-	err := events.ComputeFlowTransitionsForHour(db, logger, now, 5)
-	require.NoError(t, err)
+		assert.Equal(t, []string{"12:00 step1 example.com/a -> example.com/b = 2"}, storedFlows(t, db))
+	})
 
-	// Verify flow_transition_stats was populated
-	var stats []analytics.FlowTransitionStat
-	db.Where("website_id = ?", 1).Find(&stats)
+	t.Run("a recompute replaces the hour's rows", func(t *testing.T) {
+		db := setupFlowDB(t,
+			pageView("u1", "/a", at("12h00m")),
+			pageView("u1", "/b", at("12h01m")),
+		)
+		require.NoError(t, events.ComputeFlowTransitionsForHour(db, logger, at("12h"), 5))
+		require.NoError(t, db.Where("pathname = ?", "/b").Delete(&events.Event{}).Error)
 
-	require.Len(t, stats, 1)
-	assert.Equal(t, "example.com/page-a", stats[0].SourcePage)
-	assert.Equal(t, "example.com/page-b", stats[0].TargetPage)
-	assert.Equal(t, 2, stats[0].Transitions) // 2 users made this transition
+		require.NoError(t, events.ComputeFlowTransitionsForHour(db, logger, at("12h"), 5))
+		require.NoError(t, events.ComputeFlowTransitionsForHour(db, logger, at("12h"), 5))
+
+		assert.Empty(t, storedFlows(t, db))
+	})
+
+	t.Run("stored flows match the flows computed from events", func(t *testing.T) {
+		db := setupFlowDB(t,
+			pageView("u1", "/a", at("09h50m")),
+			pageView("u1", "/b", at("10h05m")),
+			pageView("u1", "/c", at("10h20m")),
+			pageView("u2", "/a", at("10h40m")),
+			pageView("u2", "/c", at("11h10m")),
+		)
+		for h := 0; h < 24; h++ {
+			require.NoError(t, events.ComputeFlowTransitionsForHour(db, logger, flowDay.Add(time.Duration(h)*time.Hour), 5))
+		}
+		params := analytics.WebsiteScopedQueryParams{WebsiteID: 1, TimeFrame: &timeframe.TimeFrame{From: at("0h"), To: at("24h")}}
+
+		stored, err := analytics.GetUserFlowData(db, params, 5)
+		require.NoError(t, err)
+
+		computed, err := analytics.GetUserFlowDataFromEvents(db, params, 5)
+		require.NoError(t, err)
+		assert.ElementsMatch(t, computed, stored)
+		assert.Len(t, stored, 3)
+	})
+}
+
+func TestRebuildFlowTransitionsOnce(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	db := setupFlowDB(t,
+		pageView("u1", "/a", at("11h59m")),
+		pageView("u1", "/b", at("12h01m")),
+	)
+	stale := analytics.FlowTransitionStat{WebsiteID: 1, StepPosition: 1, SourcePage: "example.com/b", TargetPage: "example.com/x", Transitions: 9, Hour: at("12h")}
+	require.NoError(t, db.Create(&stale).Error)
+
+	require.NoError(t, events.RebuildFlowTransitionsOnce(db, logger, 5))
+
+	assert.Equal(t, []string{"12:00 step1 example.com/a -> example.com/b = 1"}, storedFlows(t, db))
+
+	t.Run("runs one time only", func(t *testing.T) {
+		require.NoError(t, db.Create(&analytics.FlowTransitionStat{WebsiteID: 1, StepPosition: 1, SourcePage: "x", TargetPage: "y", Transitions: 1, Hour: at("13h")}).Error)
+
+		require.NoError(t, events.RebuildFlowTransitionsOnce(db, logger, 5))
+
+		assert.Len(t, storedFlows(t, db), 2)
+	})
 }

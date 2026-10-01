@@ -22,6 +22,9 @@ func NewEventProcessorJob(dbManager cartridge.DBManager, logger *slog.Logger) *E
 	}
 }
 
+// flowMaxDepth is how many steps of a visit Visitor Flows stores.
+const flowMaxDepth = 5
+
 // Run processes unprocessed events from the ingest database.
 // Country data is resolved at ingestion time (events.GetCountryFromIP), which
 // already degrades gracefully to "Unknown" when no GeoLite database is
@@ -35,6 +38,9 @@ func (j *EventProcessorJob) Run() error {
 	// failure is retried on the next run and does not block new events.
 	if err := events.RebuildVisitCountsOnce(db, j.logger); err != nil {
 		j.logger.Error("Failed to rebuild visit counts", slog.Any("error", err))
+	}
+	if err := events.RebuildFlowTransitionsOnce(db, j.logger, flowMaxDepth); err != nil {
+		j.logger.Error("Failed to rebuild flow transitions", slog.Any("error", err))
 	}
 
 	// Count unprocessed events
@@ -94,7 +100,7 @@ func (j *EventProcessorJob) Run() error {
 		slog.Int64("remaining", unprocessedCount-int64(processedCount)))
 
 	// Compute flow transitions for recent hours
-	if err := events.ComputeFlowTransitionsForRecentHours(db, j.logger, 2, 5); err != nil {
+	if err := events.ComputeFlowTransitionsForRecentHours(db, j.logger, 2, flowMaxDepth); err != nil {
 		j.logger.Warn("Failed to compute flow transitions", slog.Any("error", err))
 	}
 

@@ -2,6 +2,7 @@ package analytics
 
 import (
 	"fmt"
+	"sort"
 
 	"fusionaly/internal/events"
 
@@ -65,77 +66,42 @@ func GetUserFlowData(db *gorm.DB, params WebsiteScopedQueryParams, maxDepth int)
 	return results, nil
 }
 
-// GetUserFlowDataFromEvents calculates page-to-page transitions directly from events table
-// This is used as a fallback when pre-aggregated data is not available
+// GetUserFlowDataFromEvents computes page-to-page transitions from the events
+// table, with the same rules as the stored flows (events.QueryFlowTransitions).
+// It is the fallback when pre-aggregated data is not available.
 func GetUserFlowDataFromEvents(db *gorm.DB, params WebsiteScopedQueryParams, maxDepth int) ([]UserFlowLink, error) {
 	if maxDepth <= 0 {
 		maxDepth = 5
 	}
 
-	var results []UserFlowLink
-
-	query := `
-	WITH session_windows AS (
-		SELECT
-			user_signature,
-			hostname || pathname AS page,
-			timestamp,
-			strftime('%Y-%m-%d %H', timestamp,
-				CASE
-					WHEN strftime('%M', timestamp) < '30' THEN '-0 hours'
-					ELSE '-0 hours'
-				END
-			) AS session_window
-		FROM events
-		WHERE
-			timestamp BETWEEN ? AND ?
-			AND website_id = ?
-			AND event_type = ?
-	),
-	ranked_events AS (
-		SELECT
-			user_signature,
-			page,
-			timestamp,
-			session_window,
-			ROW_NUMBER() OVER (
-				PARTITION BY user_signature, session_window
-				ORDER BY timestamp
-			) AS page_position,
-			LEAD(page) OVER (
-				PARTITION BY user_signature, session_window
-				ORDER BY timestamp
-			) AS next_page
-		FROM session_windows
-	),
-	page_transitions AS (
-		SELECT
-			'step' || page_position || ':' || page AS source,
-			'step' || (page_position + 1) || ':' || next_page AS target,
-			COUNT(*) AS value
-		FROM ranked_events
-		WHERE next_page IS NOT NULL
-			AND page != next_page
-			AND page_position <= ?
-		GROUP BY page_position, page, next_page
-		HAVING value > 0
-	)
-	SELECT source, target, value FROM page_transitions
-	ORDER BY value DESC
-	LIMIT 200
-	`
-
-	err := db.Raw(query,
-		params.TimeFrame.From.UTC(),
-		params.TimeFrame.To.UTC(),
-		params.WebsiteID,
-		events.EventTypePageView,
-		maxDepth,
-	).Scan(&results).Error
-
+	transitions, err := events.QueryFlowTransitions(db, uint(params.WebsiteID), params.TimeFrame.From, params.TimeFrame.To, maxDepth)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching user flow data from events: %w", err)
 	}
 
+	// Sum each move across hours.
+	totals := map[UserFlowLink]int64{}
+	for _, t := range transitions {
+		link := UserFlowLink{
+			Source: fmt.Sprintf("step%d:%s", t.StepPosition, t.SourcePage),
+			Target: fmt.Sprintf("step%d:%s", t.StepPosition+1, t.TargetPage),
+		}
+		totals[link] += int64(t.Transitions)
+	}
+
+	results := make([]UserFlowLink, 0, len(totals))
+	for link, value := range totals {
+		link.Value = value
+		results = append(results, link)
+	}
+	sort.Slice(results, func(i, j int) bool {
+		if results[i].Value != results[j].Value {
+			return results[i].Value > results[j].Value
+		}
+		return results[i].Source+results[i].Target < results[j].Source+results[j].Target
+	})
+	if len(results) > 200 {
+		results = results[:200]
+	}
 	return results, nil
 }
