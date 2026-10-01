@@ -18,20 +18,40 @@ func TestPreviousPeriod(t *testing.T) {
 		from := time.Date(2026, 9, 1, 0, 0, 0, 0, madrid)
 		to := time.Date(2026, 9, 30, 23, 59, 59, 999999999, madrid)
 
-		prevFrom, prevTo := analytics.PreviousPeriod(from, to)
+		prevFrom, prevTo := analytics.PreviousPeriod(from, to, madrid)
 
-		assert.True(t, prevFrom.Equal(time.Date(2026, 8, 2, 0, 0, 0, 0, madrid)), "starts on a bucket boundary: %s", prevFrom)
-		assert.True(t, prevTo.Before(from), "ends before the current period starts")
-		assert.Equal(t, time.Nanosecond, from.Sub(prevTo))
+		assert.True(t, prevFrom.Equal(time.Date(2026, 8, 2, 0, 0, 0, 0, madrid)), "starts on a day boundary: %s", prevFrom)
+		assert.Equal(t, time.Nanosecond, from.Sub(prevTo), "ends just before the current period starts")
 	})
 
-	t.Run("a range that ends now compares with the same length before it", func(t *testing.T) {
-		from := time.Date(2026, 9, 25, 0, 0, 0, 0, time.UTC)
-		to := time.Date(2026, 9, 25, 14, 30, 0, 0, time.UTC)
+	t.Run("today so far compares with yesterday up to the same time", func(t *testing.T) {
+		from := time.Date(2026, 9, 25, 0, 0, 0, 0, madrid)
+		to := time.Date(2026, 9, 25, 9, 5, 0, 0, madrid)
 
-		prevFrom, prevTo := analytics.PreviousPeriod(from, to)
+		prevFrom, prevTo := analytics.PreviousPeriod(from, to, madrid)
 
-		assert.Equal(t, to.Sub(from), prevTo.Add(time.Nanosecond).Sub(prevFrom))
+		assert.True(t, prevFrom.Equal(time.Date(2026, 9, 24, 0, 0, 0, 0, madrid)), "yesterday morning: %s", prevFrom)
+		assert.True(t, prevTo.Equal(time.Date(2026, 9, 24, 9, 5, 0, 0, madrid)), "not yesterday evening: %s", prevTo)
+	})
+
+	t.Run("the last 7 days so far compare with the 7 days before, up to the same time", func(t *testing.T) {
+		from := time.Date(2026, 9, 19, 0, 0, 0, 0, madrid)
+		to := time.Date(2026, 9, 25, 0, 35, 0, 0, madrid)
+
+		prevFrom, prevTo := analytics.PreviousPeriod(from, to, madrid)
+
+		assert.True(t, prevFrom.Equal(time.Date(2026, 9, 12, 0, 0, 0, 0, madrid)), "%s", prevFrom)
+		assert.True(t, prevTo.Equal(time.Date(2026, 9, 18, 0, 35, 0, 0, madrid)), "%s", prevTo)
+	})
+
+	t.Run("a day across the end of daylight saving shifts by calendar days", func(t *testing.T) {
+		from := time.Date(2026, 10, 26, 0, 0, 0, 0, madrid)
+		to := time.Date(2026, 10, 26, 23, 59, 59, 999999999, madrid)
+
+		prevFrom, prevTo := analytics.PreviousPeriod(from, to, madrid)
+
+		assert.True(t, prevFrom.Equal(time.Date(2026, 10, 25, 0, 0, 0, 0, madrid)), "%s", prevFrom)
+		assert.Equal(t, time.Nanosecond, from.Sub(prevTo))
 	})
 }
 

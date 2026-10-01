@@ -44,7 +44,7 @@ func TestTimeFrameParserComprehensive(t *testing.T) {
 				Tz:       "UTC",
 			},
 			expectedFrom:   time.Date(2024, 7, 15, 0, 0, 0, 0, time.UTC),
-			expectedTo:     time.Date(2024, 7, 15, 14, 59, 59, 0, time.UTC), // Truncated to hour 14:00 + 1 hour - 1 second
+			expectedTo:     time.Date(2024, 7, 15, 14, 35, 0, 0, time.UTC), // ongoing: now + TimeWindowBuffer
 			expectedBucket: timeframe.TimeFrameBucketSizeHour,
 		},
 		{
@@ -55,7 +55,7 @@ func TestTimeFrameParserComprehensive(t *testing.T) {
 				Tz:       "America/New_York",
 			},
 			expectedFrom:   time.Date(2024, 7, 15, 0, 0, 0, 0, mustLoadLocation("America/New_York")).UTC(),
-			expectedTo:     time.Date(2024, 7, 15, 14, 59, 59, 0, time.UTC), // Truncated to hour 14:00 + 1 hour - 1 second, in UTC
+			expectedTo:     time.Date(2024, 7, 15, 14, 35, 0, 0, time.UTC), // ongoing: now + TimeWindowBuffer
 			expectedBucket: timeframe.TimeFrameBucketSizeHour,
 		},
 
@@ -92,7 +92,7 @@ func TestTimeFrameParserComprehensive(t *testing.T) {
 				Tz:       "UTC",
 			},
 			expectedFrom:   time.Date(2024, 7, 8, 0, 0, 0, 0, time.UTC),
-			expectedTo:     time.Date(2024, 7, 15, 23, 59, 59, 0, time.UTC), // Truncated to day boundary + 1 day - 1 second
+			expectedTo:     time.Date(2024, 7, 15, 14, 35, 0, 0, time.UTC), // ongoing: now + TimeWindowBuffer
 			expectedBucket: timeframe.TimeFrameBucketSizeDay,
 		},
 
@@ -105,7 +105,7 @@ func TestTimeFrameParserComprehensive(t *testing.T) {
 				Tz:       "UTC",
 			},
 			expectedFrom:   time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC),
-			expectedTo:     time.Date(2024, 7, 15, 23, 59, 59, 0, time.UTC), // Truncated to day boundary + 1 day - 1 second
+			expectedTo:     time.Date(2024, 7, 15, 14, 35, 0, 0, time.UTC), // ongoing: now + TimeWindowBuffer
 			expectedBucket: timeframe.TimeFrameBucketSizeDay,
 		},
 
@@ -118,7 +118,7 @@ func TestTimeFrameParserComprehensive(t *testing.T) {
 				Tz:       "UTC",
 			},
 			expectedFrom:   time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC),
-			expectedTo:     time.Date(2024, 7, 15, 23, 59, 59, 0, time.UTC), // Truncated to day boundary + 1 day - 1 second
+			expectedTo:     time.Date(2024, 7, 15, 14, 35, 0, 0, time.UTC), // ongoing: now + TimeWindowBuffer
 			expectedBucket: timeframe.TimeFrameBucketSizeDay,
 		},
 
@@ -144,8 +144,8 @@ func TestTimeFrameParserComprehensive(t *testing.T) {
 				Tz:       "UTC",
 			},
 			expectedFrom:   time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
-			expectedTo:     time.Date(2024, 7, 31, 23, 59, 59, 0, time.UTC), // Monthly bucket: truncated to July 1st + 1 month - 1 second
-			expectedBucket: timeframe.TimeFrameBucketSizeMonth,              // ~6 months = monthly bucket
+			expectedTo:     time.Date(2024, 7, 15, 14, 35, 0, 0, time.UTC), // ongoing: now + TimeWindowBuffer
+			expectedBucket: timeframe.TimeFrameBucketSizeMonth,             // ~6 months = monthly bucket
 		},
 
 		// Last 12 Months Range Tests (12 months ago to current time)
@@ -156,9 +156,9 @@ func TestTimeFrameParserComprehensive(t *testing.T) {
 				ToDate:   "2024-07-15", // Use explicit date matching fixed time
 				Tz:       "UTC",
 			},
-			expectedFrom:   time.Date(2023, 7, 15, 0, 0, 0, 0, time.UTC),    // User-specified date, no truncation
-			expectedTo:     time.Date(2024, 7, 31, 23, 59, 59, 0, time.UTC), // Monthly bucket: truncated to July 1st + 1 month - 1 second
-			expectedBucket: timeframe.TimeFrameBucketSizeMonth,              // ~12 months = monthly bucket
+			expectedFrom:   time.Date(2023, 7, 15, 0, 0, 0, 0, time.UTC),   // User-specified date, no truncation
+			expectedTo:     time.Date(2024, 7, 15, 14, 35, 0, 0, time.UTC), // ongoing: now + TimeWindowBuffer
+			expectedBucket: timeframe.TimeFrameBucketSizeMonth,             // ~12 months = monthly bucket
 		},
 
 		// All Time Range Tests
@@ -171,7 +171,7 @@ func TestTimeFrameParserComprehensive(t *testing.T) {
 				AllTimeFirstEventAt: time.Date(2022, 1, 15, 0, 0, 0, 0, time.UTC),
 			},
 			expectedFrom:   time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC),
-			expectedTo:     time.Date(2024, 7, 31, 23, 59, 59, 0, time.UTC), // Future date clamped to current time + buffer, then monthly truncation
+			expectedTo:     time.Date(2024, 7, 15, 14, 35, 0, 0, time.UTC), // ongoing: now + TimeWindowBuffer
 			expectedBucket: timeframe.TimeFrameBucketSizeMonth,
 		},
 
@@ -282,14 +282,14 @@ func TestTimeFrameParserTimeWindowBuffer(t *testing.T) {
 	// Check bucket size is Daily
 	assert.Equal(t, timeframe.TimeFrameBucketSizeDay, tf.BucketSize, "Last7Days should use daily bucketing")
 
-	// The "To" time should be truncated to day boundary + 1 day - 1 second
+	// The "To" time is now plus the buffer
 	expectedStart := time.Date(2024, 7, 8, 0, 0, 0, 0, time.UTC)
-	expectedEnd := time.Date(2024, 7, 15, 23, 59, 59, 0, time.UTC)
+	expectedEnd := fixedTime.Add(timeframe.TimeWindowBuffer)
 
 	// Allow a 1-second tolerance for time comparisons
 	const tolerance = time.Second
 	assert.WithinDuration(t, expectedStart, tf.From, tolerance,
 		"The From time should be 7 days before the current time")
 	assert.WithinDuration(t, expectedEnd, tf.To, tolerance,
-		"The To time should be truncated to day boundary + 1 day - 1 second")
+		"The To time should be now plus the buffer")
 }

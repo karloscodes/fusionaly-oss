@@ -162,12 +162,13 @@ func FetchDashboardMetrics(db *gorm.DB, tf *timeframe.TimeFrame, websiteId int, 
 
 // FetchComparisonMetrics loads comparison period metrics for deferred rendering.
 func FetchComparisonMetrics(db *gorm.DB, tf *timeframe.TimeFrame, websiteId int, currentMetrics *DashboardMetrics, logger *slog.Logger) *ComparisonMetrics {
-	comparisonFrom, comparisonTo := PreviousPeriod(tf.From, tf.To)
+	comparisonFrom, comparisonTo := PreviousPeriod(tf.From, tf.To, tf.Tz)
 
 	comparisonTF := &timeframe.TimeFrame{
-		From:       comparisonFrom,
-		To:         comparisonTo,
+		From:       comparisonFrom.UTC(),
+		To:         comparisonTo.UTC(),
 		BucketSize: tf.BucketSize,
+		Tz:         tf.Tz,
 	}
 	comparisonParams := NewWebsiteScopedQueryParams(comparisonTF, websiteId)
 
@@ -216,14 +217,19 @@ func FetchComparisonMetrics(db *gorm.DB, tf *timeframe.TimeFrame, websiteId int,
 	return CalculateComparisonMetrics(data)
 }
 
-// PreviousPeriod returns the period of the same length that ends just before
-// from. Both ends are inclusive, like the current period: it ends one
-// nanosecond before from, so no bucket is counted in both periods. The length
-// is rounded to the second, so an end of day at 23:59:59.999999999 gives whole
-// days and the previous period starts on a bucket boundary.
-func PreviousPeriod(from, to time.Time) (time.Time, time.Time) {
-	length := to.Sub(from).Round(time.Second)
-	return from.Add(-length), from.Add(-time.Nanosecond)
+// PreviousPeriod returns the period just before [from, to]: the same range
+// shifted back by its number of calendar days in tz. "Today so far" compares
+// with yesterday up to the same time, and a range of whole days ends one
+// nanosecond before from, so no bucket counts in both periods.
+func PreviousPeriod(from, to time.Time, tz *time.Location) (time.Time, time.Time) {
+	if tz == nil {
+		tz = time.UTC
+	}
+	from, to = from.In(tz), to.In(tz)
+	firstDay := time.Date(from.Year(), from.Month(), from.Day(), 0, 0, 0, 0, time.UTC)
+	lastDay := time.Date(to.Year(), to.Month(), to.Day(), 0, 0, 0, 0, time.UTC)
+	days := int(lastDay.Sub(firstDay).Hours()/24) + 1
+	return from.AddDate(0, 0, -days), to.AddDate(0, 0, -days)
 }
 
 // Task builder helpers

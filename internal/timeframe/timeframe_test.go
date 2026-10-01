@@ -42,7 +42,7 @@ func TestTimeFrameParserWithTimeProvider(t *testing.T) {
 				Tz:       "UTC",
 			},
 			expectedFrom:  time.Date(2024, 3, 15, 0, 0, 0, 0, time.UTC),
-			expectedTo:    time.Date(2024, 3, 15, 12, 59, 59, 0, time.UTC), // Truncated to hour 12:00 + 1 hour - 1 second
+			expectedTo:    time.Date(2024, 3, 15, 12, 5, 0, 0, time.UTC), // ongoing: now + TimeWindowBuffer
 			expectedError: false,
 		},
 		{
@@ -64,7 +64,7 @@ func TestTimeFrameParserWithTimeProvider(t *testing.T) {
 				Tz:       "UTC",
 			},
 			expectedFrom:   time.Date(2024, 3, 8, 0, 0, 0, 0, time.UTC),
-			expectedTo:     time.Date(2024, 3, 15, 23, 59, 59, 0, time.UTC), // Truncated to day + 1 day - 1 second
+			expectedTo:     time.Date(2024, 3, 15, 12, 5, 0, 0, time.UTC), // ongoing: now + TimeWindowBuffer
 			expectedBucket: timeframe.TimeFrameBucketSizeDay,
 			expectedError:  false,
 		},
@@ -76,7 +76,7 @@ func TestTimeFrameParserWithTimeProvider(t *testing.T) {
 				Tz:       "UTC",
 			},
 			expectedFrom:   time.Date(2024, 2, 14, 0, 0, 0, 0, time.UTC),
-			expectedTo:     time.Date(2024, 3, 15, 23, 59, 59, 0, time.UTC), // Truncated to day + 1 day - 1 second
+			expectedTo:     time.Date(2024, 3, 15, 12, 5, 0, 0, time.UTC), // ongoing: now + TimeWindowBuffer
 			expectedBucket: timeframe.TimeFrameBucketSizeDay,
 			expectedError:  false,
 		},
@@ -88,7 +88,7 @@ func TestTimeFrameParserWithTimeProvider(t *testing.T) {
 				Tz:       "UTC",
 			},
 			expectedFrom:   time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC),
-			expectedTo:     time.Date(2024, 3, 15, 23, 59, 59, 0, time.UTC), // Truncated to day + 1 day - 1 second
+			expectedTo:     time.Date(2024, 3, 15, 12, 5, 0, 0, time.UTC), // ongoing: now + TimeWindowBuffer
 			expectedBucket: timeframe.TimeFrameBucketSizeDay,
 			expectedError:  false,
 		},
@@ -111,7 +111,7 @@ func TestTimeFrameParserWithTimeProvider(t *testing.T) {
 				Tz:       "UTC",
 			},
 			expectedFrom:  time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC),
-			expectedTo:    time.Date(2024, 3, 15, 23, 59, 59, 0, time.UTC), // 19-day range = daily bucket, so day + 1 day - 1 second
+			expectedTo:    time.Date(2024, 3, 15, 12, 5, 0, 0, time.UTC), // ongoing: now + TimeWindowBuffer
 			expectedError: false,
 		},
 		{
@@ -509,7 +509,7 @@ func TestGenerateDateTimePointsReference_Timezone(t *testing.T) {
 	// Create a time frame for July 6, 2025 in Madrid timezone
 	// User input: from=2025-07-06 (meaning July 6 midnight in Madrid)
 	// Backend should parse this as Madrid midnight, convert to UTC for storage
-	fromTime := time.Date(2025, 7, 6, 0, 0, 0, 0, madridTz) // July 6 00:00 Madrid
+	fromTime := time.Date(2025, 7, 6, 0, 0, 0, 0, madridTz)          // July 6 00:00 Madrid
 	toTime := time.Date(2025, 7, 7, 23, 59, 59, 999999999, madridTz) // end of July 7 in Madrid, as the parser builds it
 
 	timeFrame := &timeframe.TimeFrame{

@@ -66,7 +66,7 @@ func (p *TimeFrameParser) parseCustomDateRange(params TimeFrameParserParams) (ti
 	// Start at local midnight: Truncate(24h) would give UTC midnight, a
 	// partial first day.
 	defaultFrom := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc).AddDate(0, 0, -29)
-	defaultTo := now
+	defaultTo := now.Add(TimeWindowBuffer) // like an explicit end date of today
 
 	from, err := p.parseDateWithDefault(params.FromDate, defaultFrom, loc, false)
 	if err != nil {

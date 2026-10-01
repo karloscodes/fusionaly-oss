@@ -100,33 +100,19 @@ func NewTimeFrame(params TimeFrameParams, tz *time.Location) (*TimeFrame, error)
 	}, nil
 }
 
+// NewAutoTimeFrameFromClientTimezone builds the time frame for a requested
+// range. To stays the requested end: the end of the last day, or now (plus
+// TimeWindowBuffer) for a range that ends today. It never grows to the end of
+// a chart bucket, so totals and the previous period cover the requested days
+// only.
 func NewAutoTimeFrameFromClientTimezone(fromTime, toTime time.Time, tz *time.Location) (*TimeFrame, error) {
 	fromUTC := fromTime.UTC()
 	toUTC := toTime.UTC()
 
-	timeFrameSize := GetAppropriateTimeFrameSize(fromUTC, toUTC)
-
-	// For completed periods, apply bucket truncation respecting timezone boundaries
-	// This prevents issues where UTC truncation crosses user timezone day boundaries
-	toTruncated := TruncateToBucketInTimezone(toTime, timeFrameSize.BucketSize, tz)
-
-	switch timeFrameSize.BucketSize {
-	case TimeFrameBucketSizeYear:
-		toTruncated = toTruncated.AddDate(1, 0, 0).Add(-1 * time.Second)
-	case TimeFrameBucketSizeMonth:
-		toTruncated = toTruncated.AddDate(0, 1, 0).Add(-1 * time.Second)
-	case TimeFrameBucketSizeWeek:
-		toTruncated = toTruncated.AddDate(0, 0, 7).Add(-1 * time.Second)
-	case TimeFrameBucketSizeDay:
-		toTruncated = toTruncated.AddDate(0, 0, 1).Add(-1 * time.Second)
-	case TimeFrameBucketSizeHour:
-		toTruncated = toTruncated.Add(time.Hour).Add(-1 * time.Second)
-	}
-
 	return NewTimeFrame(TimeFrameParams{
 		FromTime:      fromUTC,
-		ToTime:        toTruncated.UTC(), // Convert back to UTC for internal storage
-		TimeFrameSize: timeFrameSize,
+		ToTime:        toUTC,
+		TimeFrameSize: GetAppropriateTimeFrameSize(fromUTC, toUTC),
 	}, tz)
 }
 
@@ -308,6 +294,14 @@ func (tf *TimeFrame) GenerateDateTimePointsReference() []DatePointsOfReference {
 		// Create midnight UTC for that DATE (not midnight in user timezone!)
 		// This ensures "Dec 1" always displays as "2025-12-01T00:00:00Z" regardless of timezone
 		currentTime = time.Date(localTime.Year(), localTime.Month(), localTime.Day(), 0, 0, 0, 0, time.UTC)
+		// Month and year points start on the bucket's first day. From Jan 31,
+		// adding a month gives Mar 3 and skips February.
+		switch tf.BucketSize {
+		case TimeFrameBucketSizeMonth:
+			currentTime = time.Date(currentTime.Year(), currentTime.Month(), 1, 0, 0, 0, 0, time.UTC)
+		case TimeFrameBucketSizeYear:
+			currentTime = time.Date(currentTime.Year(), 1, 1, 0, 0, 0, 0, time.UTC)
+		}
 
 		// DON'T adjust endTime - it's already correct from the parser
 		// Adjusting it can create extra buckets when crossing timezone boundaries
