@@ -53,7 +53,7 @@ export function onThemeChange(cb: () => void): () => void {
 }
 
 // cssVarColor reads a "R G B" channel variable and returns an rgb() string
-// usable by chart libraries (Recharts/Vega) that take plain color strings.
+// usable by chart libraries (Recharts) that take plain color strings.
 export function cssVarColor(name: string): string {
   const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   if (!raw) return "";

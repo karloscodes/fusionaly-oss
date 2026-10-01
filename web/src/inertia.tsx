@@ -12,7 +12,7 @@ if (savedTheme !== 'light') {
 }
 
 // Each page loads on demand, so a page ships only the code it uses (the
-// charts libraries reach the dashboard and Lens only). Inertia waits for the
+// charts libraries reach the dashboard only). Inertia waits for the
 // page module before it swaps pages, so nothing renders differently.
 const pageModules = import.meta.glob('./pages/*.tsx')
 

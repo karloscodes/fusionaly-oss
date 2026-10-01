@@ -41,13 +41,10 @@ test.describe.serial("Administration Pages Tests", () => {
 
 		// Verify all navigation links are present in the administration sidebar
 		const ingestionLink = await page.locator('aside:has-text("Administration") a:has-text("Ingestion")');
-		const aiLink = await page.locator('aside:has-text("Administration") a:has-text("AI")');
 		const accountLink = await page.locator('aside:has-text("Administration") a:has-text("Account")');
 		const systemLink = await page.locator('aside:has-text("Administration") a:has-text("System")');
 
 		await expect(ingestionLink).toBeVisible();
-		// The AI tab is hidden with Lens unless the fusionaly:lens flag is on
-		await expect(aiLink).toHaveCount(0);
 		await expect(accountLink).toBeVisible();
 		await expect(systemLink).toBeVisible();
 
@@ -87,24 +84,6 @@ test.describe.serial("Administration Pages Tests", () => {
 		const updatedValue = await page.inputValue('textarea[name="excluded_ips"]');
 		expect(updatedValue).toBe(testIP);
 		helpers.log("Ingestion settings updated successfully");
-	});
-
-	test("should display AI settings page", async ({ page }) => {
-		helpers.log("Testing AI settings page");
-
-		// Navigate to the AI settings page
-		await helpers.navigateTo("/admin/administration/ai", {
-			waitForSelector: "h1",
-			timeout: 30000
-		});
-
-		// We should land on the AI settings page (no license gate)
-		const currentUrl = helpers.page.url();
-		expect(currentUrl).toContain("/admin/administration/ai");
-
-		// The OpenAI API key field should be present so a user can configure it
-		await page.waitForSelector('input[name="openai_api_key"]', { state: "visible", timeout: 10000 });
-		helpers.log("AI settings page displays the OpenAI API key field");
 	});
 
 	test("should display password change form in Account page", async ({ page }) => {

@@ -1,10 +1,8 @@
 import { ReactNode, useState, useEffect, useRef } from "react";
 import { Link, router } from "@inertiajs/react";
-import { Badge } from "@/components/ui/badge";
 import { Settings, ChevronDown, Check, AlertTriangle } from "lucide-react";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { CommandSearch } from "@/components/command-search";
-import { isLensEnabled } from "@/lib/feature-flags";
 
 interface Website {
 	id: number;
@@ -25,19 +23,16 @@ interface SystemHealth {
 }
 
 // Define website-scoped sub-navigation
-// Lens ("Ask") is hidden unless the fusionaly:lens flag is on (see feature-flags).
 const getWebsiteNavRoutes = (websiteId: number) => [
 	{ path: `/admin/websites/${websiteId}/dashboard`, name: "Dashboard" },
 	{ path: `/admin/websites/${websiteId}/events`, name: "Events" },
-	...(isLensEnabled() ? [{ path: `/admin/websites/${websiteId}/lens`, name: "Ask", badge: "AI" }] : []),
 ];
 
-// Get the current page type from path (dashboard, events, lens, edit)
+// Get the current page type from path (dashboard, events, edit)
 const getCurrentPageType = (path: string | undefined): string => {
 	if (!path) return "dashboard";
 	const pathWithoutQuery = path.split("?")[0];
 	if (pathWithoutQuery.endsWith("/events")) return "events";
-	if (pathWithoutQuery.endsWith("/lens")) return "lens";
 	if (pathWithoutQuery.endsWith("/edit")) return "edit";
 	return "dashboard";
 };
@@ -184,14 +179,6 @@ export function WebsiteLayout({
 								>
 									<span className="relative inline-flex items-center">
 										{route.name}
-										{route.badge && (
-											<Badge
-												variant="default"
-												className="ml-1.5 bg-black text-white hover:bg-black/90 text-[9px] px-1 py-0 h-3.5 font-semibold"
-											>
-												{route.badge}
-											</Badge>
-										)}
 									</span>
 									{/* Active indicator - accent underline */}
 									{isCurrentPath(route.path) && (
@@ -247,14 +234,6 @@ export function WebsiteLayout({
 							>
 								<span className="relative inline-flex items-center">
 									{route.name}
-									{route.badge && (
-										<Badge
-											variant="default"
-											className="ml-1.5 bg-black text-white hover:bg-black/90 text-[9px] px-1 py-0 h-3.5 font-semibold"
-										>
-											{route.badge}
-										</Badge>
-									)}
 								</span>
 								{isCurrentPath(route.path) && (
 									<span className="absolute bottom-0 left-0 right-0 h-0.5 bg-black" />

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { cssVarColor, cssVarList, onThemeChange } from "@/lib/theme";
 
-// Chart libraries (Recharts/Vega) take plain color strings, so they can't read
+// Chart libraries (Recharts) take plain color strings, so they can't read
 // CSS variables directly. This hook resolves the themed colors a chart needs
 // from CSS-var tokens and recomputes them on theme change. A new theme only has
 // to define the tokens in index.css — no chart code changes.
