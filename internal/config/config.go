@@ -92,7 +92,7 @@ func GetConfig() *Config {
 		v.SetDefault("loglevel", "") // Let cartridge determine based on environment
 		v.SetDefault("privatekey", "88888888888888888888888888888888")
 		v.SetDefault("sessiontimeoutseconds", 1800)
-		v.SetDefault("loginsessiontimeoutseconds", 604800) // 1 week
+		v.SetDefault("loginsessiontimeoutseconds", 7776000) // 90 days
 		v.SetDefault("storagepath", "storage")
 		v.SetDefault("geodbpath", "storage/GeoLite2-City.mmdb")
 		v.SetDefault("publicdir", "web/dist/assets")
