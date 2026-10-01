@@ -59,7 +59,6 @@ export default defineConfig({
         manualChunks: {
           // Split vendor chunks for better caching and parallel loading
           'react-vendor': ['react', 'react-dom'],
-          'charts': ['recharts', 'vega', 'vega-lite', 'vega-embed', 'react-vega'],
           'ui': [
             '@radix-ui/react-checkbox',
             '@radix-ui/react-dialog',

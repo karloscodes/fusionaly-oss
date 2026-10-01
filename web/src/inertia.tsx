@@ -11,44 +11,20 @@ if (savedTheme !== 'light') {
   document.documentElement.setAttribute('data-theme', savedTheme)
 }
 
-// Import all pages
-import { Home } from './pages/Home'
-import { Login } from './pages/Login'
-import Dashboard from './pages/Dashboard'
-import PublicDashboard from './pages/PublicDashboard'
-import Websites from './pages/Websites'
-import WebsiteNew from './pages/WebsiteNew'
-import WebsiteSetup from './pages/WebsiteSetup'
-import WebsiteEdit from './pages/WebsiteEdit'
-import { Events } from './pages/Events'
-import { Lens } from './pages/Lens'
-import Onboarding from './pages/Onboarding'
-import { AdministrationIngestion } from './pages/AdministrationIngestion'
-import { AdministrationAgents } from './pages/AdministrationAgents'
-import { AdministrationAI } from './pages/AdministrationAI'
-import { AdministrationAccount } from './pages/AdministrationAccount'
-import { AdministrationSystem } from './pages/AdministrationSystem'
-import { NotFound } from './pages/NotFound'
+// Each page loads on demand, so a page ships only the code it uses (the
+// charts libraries reach the dashboard and Lens only). Inertia waits for the
+// page module before it swaps pages, so nothing renders differently.
+const pageModules = import.meta.glob('./pages/*.tsx')
 
-// Map of page components
-const pages: Record<string, any> = {
-  Home,
-  Login,
-  Dashboard,
-  PublicDashboard,
-  Websites,
-  WebsiteNew,
-  WebsiteSetup,
-  WebsiteEdit,
-  Events,
-  Lens,
-  Onboarding,
-  AdministrationIngestion,
-  AdministrationAgents,
-  AdministrationAI,
-  AdministrationAccount,
-  AdministrationSystem,
-  NotFound,
+async function loadPage(name: string) {
+  const load = pageModules[`./pages/${name}.tsx`]
+  if (!load) {
+    console.error(`Page ${name} not found in Inertia page registry`)
+    const notFound: any = await pageModules['./pages/NotFound.tsx']()
+    return notFound.NotFound
+  }
+  const mod: any = await load()
+  return mod[name] ?? mod.default
 }
 
 // Create and inject loading progress bar
@@ -124,14 +100,7 @@ createInertiaApp({
   // Fusionaly draws its own progress bar (above). Inertia v3 renders its
   // built-in bar on top of it, so turn the built-in one off.
   progress: false,
-  resolve: (name) => {
-    const page = pages[name]
-    if (!page) {
-      console.error(`Page ${name} not found in Inertia page registry`)
-      return pages['NotFound']
-    }
-    return page
-  },
+  resolve: (name) => loadPage(name),
   setup({ el, App, props }) {
     // Prevent double initialization which can cause nested page rendering
     if (appInitialized) {
