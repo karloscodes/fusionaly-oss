@@ -107,3 +107,18 @@ func TestVisitRules(t *testing.T) {
 		assert.Equal(t, siteTotals{PageViews: 2, Visitors: 1, Sessions: 1, BounceCount: 0}, siteTotalsFor(t, db, site.ID))
 	})
 }
+
+func TestQueryParameterStats(t *testing.T) {
+	t.Run("keeps only the source parameters ref, source, and via", func(t *testing.T) {
+		dbm, _, site := testsupport.SetupTestDBManagerWithWebsite(t, "visits.test")
+		now := time.Now().UTC()
+		event := ingested(site.ID, "v1", "/", "", now, now, events.EventTypePageView)
+		event.RawURL = "https://visits.test/?ref=hn&source=newsletter&via=partner&token=secret&email=a@b.c&fbclid=xyz"
+
+		process(t, dbm, event)
+
+		var names []string
+		require.NoError(t, dbm.GetConnection().Table("query_param_stats").Order("param_name").Pluck("param_name", &names).Error)
+		assert.Equal(t, []string{"ref", "source", "via"}, names)
+	})
+}

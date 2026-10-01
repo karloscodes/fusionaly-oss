@@ -248,10 +248,12 @@ func prepareEventProcessingData(db *gorm.DB, tempEvent *IngestedEvent, eventID u
 			utmTerm = getUTMParam(parsedURL, "utm_term")
 			utmContent = getUTMParam(parsedURL, "utm_content")
 
-			// Extract ALL query parameters
-			for key, values := range parsedURL.Query() {
-				if len(values) > 0 && values[0] != "" {
-					queryParams[key] = values[0] // Take first value if multiple
+			// Keep only the parameters that name a traffic source. Others can
+			// hold personal data (?email=, ?token=) or a unique ID per click
+			// (?fbclid=), which must not be stored.
+			for _, key := range sourceQueryParams {
+				if value := parsedURL.Query().Get(key); value != "" {
+					queryParams[key] = value
 				}
 			}
 		}
@@ -415,6 +417,10 @@ func checkIsNewEventVisitor(db *gorm.DB, websiteID uint, userSignature, eventNam
 	}
 	return count == 0, nil
 }
+
+// sourceQueryParams are the query parameters stored in query_param_stats.
+// UTM parameters have their own table.
+var sourceQueryParams = []string{"ref", "source", "via"}
 
 func getUTMParam(parsedURL *url.URL, param string) string {
 	if value := parsedURL.Query().Get(param); value != "" {
