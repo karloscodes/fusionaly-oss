@@ -206,8 +206,32 @@ func parseInputURL(urlStr string, logger *slog.Logger) (*urlData, error) {
 	return &urlData{
 		hostname: hostname,
 		pathname: pathname,
-		rawURL:   urlStr,
+		rawURL:   withSourceParamsOnly(parsedURL),
 	}, nil
+}
+
+// storedQueryParams are the query parameters that processing reads from
+// raw_url. Other parameters can hold personal data (?email=, ?token=), so
+// ingested_events does not store them.
+var storedQueryParams = append([]string{"utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"}, sourceQueryParams...)
+
+// withSourceParamsOnly returns the URL with only storedQueryParams in the
+// query, and without user info or fragment.
+func withSourceParamsOnly(parsedURL *url.URL) string {
+	clean := *parsedURL
+	clean.User = nil
+	clean.Fragment = ""
+	clean.RawFragment = ""
+	query := parsedURL.Query()
+	kept := url.Values{}
+	for _, key := range storedQueryParams {
+		if values, ok := query[key]; ok {
+			kept[key] = values
+		}
+	}
+	clean.RawQuery = kept.Encode()
+	clean.ForceQuery = false
+	return clean.String()
 }
 
 // prepareTempEvent creates an IngestedEvent from input data
