@@ -3,10 +3,12 @@ package user_agent
 import (
 	"embed"
 	"fmt"
+	"regexp"
 	"strings"
 	"sync"
+	"time"
 
-	"go.elara.ws/pcre"
+	"github.com/dlclark/regexp2/v2"
 	"gopkg.in/yaml.v3"
 )
 
@@ -90,19 +92,33 @@ type BotEntry struct {
 	} `yaml:"producer"`
 }
 
-// Compiled regex cache
+// matchTimeout bounds one match. A user agent is untrusted input, and a
+// backtracking engine can take very long on a crafted one; past the limit
+// the pattern counts as no match.
+const matchTimeout = 100 * time.Millisecond
+
+// Compiled regex cache. The database uses PCRE syntax. Go's regexp compiles
+// 99% of the patterns and matches in linear time; the rest use lookarounds,
+// which only regexp2, a backtracking engine, supports.
 type RegexCache struct {
-	compiled map[string]*pcre.Regexp
+	compiled map[string]*pattern
 	mutex    sync.RWMutex
+}
+
+// pattern is one compiled database regex: re2 when Go's regexp compiles it,
+// otherwise pcre.
+type pattern struct {
+	re2  *regexp.Regexp
+	pcre *regexp2.Regexp
 }
 
 func newRegexCache() *RegexCache {
 	return &RegexCache{
-		compiled: make(map[string]*pcre.Regexp),
+		compiled: make(map[string]*pattern),
 	}
 }
 
-func (rc *RegexCache) get(pattern string) (*pcre.Regexp, error) {
+func (rc *RegexCache) get(pattern string) (*pattern, error) {
 	rc.mutex.RLock()
 	if regex, exists := rc.compiled[pattern]; exists {
 		rc.mutex.RUnlock()
@@ -118,12 +134,57 @@ func (rc *RegexCache) get(pattern string) (*pcre.Regexp, error) {
 		return regex, nil
 	}
 
-	regex, err := pcre.Compile(pattern)
+	compiled, err := compilePattern(pattern)
 	if err != nil {
 		return nil, err
 	}
-	rc.compiled[pattern] = regex
-	return regex, nil
+	rc.compiled[pattern] = compiled
+	return compiled, nil
+}
+
+func compilePattern(expr string) (*pattern, error) {
+	if re, err := regexp.Compile(expr); err == nil {
+		return &pattern{re2: re}, nil
+	}
+	// Keep PCRE's group numbers, so $1 in the database means the same group.
+	re, err := regexp2.Compile(expr, regexp2.OptionMaintainCaptureOrder())
+	if err != nil {
+		return nil, err
+	}
+	re.MatchTimeout = matchTimeout
+	return &pattern{pcre: re}, nil
+}
+
+// matchString reports whether p matches s.
+func matchString(p *pattern, s string) bool {
+	if p.re2 != nil {
+		return p.re2.MatchString(s)
+	}
+	ok, err := p.pcre.MatchString(s)
+	return err == nil && ok
+}
+
+// findStringSubmatch returns the match and its groups, or nil when p does
+// not match. A group that did not take part is "".
+func findStringSubmatch(p *pattern, s string) []string {
+	if p.re2 != nil {
+		// Most patterns do not match. A yes/no check skips the capture
+		// work, so check that first.
+		if !p.re2.MatchString(s) {
+			return nil
+		}
+		return p.re2.FindStringSubmatch(s)
+	}
+	m, err := p.pcre.FindStringMatch(s)
+	if err != nil || m == nil {
+		return nil
+	}
+	groups := m.Groups()
+	out := make([]string, len(groups))
+	for i, g := range groups {
+		out[i] = g.String()
+	}
+	return out
 }
 
 // Global parser instance
@@ -203,7 +264,7 @@ func getParser() *DeviceDetectorParser {
 func (p *DeviceDetectorParser) parseBot(userAgent string) *BotEntry {
 	for _, bot := range p.bots {
 		if regex, err := p.regexCache.get(bot.Regex); err == nil {
-			if regex.MatchString(userAgent) {
+			if matchString(regex, userAgent) {
 				return &bot
 			}
 		}
@@ -214,7 +275,7 @@ func (p *DeviceDetectorParser) parseBot(userAgent string) *BotEntry {
 func (p *DeviceDetectorParser) parseBrowser(userAgent string) (string, string) {
 	for _, entry := range p.browsers {
 		if regex, err := p.regexCache.get(entry.Regex); err == nil {
-			if matches := regex.FindStringSubmatch(userAgent); len(matches) > 0 {
+			if matches := findStringSubmatch(regex, userAgent); len(matches) > 0 {
 				version := ""
 				if entry.Version != "" && len(matches) > 1 {
 					// Replace $1, $2, etc. with actual match groups
@@ -234,7 +295,7 @@ func (p *DeviceDetectorParser) parseBrowser(userAgent string) (string, string) {
 func (p *DeviceDetectorParser) parseOS(userAgent string) (string, string) {
 	for _, entry := range p.oss {
 		if regex, err := p.regexCache.get(entry.Regex); err == nil {
-			if matches := regex.FindStringSubmatch(userAgent); len(matches) > 0 {
+			if matches := findStringSubmatch(regex, userAgent); len(matches) > 0 {
 				name := entry.Name
 				version := ""
 				if len(matches) > 1 {
@@ -293,7 +354,7 @@ func (p *DeviceDetectorParser) parseDevice(userAgent string) (string, string, bo
 	for _, entry := range p.devices {
 		brand := entry.Brand
 		if regex, err := p.regexCache.get(devicePattern(entry.Regex)); err == nil {
-			if matches := regex.FindStringSubmatch(userAgent); len(matches) > 0 {
+			if matches := findStringSubmatch(regex, userAgent); len(matches) > 0 {
 				deviceType := entry.Device
 				if deviceType == "" {
 					deviceType = "Unknown"
@@ -305,7 +366,7 @@ func (p *DeviceDetectorParser) parseDevice(userAgent string) (string, string, bo
 				if len(entry.Models) > 0 {
 					for _, modelEntry := range entry.Models {
 						if modelRegex, err := p.regexCache.get(devicePattern(modelEntry.Regex)); err == nil {
-							if modelMatches := modelRegex.FindStringSubmatch(userAgent); len(modelMatches) > 0 {
+							if modelMatches := findStringSubmatch(modelRegex, userAgent); len(modelMatches) > 0 {
 								model = modelEntry.Model
 								if modelEntry.Device != "" {
 									deviceType = modelEntry.Device
@@ -382,7 +443,37 @@ func isHeadless(userAgent string) bool {
 	return false
 }
 
+// parsedCacheSize bounds the cache of parsed user agents. Parsing checks
+// thousands of patterns, and real traffic repeats the same few hundred user
+// agents.
+const parsedCacheSize = 10000
+
+var parsedCache = struct {
+	sync.Mutex
+	byAgent map[string]UserAgent
+}{byAgent: make(map[string]UserAgent)}
+
+// ParseUserAgent returns the browser, OS, and device of a user agent.
 func ParseUserAgent(userAgent string) UserAgent {
+	parsedCache.Lock()
+	result, ok := parsedCache.byAgent[userAgent]
+	parsedCache.Unlock()
+	if ok {
+		return result
+	}
+
+	result = parseUserAgent(userAgent)
+
+	parsedCache.Lock()
+	if len(parsedCache.byAgent) >= parsedCacheSize {
+		clear(parsedCache.byAgent)
+	}
+	parsedCache.byAgent[userAgent] = result
+	parsedCache.Unlock()
+	return result
+}
+
+func parseUserAgent(userAgent string) UserAgent {
 	parser := getParser()
 
 	if isHeadless(userAgent) {

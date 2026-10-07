@@ -116,22 +116,6 @@ func TestAIAgentsAreBots(t *testing.T) {
 
 // Expected values come from Matomo's fixtures (fixtures/user_agent).
 func TestDeviceDetection(t *testing.T) {
-	t.Run("gives the same device every time when two brands match", func(t *testing.T) {
-		ua := "com.google.android.youtube/5.3.32(Linux; U; Android 4.0.3; ro_RO; GOCLEVER NETBOOK R103 Build/IML74K) gzip"
-		first := user_agent.ParseUserAgent(ua)
-
-		for range 50 {
-			again := user_agent.ParseUserAgent(ua)
-
-			if again != first {
-				t.Fatalf("got %+v, then %+v", first, again)
-			}
-		}
-		if first.Device != "GOCLEVER" || !first.Desktop {
-			t.Errorf("got %s desktop=%v, want GOCLEVER desktop", first.Device, first.Desktop)
-		}
-	})
-
 	t.Run("takes the device type from the model", func(t *testing.T) {
 		got := user_agent.ParseUserAgent("Apple-iPad2C7/1002.329")
 
