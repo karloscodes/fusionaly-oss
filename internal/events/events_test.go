@@ -1726,6 +1726,9 @@ func TestCollectEventSizeLimits(t *testing.T) {
 			"metadata":   func(in *events.CollectEventInput) { in.CustomEventMeta = `{"x":"` + strings.Repeat("a", 9000) + `"}` },
 			"event name": func(in *events.CollectEventInput) { in.CustomEventName = strings.Repeat("a", 201) },
 			"url":        func(in *events.CollectEventInput) { in.RawUrl = "https://example.com/" + strings.Repeat("a", 4100) },
+			"user agent": func(in *events.CollectEventInput) { in.UserAgent = "Mozilla/5.0 " + strings.Repeat("a", 1100) },
+			"referrer":   func(in *events.CollectEventInput) { in.ReferrerURL = "https://r.example/" + strings.Repeat("a", 4100) },
+			"sec-ch-ua":  func(in *events.CollectEventInput) { in.SecChUa = `"Chromium";v="` + strings.Repeat("1", 600) + `"` },
 		}
 		for name, grow := range tooBig {
 			db.Exec("DELETE FROM ingested_events")

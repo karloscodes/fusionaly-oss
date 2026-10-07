@@ -69,6 +69,8 @@ const (
 	MaxURLLength       = 4096
 	MaxEventNameLength = 200
 	MaxMetadataBytes   = 8 << 10
+	MaxUserAgentLength = 1024
+	MaxSecChUaLength   = 512
 )
 
 // ErrEventTooLarge marks an event over a size limit. The client sent a bad
@@ -77,8 +79,11 @@ var ErrEventTooLarge = errors.New("event too large")
 
 // CollectEvent stores an event in the IngestedEvent table
 func CollectEvent(dbManager cartridge.DBManager, logger *slog.Logger, input *CollectEventInput) error {
-	if len(input.RawUrl) > MaxURLLength || len(input.CustomEventName) > MaxEventNameLength || len(input.CustomEventMeta) > MaxMetadataBytes {
-		return fmt.Errorf("%w: url ≤ %d, event name ≤ %d, metadata ≤ %d bytes", ErrEventTooLarge, MaxURLLength, MaxEventNameLength, MaxMetadataBytes)
+	if len(input.RawUrl) > MaxURLLength || len(input.ReferrerURL) > MaxURLLength ||
+		len(input.CustomEventName) > MaxEventNameLength || len(input.CustomEventMeta) > MaxMetadataBytes ||
+		len(input.UserAgent) > MaxUserAgentLength || len(input.SecChUa) > MaxSecChUaLength {
+		return fmt.Errorf("%w: url and referrer ≤ %d, event name ≤ %d, metadata ≤ %d, user agent ≤ %d, Sec-CH-UA ≤ %d bytes",
+			ErrEventTooLarge, MaxURLLength, MaxEventNameLength, MaxMetadataBytes, MaxUserAgentLength, MaxSecChUaLength)
 	}
 
 	if input.UserAgent == "" {
