@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/karloscodes/matcha"
 )
 
 func TestValidateEmail(t *testing.T) {
@@ -147,4 +149,14 @@ func TestRepairCronFile(t *testing.T) {
 			t.Error("expected wrote = false when content already matches")
 		}
 	})
+}
+
+func TestUpdateLogStaysOutsideTheContainerVolumes(t *testing.T) {
+	for _, volume := range matcha.ResolveVolumes("fusionaly", appVolumes) {
+		hostDir, _, _ := strings.Cut(volume, ":")
+
+		if updateLogDir == hostDir || strings.HasPrefix(updateLogDir, hostDir+"/") {
+			t.Errorf("update log dir %s is inside the container volume %s", updateLogDir, volume)
+		}
+	}
 }

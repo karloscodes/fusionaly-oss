@@ -22,6 +22,14 @@ const ossImage = "karloscodes/fusionaly:latest"
 // updateCronPath is the auto-update cron installed by matcha (CronUpdates).
 const updateCronPath = "/etc/cron.d/fusionaly-update"
 
+// updateLogDir holds the log of the nightly update. Host root writes it, so it
+// must stay outside every directory the app container mounts: a symlink
+// planted from inside the container would redirect that write.
+const updateLogDir = "/var/log/fusionaly"
+
+// appVolumes are the container paths matcha mounts from the host.
+var appVolumes = []string{"/app/storage", "/app/logs"}
+
 func main() {
 	if len(os.Args) < 2 {
 		printUsage()
@@ -85,7 +93,7 @@ func newMatcha() *matcha.Matcha {
 		// index on a large events table (about 2-3 s per million events).
 		// matcha's default of 30 s would roll back such an update every night.
 		HealthTimeout:  120,
-		Volumes:        []string{"/app/storage", "/app/logs"},
+		Volumes:        appVolumes,
 		CronUpdates:    true,
 		Backups:        true,
 		ManagerRepo:    "karloscodes/fusionaly-oss",
@@ -258,9 +266,7 @@ func repairUpdateCron(m *matcha.Matcha) {
 	if binPath == "" {
 		binPath = "/usr/local/bin/fusionaly"
 	}
-	logDir := m.DataDir() + "/logs"
-
-	wrote, err := repairCronFile(updateCronPath, binPath, logDir)
+	wrote, err := repairCronFile(updateCronPath, binPath, updateLogDir)
 	if err != nil {
 		fmt.Printf("Warning: could not repair auto-update cron: %v\n", err)
 		return
