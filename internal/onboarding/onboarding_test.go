@@ -8,6 +8,7 @@ import (
 
 	"fusionaly/internal/onboarding"
 	"fusionaly/internal/settings"
+	"fusionaly/internal/testsupport"
 	"fusionaly/internal/users"
 
 	"github.com/stretchr/testify/assert"
@@ -182,7 +183,7 @@ func TestCompleteOnboardingAfterSetup(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	db.Create(&users.User{Email: "owner@example.com"})
 
-	_, err := onboarding.CompleteOnboarding(db, logger, onboarding.CompletionData{
+	_, err := onboarding.CompleteOnboarding(testsupport.NewTestDBManager(db), logger, onboarding.CompletionData{
 		Email:        "attacker@example.com",
 		PasswordHash: "$2a$10$hash",
 	})
@@ -217,7 +218,7 @@ func TestCompleteOnboarding(t *testing.T) {
 	db := setupTestDB(t)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
-	result, err := onboarding.CompleteOnboarding(db, logger, onboarding.CompletionData{
+	result, err := onboarding.CompleteOnboarding(testsupport.NewTestDBManager(db), logger, onboarding.CompletionData{
 		Email:        "admin@example.com",
 		PasswordHash: "$2a$10$hash",
 	})

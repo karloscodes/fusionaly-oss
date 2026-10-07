@@ -1,12 +1,13 @@
 package onboarding
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
 	"log/slog"
 
-	"github.com/karloscodes/cartridge/sqlite"
+	"github.com/karloscodes/cartridge"
 	"gorm.io/gorm"
 
 	"fusionaly/internal/users"
@@ -28,7 +29,7 @@ type CompletionResult struct {
 }
 
 // CompleteOnboarding finishes the onboarding process by creating the admin user
-func CompleteOnboarding(db *gorm.DB, logger *slog.Logger, data CompletionData) (*CompletionResult, error) {
+func CompleteOnboarding(dbManager cartridge.DBManager, logger *slog.Logger, data CompletionData) (*CompletionResult, error) {
 	// Validate email
 	if data.Email == "" {
 		return nil, fmt.Errorf("email is required")
@@ -40,9 +41,10 @@ func CompleteOnboarding(db *gorm.DB, logger *slog.Logger, data CompletionData) (
 	}
 
 	// Setup runs once. Refuse a second admin even if a request gets past the
-	// route guard. The check and the insert are in one write transaction, so
-	// two requests at the same time cannot both create an admin.
-	err := sqlite.PerformWrite(logger, db, func(tx *gorm.DB) error {
+	// route guard. The check and the insert are in one queued write, so two
+	// requests at the same time cannot both create an admin.
+	admin := users.User{Email: data.Email, EncryptedPassword: data.PasswordHash}
+	err := cartridge.Write(context.Background(), dbManager, func(tx *gorm.DB) error {
 		required, err := IsOnboardingRequired(tx)
 		if err != nil {
 			return err
@@ -50,7 +52,7 @@ func CompleteOnboarding(db *gorm.DB, logger *slog.Logger, data CompletionData) (
 		if !required {
 			return ErrSetupAlreadyComplete
 		}
-		return tx.Create(&users.User{Email: data.Email, EncryptedPassword: data.PasswordHash}).Error
+		return tx.Create(&admin).Error
 	})
 	if errors.Is(err, ErrSetupAlreadyComplete) {
 		return nil, err
@@ -59,14 +61,8 @@ func CompleteOnboarding(db *gorm.DB, logger *slog.Logger, data CompletionData) (
 		return nil, fmt.Errorf("failed to create admin user: %w", err)
 	}
 
-	// Find the created user
-	user, err := users.FindByEmail(db, data.Email)
-	if err != nil {
-		return nil, fmt.Errorf("failed to find created user: %w", err)
-	}
-
 	return &CompletionResult{
-		UserID:    user.ID,
+		UserID:    admin.ID,
 		UserEmail: data.Email,
 	}, nil
 }

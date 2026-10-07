@@ -220,7 +220,7 @@ func completeOnboarding(db *gorm.DB, logger *slog.Logger, c *cartridge.Context, 
 	}
 
 	// Use onboarding context function to complete
-	result, err := onboarding.CompleteOnboarding(db, logger, completionData)
+	result, err := onboarding.CompleteOnboarding(c.DBManager, logger, completionData)
 	if err != nil {
 		return err
 	}

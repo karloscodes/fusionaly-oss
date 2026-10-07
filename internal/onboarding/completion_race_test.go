@@ -30,7 +30,7 @@ func TestConcurrentOnboardingCompletion(t *testing.T) {
 			go func() {
 				defer wg.Done()
 				<-start
-				_, errs[i] = onboarding.CompleteOnboarding(db, logger, onboarding.CompletionData{
+				_, errs[i] = onboarding.CompleteOnboarding(dbManager, logger, onboarding.CompletionData{
 					Email:        fmt.Sprintf("admin%d@example.com", i),
 					PasswordHash: "$2a$10$hash",
 				})
