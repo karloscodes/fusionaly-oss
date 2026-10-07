@@ -139,13 +139,42 @@ func markFailed(dbManager cartridge.DBManager, logger *slog.Logger, id uint, cau
 	}
 }
 
+// stillUnprocessed returns the IDs of the batch rows that no processor has
+// handled yet.
+func stillUnprocessed(tx *gorm.DB, batch []IngestedEvent) (map[uint]bool, error) {
+	ids := make([]uint, len(batch))
+	for i, tempEvent := range batch {
+		ids[i] = tempEvent.ID
+	}
+	var waitingIDs []uint
+	if err := tx.Model(&IngestedEvent{}).Where("id IN ? AND processed = ?", ids, statusUnprocessed).Pluck("id", &waitingIDs).Error; err != nil {
+		return nil, fmt.Errorf("failed to check unprocessed events: %w", err)
+	}
+	waiting := make(map[uint]bool, len(waitingIDs))
+	for _, id := range waitingIDs {
+		waiting[id] = true
+	}
+	return waiting, nil
+}
+
 // processEventBatch processes a batch of IngestedEvents within a transaction.
 // agents[i] is the parsed user agent of batch[i].
 func processEventBatch(tx *gorm.DB, logger *slog.Logger, batch []IngestedEvent, agents []ua.UserAgent) ([]*Event, []*EventProcessingData, error) {
 	var events []*Event
 	var processingData []*EventProcessingData
 
+	// During a deploy the old and the new container both run a processor, and
+	// both can read the same rows. No one else writes inside this transaction,
+	// so the rows still unprocessed here are this processor's to count.
+	waiting, err := stillUnprocessed(tx, batch)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	for i, tempEvent := range batch {
+		if !waiting[tempEvent.ID] {
+			continue
+		}
 		parsedUA := agents[i]
 		// A headless browser can send a normal User-Agent, but its client
 		// hints still name it.
@@ -212,10 +241,12 @@ func processEventBatch(tx *gorm.DB, logger *slog.Logger, batch []IngestedEvent, 
 		}
 	}
 
-	// Mark all events in the batch (including skipped bots) as processed using their IDs
+	// Mark the events this transaction handled (including skipped bots) as processed
 	var eventIDs []uint
 	for _, tempEvent := range batch {
-		eventIDs = append(eventIDs, tempEvent.ID)
+		if waiting[tempEvent.ID] {
+			eventIDs = append(eventIDs, tempEvent.ID)
+		}
 	}
 	if len(eventIDs) > 0 {
 		if err := tx.Model(&IngestedEvent{}).Where("id IN ?", eventIDs).Update("processed", statusProcessed).Error; err != nil {
