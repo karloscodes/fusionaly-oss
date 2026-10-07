@@ -93,3 +93,23 @@ func TestHeadlessBrowsersAreBots(t *testing.T) {
 		}
 	}
 }
+
+func TestAIAgentsAreBots(t *testing.T) {
+	agents := []string{
+		"Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Claude-User/1.0; +Claude-User@anthropic.com)",
+		"Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Perplexity-User/1.0; +https://perplexity.ai/perplexity-user)",
+		"Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; MistralAI-User/1.0; +https://docs.mistral.ai/robots)",
+		"Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; ChatGPT-User/1.0; +https://openai.com/bot)",
+		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 ChatGPT-Browser",
+	}
+
+	for _, agent := range agents {
+		if !user_agent.ParseUserAgent(agent).Bot {
+			t.Errorf("expected a bot: %s", agent)
+		}
+	}
+
+	if user_agent.ParseUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36").Bot {
+		t.Error("expected Chrome to be a visitor, not a bot")
+	}
+}

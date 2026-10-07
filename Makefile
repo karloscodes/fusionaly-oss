@@ -12,7 +12,7 @@ BINARY_NAME := fusionaly
 IMCTL_BINARY := fnctl
 MANAGER_BINARY := fusionaly-manager
 PID_FILE := ./.dev-server.pid
-DEVICE_DETECTOR_VERSION := master
+DEVICE_DETECTOR_VERSION := 6.5.2
 UA_DATABASE_DIR := internal/pkg/user_agent/database
 
 # Version from git tag or dev
