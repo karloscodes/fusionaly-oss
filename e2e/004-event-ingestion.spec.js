@@ -196,6 +196,22 @@ test.describe("Event Ingestion E2E", () => {
 		expect(consoleErrors, "Expected no console errors").toEqual([]);
 	});
 
+	test("should open a tracked target=_blank link without giving the new page window.opener", async ({ page }) => {
+		await page.goto('/_demo');
+		await page.waitForLoadState('domcontentloaded');
+		await page.evaluate(() => {
+			document.body.innerHTML += `<a href="/_demo" target="_blank" id="blank-link" data-fusionaly-event-name="click:blank-link">New tab</a>`;
+		});
+		const popupPromise = page.context().waitForEvent('page');
+
+		await page.click('#blank-link');
+
+		const popup = await popupPromise;
+		await popup.waitForLoadState('domcontentloaded');
+		expect(await popup.evaluate(() => window.opener === null)).toBe(true);
+		await popup.close();
+	});
+
 	test("should emit scroll depth events via JS API", async ({ page }) => {
 		await page.goto('/_demo');
 		await page.waitForLoadState('domcontentloaded');

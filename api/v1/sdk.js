@@ -623,8 +623,12 @@
 
 				// Navigate to the link destination immediately after sending the beacon
 				// Only open in new tab if target="_blank" is explicitly set
+				// Browsers give a target="_blank" link noopener: the new page
+				// gets no window.opener. Keep that, and keep noreferrer when the
+				// link asks for it.
 				if (link.target === "_blank") {
-					window.open(href, "_blank");
+					const features = /\bnoreferrer\b/i.test(link.rel) ? "noopener,noreferrer" : "noopener";
+					window.open(href, "_blank", features);
 				} else {
 					// For all other cases, navigate in the same tab
 					window.location.href = href;
