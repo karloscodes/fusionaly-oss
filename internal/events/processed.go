@@ -1,6 +1,7 @@
 package events
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/url"
@@ -65,18 +66,31 @@ func ProcessUnprocessedEvents(dbManager cartridge.DBManager, logger *slog.Logger
 	result.Fetched = len(tempEvents)
 	logger.Info("Processing unprocessed events", slog.Int("total", len(tempEvents)))
 
+batches:
 	for i := 0; i < len(tempEvents); i += batchSize {
 		end := min(i+batchSize, len(tempEvents))
 		batch := tempEvents[i:end]
 
-		if err := processBatchInWrite(db, logger, batch, result); err != nil {
+		err := processBatchInWrite(dbManager, logger, batch, result)
+		if errors.Is(err, sqlite.ErrBusy) {
+			// The database is busy, not the events. They stay unprocessed
+			// for the next run.
+			logger.Warn("Database busy; leaving the rest for the next run", slog.Int("start", i))
+			break
+		}
+		if err != nil {
 			// One bad event must not block its whole batch forever. Retry the
 			// events one by one and set aside the ones that still fail.
 			logger.Error("Failed to process batch; retrying its events one by one",
 				slog.Int("start", i), slog.Int("end", end), slog.Any("error", err))
 			for _, event := range batch {
-				if err := processBatchInWrite(db, logger, []IngestedEvent{event}, result); err != nil {
-					markFailed(db, logger, event.ID, err)
+				err := processBatchInWrite(dbManager, logger, []IngestedEvent{event}, result)
+				if errors.Is(err, sqlite.ErrBusy) {
+					logger.Warn("Database busy; leaving the rest for the next run", slog.Uint64("ingested_event_id", uint64(event.ID)))
+					break batches
+				}
+				if err != nil {
+					markFailed(dbManager, logger, event.ID, err)
 				}
 			}
 		}
@@ -88,25 +102,29 @@ func ProcessUnprocessedEvents(dbManager cartridge.DBManager, logger *slog.Logger
 	return result, nil
 }
 
-// processBatchInWrite processes one batch in a serialized write transaction
-// and adds its events to result.
-func processBatchInWrite(db *gorm.DB, logger *slog.Logger, batch []IngestedEvent, result *EventProcessingResult) error {
-	return sqlite.PerformWrite(logger, db, func(tx *gorm.DB) error {
-		events, processingData, err := processEventBatch(tx, logger, batch)
-		if err != nil {
-			return err
-		}
-		result.ProcessedEvents = append(result.ProcessedEvents, events...)
-		result.ProcessingData = append(result.ProcessingData, processingData...)
-		return nil
+// processBatchInWrite processes one batch in a queued write transaction and,
+// after the commit, adds its events to result.
+func processBatchInWrite(dbManager cartridge.DBManager, logger *slog.Logger, batch []IngestedEvent, result *EventProcessingResult) error {
+	var events []*Event
+	var processingData []*EventProcessingData
+	err := cartridge.Write(context.Background(), dbManager, func(tx *gorm.DB) error {
+		var err error
+		events, processingData, err = processEventBatch(tx, logger, batch)
+		return err
 	})
+	if err != nil {
+		return err
+	}
+	result.ProcessedEvents = append(result.ProcessedEvents, events...)
+	result.ProcessingData = append(result.ProcessingData, processingData...)
+	return nil
 }
 
 // markFailed sets an event aside so the next run does not retry it forever.
-func markFailed(db *gorm.DB, logger *slog.Logger, id uint, cause error) {
+func markFailed(dbManager cartridge.DBManager, logger *slog.Logger, id uint, cause error) {
 	logger.Error("Setting aside an event that cannot be processed",
 		slog.Uint64("ingested_event_id", uint64(id)), slog.Any("error", cause))
-	err := sqlite.PerformWrite(logger, db, func(tx *gorm.DB) error {
+	err := cartridge.Write(context.Background(), dbManager, func(tx *gorm.DB) error {
 		return tx.Model(&IngestedEvent{}).Where("id = ?", id).Update("processed", statusFailed).Error
 	})
 	if err != nil {
