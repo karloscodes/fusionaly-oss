@@ -106,7 +106,10 @@ func (dm *DBManager) MigrateDatabase() error {
 		return err
 	}
 
-	if err := dm.CheckpointWAL("FULL"); err != nil {
+	// PASSIVE never waits. A FULL checkpoint waits for every reader, and the
+	// live replica keeps a read open on purpose, so FULL always ran into
+	// busy_timeout (5s) and gave up.
+	if err := dm.CheckpointWAL("PASSIVE"); err != nil {
 		dm.logger.Warn("Failed to checkpoint WAL after migration", slog.Any("error", err))
 	}
 
