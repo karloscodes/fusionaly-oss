@@ -1,10 +1,11 @@
 package jobs
 
 import (
+	"context"
 	"log/slog"
 	"time"
 
-	"github.com/karloscodes/cartridge/sqlite"
+	"github.com/karloscodes/cartridge"
 	"gorm.io/gorm"
 
 	"fusionaly/internal/config"
@@ -30,7 +31,6 @@ func NewCleanupJob(dbManager *database.DBManager, logger *slog.Logger, cfg *conf
 // This helps with GDPR data minimization and reduces storage usage.
 func (j *CleanupJob) Run() error {
 	retentionDays := j.cfg.IngestedEventsRetentionDays
-	db := j.dbManager.GetConnection()
 	cutoffDate := time.Now().AddDate(0, 0, -retentionDays)
 
 	j.logger.Info("Starting cleanup of old ingested events",
@@ -45,7 +45,7 @@ func (j *CleanupJob) Run() error {
 
 	for {
 		var deleted int64
-		err := sqlite.PerformWrite(j.logger, db, func(tx *gorm.DB) error {
+		err := cartridge.Write(context.Background(), j.dbManager, func(tx *gorm.DB) error {
 			result := tx.Exec(`DELETE FROM ingested_events WHERE id IN (
 				SELECT id FROM ingested_events WHERE processed IN (1, 2) AND created_at < ? LIMIT ?)`,
 				cutoffDate, batchSize)

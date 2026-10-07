@@ -1,6 +1,7 @@
 package events
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -131,7 +132,7 @@ func CollectEvent(dbManager cartridge.DBManager, logger *slog.Logger, input *Col
 		return classifyWriteError(err)
 	}
 
-	err = sqlite.PerformWrite(logger, db, func(tx *gorm.DB) error {
+	err = cartridge.Write(context.Background(), dbManager, func(tx *gorm.DB) error {
 		return tx.Create(tempEvent).Error
 	})
 	if err != nil {
@@ -167,35 +168,15 @@ var ErrStorageBusy = errors.New("event storage busy")
 var ErrInvalidURL = errors.New("invalid event URL")
 
 // classifyWriteError tags busy errors so callers test them with errors.Is,
-// and passes everything else through untouched.
+// and passes everything else through untouched. A write that waited too long
+// for its turn is sqlite.ErrBusy; a lock error from a write outside the queue
+// is the driver's message. sqlite.IsBusyError matches only the driver's full
+// lock messages, so a domain such as busybee.com is never read as busy.
 func classifyWriteError(err error) error {
-	if isBusyError(err) {
+	if errors.Is(err, sqlite.ErrBusy) || sqlite.IsBusyError(err) {
 		return fmt.Errorf("%w: %w", ErrStorageBusy, err)
 	}
 	return err
-}
-
-// isBusyError reports whether a write lost to SQLite contention.
-//
-// It matches the driver's full lock messages, never a bare "locked" or "busy".
-// Cartridge's IsBusyError matches those bare words, which also appear in
-// tracked domains and URLs, so a website-not-found error for busybee.com read
-// as a busy database and answered 503 instead of 400.
-//
-// The driver's error code would be exact, but sqlite3.Error exists only under
-// cgo, and importing it breaks CGO_ENABLED=0 builds. Gorm's own sqlite driver
-// skips that import for the same reason.
-func isBusyError(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	// sqlite3_errstr text for SQLITE_BUSY and SQLITE_LOCKED, plus the
-	// shared-cache variant. Verified against the driver.
-	msg := err.Error()
-	return strings.Contains(msg, "database is locked") ||
-		strings.Contains(msg, "database table is locked") ||
-		strings.Contains(msg, "database schema is locked")
 }
 
 // parseInputURL parses a URL string into its components

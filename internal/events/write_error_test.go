@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"testing"
 
+	cartridgesqlite "github.com/karloscodes/cartridge/sqlite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
@@ -56,8 +57,7 @@ func TestClassifyWriteError(t *testing.T) {
 		assert.ErrorIs(t, classifyWriteError(err), ErrStorageBusy)
 	})
 
-	t.Run("tags a busy write wrapped by cartridge's retry loop", func(t *testing.T) {
-		// PerformWrite returns the driver error inside two layers of context.
+	t.Run("tags a wrapped busy write", func(t *testing.T) {
 		busy := lockedWriteError(t)
 		wrapped := fmt.Errorf("failed to store ingested event: %w",
 			fmt.Errorf("transaction failed after 10 retries: %w", busy))
@@ -72,6 +72,12 @@ func TestClassifyWriteError(t *testing.T) {
 		for _, msg := range []string{"database is locked", "database table is locked"} {
 			assert.ErrorIs(t, classifyWriteError(errors.New(msg)), ErrStorageBusy, msg)
 		}
+	})
+
+	t.Run("tags a write that waited too long for its turn", func(t *testing.T) {
+		waited := fmt.Errorf("failed to store ingested event: %w", cartridgesqlite.ErrBusy)
+
+		assert.ErrorIs(t, classifyWriteError(waited), ErrStorageBusy)
 	})
 
 	t.Run("passes other write failures through untouched", func(t *testing.T) {
