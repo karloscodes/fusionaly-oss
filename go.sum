@@ -9,8 +9,8 @@ github.com/jinzhu/inflection v1.0.0 h1:K317FqzuhWc8YvSVlFMCCUb36O/S9MCKRDI7QkRKD
 github.com/jinzhu/inflection v1.0.0/go.mod h1:h+uFLlag+Qp1Va5pdKtLDYj+kHp5pxUVkryuEj+Srlc=
 github.com/jinzhu/now v1.1.5 h1:/o9tlHleP7gOFmsnYNz3RGnqzefHA47wQpKrrdTIwXQ=
 github.com/jinzhu/now v1.1.5/go.mod h1:d3SSVoowX0Lcu0IBviAWJpolVfI5UJVZZ7cO71lE/z8=
-github.com/karloscodes/cartridge v1.5.0 h1:Dnap2ltsVf9hl/slGNUPoWXaS1W5rzbzsjKK2aPbeyk=
-github.com/karloscodes/cartridge v1.5.0/go.mod h1:tM6pLMo4+eYWfsq2bOozItnG5v++Oawsruvy5AcNy0o=
+github.com/karloscodes/cartridge v1.6.0 h1:Hx6jAEoCchCluI/Fc4MMeZPi3rrd5RawI3MANjowh40=
+github.com/karloscodes/cartridge v1.6.0/go.mod h1:ViWGKi7LAD+Cg5+FQRY1vPJ6QLs4/UvIi4mDj6UO0og=
 github.com/karloscodes/matcha v0.12.18 h1:4A7pocr2KuPp+ZySy3eCuoPGybzCllbvgxrRSns9BGs=
 github.com/karloscodes/matcha v0.12.18/go.mod h1:Zpy+ZfP/5OQMfdChOxzxP++m1mBFWJiXPjt3yYsCb9g=
 github.com/kr/pretty v0.2.1/go.mod h1:ipq/a2n7PKx3OHsz4KJII5eveXtPO4qwEXGdVfWzfnI=
