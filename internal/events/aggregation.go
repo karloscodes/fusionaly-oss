@@ -8,8 +8,6 @@ import (
 	"log/slog"
 )
 
-const eventsTableName = "events"
-
 // getVisitorIncrement returns the increment value for visitors_count based on isNewVisitor.
 func getVisitorIncrement(isNewVisitor bool) int {
 	if isNewVisitor {
