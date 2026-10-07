@@ -105,11 +105,18 @@ batches:
 // processBatchInWrite processes one batch in a queued write transaction and,
 // after the commit, adds its events to result.
 func processBatchInWrite(dbManager cartridge.DBManager, logger *slog.Logger, batch []IngestedEvent, result *EventProcessingResult) error {
+	// Parse user agents before the write: a cold parse checks thousands of
+	// patterns, and every other writer waits while this write has its turn.
+	agents := make([]ua.UserAgent, len(batch))
+	for i, tempEvent := range batch {
+		agents[i] = ua.ParseUserAgent(tempEvent.UserAgent)
+	}
+
 	var events []*Event
 	var processingData []*EventProcessingData
 	err := cartridge.Write(context.Background(), dbManager, func(tx *gorm.DB) error {
 		var err error
-		events, processingData, err = processEventBatch(tx, logger, batch)
+		events, processingData, err = processEventBatch(tx, logger, batch, agents)
 		return err
 	})
 	if err != nil {
@@ -132,14 +139,14 @@ func markFailed(dbManager cartridge.DBManager, logger *slog.Logger, id uint, cau
 	}
 }
 
-// processEventBatch processes a batch of IngestedEvents within a transaction
-func processEventBatch(tx *gorm.DB, logger *slog.Logger, batch []IngestedEvent) ([]*Event, []*EventProcessingData, error) {
+// processEventBatch processes a batch of IngestedEvents within a transaction.
+// agents[i] is the parsed user agent of batch[i].
+func processEventBatch(tx *gorm.DB, logger *slog.Logger, batch []IngestedEvent, agents []ua.UserAgent) ([]*Event, []*EventProcessingData, error) {
 	var events []*Event
 	var processingData []*EventProcessingData
 
 	for i, tempEvent := range batch {
-		// Parse User Agent early to check for bots
-		parsedUA := ua.ParseUserAgent(tempEvent.UserAgent)
+		parsedUA := agents[i]
 		// A headless browser can send a normal User-Agent, but its client
 		// hints still name it.
 		if parsedUA.Bot || strings.Contains(tempEvent.SecChUa, "HeadlessChrome") {
