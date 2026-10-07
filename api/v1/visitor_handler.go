@@ -13,6 +13,7 @@ import (
 
 	"fusionaly/internal/config"
 	"fusionaly/internal/events"
+	"fusionaly/internal/settings"
 	"fusionaly/internal/visitors"
 	"fusionaly/internal/websites"
 )
@@ -235,8 +236,10 @@ func resolveWebsiteForHost(db *gorm.DB, host string) (uint, string, bool, error)
 
 	var notFound *websites.WebsiteNotFoundError
 	if errors.As(err, &notFound) {
+		// A subdomain belongs to its base domain's site only when subdomain
+		// tracking is on, the same rule as ingestion.
 		baseDomain := websites.BaseDomainForHost(host)
-		if baseDomain != host {
+		if baseDomain != host && settings.IsSubdomainTrackingEnabled(db, baseDomain) {
 			websiteID, baseErr := websites.GetWebsiteOrNotFound(db, baseDomain)
 			if baseErr == nil {
 				return websiteID, baseDomain, true, nil

@@ -566,13 +566,14 @@ func TestGetVisitorInfoHandler(t *testing.T) {
 		assert.Equal(t, visitors.VisitorAlias(signature), payload["visitorAlias"])
 	})
 
-	t.Run("resolves subdomain to base domain data", func(t *testing.T) {
+	t.Run("resolves subdomain to base domain data when subdomain tracking is on", func(t *testing.T) {
 		dbManager, _ := testsupport.SetupTestDBManager(t)
 		db := dbManager.GetConnection()
 		testsupport.CleanAllTables(db)
 
 		website := testsupport.CreateTestWebsite(db, "example.com")
 		require.NotZero(t, website.ID)
+		require.NoError(t, settings.UpdateSubdomainTrackingSettings(db, "example.com", true))
 
 		cfg := config.GetConfig()
 		signature := visitors.BuildUniqueVisitorId("example.com", "7.8.9.0", "Subdomain-Agent", cfg.PrivateKey)
@@ -944,6 +945,38 @@ func TestVisitorInfoOriginRules(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotContains(t, string(body), "private-page")
 		assert.NotContains(t, string(body), "visitorId")
+	})
+
+	t.Run("with Origin of a subdomain while subdomain tracking is off, it gives no data", func(t *testing.T) {
+		dbManager, _ := testsupport.SetupTestDBManager(t)
+		db := dbManager.GetConnection()
+		testsupport.CleanAllTables(db)
+		seedVisit(t, db, "example.com", "/private-page")
+		app := testsupport.CreateMinimalTestApp(t, db)
+
+		resp, err := app.Test(request("/x/api/v1/me", "https://evil.example.com"), 30000)
+
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusForbidden, resp.StatusCode)
+		assert.Empty(t, resp.Header.Get("Access-Control-Allow-Origin"))
+		body, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		assert.NotContains(t, string(body), "private-page")
+	})
+
+	t.Run("with Origin of a subdomain while subdomain tracking is on, it gives the site's data", func(t *testing.T) {
+		dbManager, _ := testsupport.SetupTestDBManager(t)
+		db := dbManager.GetConnection()
+		testsupport.CleanAllTables(db)
+		seedVisit(t, db, "example.com", "/own-page")
+		require.NoError(t, settings.UpdateSubdomainTrackingSettings(db, "example.com", true))
+		app := testsupport.CreateMinimalTestApp(t, db)
+
+		resp, err := app.Test(request("/x/api/v1/me", "https://blog.example.com"), 30000)
+
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		assert.Equal(t, "https://blog.example.com", resp.Header.Get("Access-Control-Allow-Origin"))
 	})
 
 	t.Run("with Origin null, it gives no data", func(t *testing.T) {
