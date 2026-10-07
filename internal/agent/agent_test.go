@@ -316,4 +316,30 @@ func TestQueryGuard(t *testing.T) {
 
 		assert.ErrorContains(t, err, "result too large")
 	})
+
+	t.Run("refuses to build a value over the size limit that it does not return", func(t *testing.T) {
+		dbManager, _ := testsupport.SetupTestDBManager(t)
+		db := dbManager.GetConnection()
+		q := "WITH RECURSIVE n(x, s) AS (SELECT 1, hex(1) UNION ALL SELECT x + 1, s || s FROM n WHERE x < 24) SELECT length(s) FROM n WHERE x = 24"
+
+		_, err := agent.Query(context.Background(), db, q, 5*time.Second)
+
+		assert.ErrorContains(t, err, "too big")
+	})
+
+	t.Run("gives the connection its size limit back afterwards", func(t *testing.T) {
+		dbManager, _ := testsupport.SetupTestDBManager(t)
+		db := dbManager.GetConnection()
+		sqlDB, err := db.DB()
+		require.NoError(t, err)
+		sqlDB.SetMaxOpenConns(1)
+		_, err = agent.Query(context.Background(), db, "SELECT 1", 5*time.Second)
+		require.NoError(t, err)
+
+		var length int
+		err = db.Raw("WITH RECURSIVE n(x, s) AS (SELECT 1, hex(1) UNION ALL SELECT x + 1, s || s FROM n WHERE x < 24) SELECT length(s) FROM n WHERE x = 24").Scan(&length).Error
+
+		require.NoError(t, err)
+		assert.Equal(t, 16777216, length)
+	})
 }

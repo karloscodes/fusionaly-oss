@@ -4,11 +4,13 @@ package agent
 
 import (
 	"context"
+	"database/sql"
 	"database/sql/driver"
 	"fmt"
 	"strings"
 	"time"
 
+	"github.com/mattn/go-sqlite3"
 	"gorm.io/gorm"
 )
 
@@ -113,6 +115,22 @@ var deniedWords = map[string]bool{
 // MaxResultBytes caps the text and blob bytes of one result, so a query
 // cannot build a response that exhausts memory.
 const MaxResultBytes = 5 << 20
+
+// setLengthLimit sets the largest string or blob SQLite builds on conn. When
+// previous is not nil, it receives the limit that was in place.
+func setLengthLimit(conn *sql.Conn, limit int, previous *int) error {
+	return conn.Raw(func(driverConn any) error {
+		sqliteConn, ok := driverConn.(*sqlite3.SQLiteConn)
+		if !ok {
+			return fmt.Errorf("failed to limit value size: unexpected driver %T", driverConn)
+		}
+		old := sqliteConn.SetLimit(sqlite3.SQLITE_LIMIT_LENGTH, limit)
+		if previous != nil {
+			*previous = old
+		}
+		return nil
+	})
+}
 
 // ValidateReadOnlyQuery checks that sqlQuery is one SELECT (or WITH) statement
 // that only reads allowed tables. It tokenizes string literals, quoted
@@ -246,16 +264,25 @@ func Query(ctx context.Context, db *gorm.DB, sqlQuery string, timeout time.Durat
 	if err != nil {
 		return nil, fmt.Errorf("failed to get connection: %w", err)
 	}
+	previousLengthLimit := -1
 	defer func() {
 		// Background context: the reset must run even after a timeout.
 		if _, err := conn.ExecContext(context.Background(), "PRAGMA query_only = OFF"); err != nil {
 			_ = conn.Raw(func(any) error { return driver.ErrBadConn })
+		}
+		if previousLengthLimit >= 0 {
+			_ = setLengthLimit(conn, previousLengthLimit, nil)
 		}
 		_ = conn.Close()
 	}()
 
 	if _, err := conn.ExecContext(queryCtx, "PRAGMA query_only = ON"); err != nil {
 		return nil, fmt.Errorf("failed to enter read-only mode: %w", err)
+	}
+	// SQLite itself refuses to build a value over MaxResultBytes, so a query
+	// cannot exhaust memory with a value it never returns.
+	if err := setLengthLimit(conn, MaxResultBytes, &previousLengthLimit); err != nil {
+		return nil, err
 	}
 
 	rows, err := conn.QueryContext(queryCtx, sqlQuery)
