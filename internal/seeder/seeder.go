@@ -14,7 +14,6 @@ import (
 	"log/slog"
 
 	"github.com/karloscodes/cartridge"
-	"github.com/karloscodes/cartridge/sqlite"
 	"gorm.io/gorm"
 
 	"fusionaly/internal/events"
@@ -305,8 +304,7 @@ func (s *Seeder) seedWebsites(userID uint) ([]*websites.Website, error) {
 			CreatedAt: time.Now(),
 		}
 
-		// Use PerformWrite for transaction handling
-		err := sqlite.PerformWrite(s.Logger, db, func(tx *gorm.DB) error {
+		err := db.Transaction(func(tx *gorm.DB) error {
 			return tx.Create(&website).Error
 		})
 		if err != nil {

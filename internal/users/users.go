@@ -5,10 +5,8 @@ import (
 	"errors"
 	"time"
 
-	"log/slog"
 
 	"github.com/karloscodes/cartridge/crypto"
-	"github.com/karloscodes/cartridge/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -84,8 +82,7 @@ func CreateAdminUserWithHash(dbConn *gorm.DB, email, passwordHash string) error 
 		EncryptedPassword: passwordHash,
 	}
 
-	logger := slog.Default()
-	return sqlite.PerformWrite(logger, dbConn, func(tx *gorm.DB) error {
+	return dbConn.Transaction(func(tx *gorm.DB) error {
 		return tx.Create(&newUser).Error
 	})
 }
@@ -106,8 +103,7 @@ func ChangePassword(dbConn *gorm.DB, email, password string) error {
 		return err
 	}
 
-	logger := slog.Default()
-	return sqlite.PerformWrite(logger, dbConn, func(tx *gorm.DB) error {
+	return dbConn.Transaction(func(tx *gorm.DB) error {
 		return tx.Model(user).Updates(map[string]any{
 			"encrypted_password":   string(hashedPassword),
 			"sessions_valid_since": time.Now().UTC(),
@@ -117,7 +113,7 @@ func ChangePassword(dbConn *gorm.DB, email, password string) error {
 
 // EndSessions ends every session of the user issued before now.
 func EndSessions(dbConn *gorm.DB, userID uint) error {
-	return sqlite.PerformWrite(slog.Default(), dbConn, func(tx *gorm.DB) error {
+	return dbConn.Transaction(func(tx *gorm.DB) error {
 		return tx.Model(&User{}).Where("id = ?", userID).Update("sessions_valid_since", time.Now().UTC()).Error
 	})
 }

@@ -14,7 +14,6 @@ import (
 	"log/slog"
 
 	"github.com/karloscodes/cartridge/cache"
-	"github.com/karloscodes/cartridge/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -36,7 +35,7 @@ func SetupDefaultSettings(dbConn *gorm.DB) error {
 		{Key: "subdomain_tracking", Value: "{}"},
 		{Key: "website_goals", Value: "{\"goals\":{}}"},
 	}
-	err := sqlite.PerformWrite(slog.Default(), dbConn, func(tx *gorm.DB) error {
+	err := dbConn.Transaction(func(tx *gorm.DB) error {
 		for _, setting := range settings {
 			// Use raw SQL for upsert
 			err := tx.Exec(`
