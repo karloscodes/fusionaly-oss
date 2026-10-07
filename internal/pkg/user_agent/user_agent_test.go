@@ -113,3 +113,38 @@ func TestAIAgentsAreBots(t *testing.T) {
 		t.Error("expected Chrome to be a visitor, not a bot")
 	}
 }
+
+// Expected values come from Matomo's fixtures (fixtures/user_agent).
+func TestDeviceDetection(t *testing.T) {
+	t.Run("gives the same device every time when two brands match", func(t *testing.T) {
+		ua := "com.google.android.youtube/5.3.32(Linux; U; Android 4.0.3; ro_RO; GOCLEVER NETBOOK R103 Build/IML74K) gzip"
+		first := user_agent.ParseUserAgent(ua)
+
+		for range 50 {
+			again := user_agent.ParseUserAgent(ua)
+
+			if again != first {
+				t.Fatalf("got %+v, then %+v", first, again)
+			}
+		}
+		if first.Device != "GOCLEVER" || !first.Desktop {
+			t.Errorf("got %s desktop=%v, want GOCLEVER desktop", first.Device, first.Desktop)
+		}
+	})
+
+	t.Run("takes the device type from the model", func(t *testing.T) {
+		got := user_agent.ParseUserAgent("Apple-iPad2C7/1002.329")
+
+		if got.Device != "Apple" || !got.Tablet || got.Mobile {
+			t.Errorf("got %s tablet=%v mobile=%v, want an Apple tablet", got.Device, got.Tablet, got.Mobile)
+		}
+	})
+
+	t.Run("does not read Mac OS X as an iPhone X", func(t *testing.T) {
+		got := user_agent.ParseUserAgent("Mozilla/5.0 (iPad; CPU OS 7_0_4 like Mac OS X) AppleWebKit/537.51.1 (KHTML, like Gecko) Version/7.0 Mobile/11B554a Safari/9537.53")
+
+		if !got.Tablet || got.Mobile {
+			t.Errorf("got tablet=%v mobile=%v, want a tablet", got.Tablet, got.Mobile)
+		}
+	})
+}

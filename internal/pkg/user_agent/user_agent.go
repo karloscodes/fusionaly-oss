@@ -65,8 +65,9 @@ type OSEntry struct {
 
 // Device model structure
 type DeviceModel struct {
-	Regex string `yaml:"regex"`
-	Model string `yaml:"model"`
+	Regex  string `yaml:"regex"`
+	Model  string `yaml:"model"`
+	Device string `yaml:"device"` // overrides the brand's device type, as in Matomo
 }
 
 // Device entry structure
@@ -134,16 +135,21 @@ var (
 type DeviceDetectorParser struct {
 	browsers   []BrowserEntry
 	oss        []OSEntry
-	devices    map[string]DeviceEntry
+	devices    []brandEntry // in file order: the first brand that matches wins
 	bots       []BotEntry
 	regexCache *RegexCache
+}
+
+// brandEntry is one brand of a device file.
+type brandEntry struct {
+	Brand string
+	DeviceEntry
 }
 
 func getParser() *DeviceDetectorParser {
 	once.Do(func() {
 		parser = &DeviceDetectorParser{
 			regexCache: newRegexCache(),
-			devices:    make(map[string]DeviceEntry),
 		}
 
 		// Load browsers
@@ -167,7 +173,9 @@ func getParser() *DeviceDetectorParser {
 			}
 		}
 
-		// Load devices from multiple files
+		// Load devices from multiple files. Matomo checks TVs and notebooks
+		// first, but only when the user agent carries their marker (HbbTV,
+		// FBMD). Without those checks, mobiles must come first.
 		deviceFiles := []string{
 			"database/device/mobiles.yml",
 			"database/device/notebooks.yml",
@@ -181,12 +189,11 @@ func getParser() *DeviceDetectorParser {
 
 		for _, file := range deviceFiles {
 			if data, err := databaseFiles.ReadFile(file); err == nil {
-				var brands map[string]DeviceEntry
-				if err := yaml.Unmarshal(data, &brands); err == nil {
-					for brand, entry := range brands {
-						parser.devices[brand] = entry
-					}
+				brands, err := loadBrands(data)
+				if err != nil {
+					fmt.Printf("Error parsing %s: %v\n", file, err)
 				}
+				parser.devices = append(parser.devices, brands...)
 			}
 		}
 	})
@@ -251,9 +258,41 @@ func (p *DeviceDetectorParser) parseOS(userAgent string) (string, string) {
 	return "Unknown", ""
 }
 
+// loadBrands reads a device file in file order. A Go map would give a
+// random order, and with it a random brand when two brands match one user
+// agent.
+func loadBrands(data []byte) ([]brandEntry, error) {
+	var doc yaml.Node
+	if err := yaml.Unmarshal(data, &doc); err != nil {
+		return nil, err
+	}
+	if len(doc.Content) == 0 || doc.Content[0].Kind != yaml.MappingNode {
+		return nil, fmt.Errorf("want a mapping of brands")
+	}
+	pairs := doc.Content[0].Content
+	brands := make([]brandEntry, 0, len(pairs)/2)
+	for i := 0; i+1 < len(pairs); i += 2 {
+		var entry DeviceEntry
+		if err := pairs[i+1].Decode(&entry); err != nil {
+			return nil, fmt.Errorf("brand %s: %w", pairs[i].Value, err)
+		}
+		brands = append(brands, brandEntry{Brand: pairs[i].Value, DeviceEntry: entry})
+	}
+	return brands, nil
+}
+
+// devicePattern wraps a device regex the way Matomo's device parser does:
+// case-insensitive, and the match must not start inside a word. Without
+// the wrapper, the "iPhone X" model's " X)" matches "Mac OS X)" in every
+// iOS user agent.
+func devicePattern(regex string) string {
+	return `(?i)(?:^|[^A-Z0-9\-_]|[^A-Z0-9\-]_|sprd-|MZ-)(?:` + regex + `)`
+}
+
 func (p *DeviceDetectorParser) parseDevice(userAgent string) (string, string, bool, bool, bool) {
-	for brand, entry := range p.devices {
-		if regex, err := p.regexCache.get(entry.Regex); err == nil {
+	for _, entry := range p.devices {
+		brand := entry.Brand
+		if regex, err := p.regexCache.get(devicePattern(entry.Regex)); err == nil {
 			if matches := regex.FindStringSubmatch(userAgent); len(matches) > 0 {
 				deviceType := entry.Device
 				if deviceType == "" {
@@ -265,9 +304,12 @@ func (p *DeviceDetectorParser) parseDevice(userAgent string) (string, string, bo
 				// Check for specific model matches
 				if len(entry.Models) > 0 {
 					for _, modelEntry := range entry.Models {
-						if modelRegex, err := p.regexCache.get(modelEntry.Regex); err == nil {
-							if modelMatches := modelRegex.FindStringSubmatch(userAgent); modelMatches != nil {
+						if modelRegex, err := p.regexCache.get(devicePattern(modelEntry.Regex)); err == nil {
+							if modelMatches := modelRegex.FindStringSubmatch(userAgent); len(modelMatches) > 0 {
 								model = modelEntry.Model
+								if modelEntry.Device != "" {
+									deviceType = modelEntry.Device
+								}
 								// Replace $1, $2, etc. with actual match groups
 								if len(modelMatches) > 1 {
 									for i, match := range modelMatches[1:] {
