@@ -16,7 +16,7 @@ This is a deliberate, pragmatic stance: Go favors explicit, no-magic code, but h
 | Concern | Owner | Where |
 |---|---|---|
 | HTTP server, lifecycle, graceful shutdown, routing, sessions, CSRF, rate limiting, static/Inertia | **cartridge** | `cartridge.NewApplication(...)` |
-| SQLite connection, WAL, serialized writes, migrations plumbing | **cartridge/sqlite** + `internal/database` | `dbManager`, `sqlite.PerformWrite` |
+| SQLite connection, WAL, serialized writes, migrations plumbing | **cartridge/sqlite** + `internal/database` | `dbManager`, `cartridge.Write` |
 | Background jobs lifecycle (start/stop with the server) | **cartridge** `BackgroundWorker` | `internal/jobs` |
 | Install / update / deploy / backup / image swap (self-hosted ops) | **matcha** | `cmd/manager` |
 | Domain logic (analytics, events, websites, feed, agent, …) | **app** (Phoenix Contexts) | `internal/<domain>/` |
@@ -42,7 +42,7 @@ app, err := cartridge.NewApplication(cartridge.ApplicationOptions{
 
 cartridge then owns the server, signal handling, and graceful shutdown — including stopping the registered `BackgroundWorker`s. The app never writes a `main()` event loop or shutdown handler.
 
-Key sub-packages you reuse (don't reinvent): `cartridge/inertia` (`inertia.RenderPage`), `cartridge/cache` (`cache.Cache[K,V]`), `cartridge/sqlite` (`sqlite.PerformWrite` for serialized writes), `cartridge/testsupport` (test DBs), flash, session.
+Key sub-packages you reuse (don't reinvent): `cartridge/inertia` (`inertia.RenderPage`), `cartridge/cache` (`cache.Cache[K,V]`), `cartridge.Write` / `ctx.WriteTx` (queued writes; `sqlite.ErrBusy` when the queue is full), `cartridge/testsupport` (test DBs), flash, session.
 
 ## Phoenix Contexts: thin handlers, fat contexts
 
@@ -64,7 +64,7 @@ func DashboardAction(ctx *cartridge.Context) error {
 }
 ```
 
-Rules: contexts never import `internal/http`; handlers never hold business logic; writes go through `sqlite.PerformWrite` for SQLite's single-writer model. Pages use Inertia + PRG (no `fetch()` for page data).
+Rules: contexts never import `internal/http`; handlers never hold business logic; writes that can come in volume (ingest, event processing, jobs) go through `cartridge.Write(ctx, dbManager, fn)` or `ctx.WriteTx(fn)`: one write at a time, in order, and `sqlite.ErrBusy` (answer 503 + Retry-After) when the queue is full. Never retry on the server, and never mark an event failed because of `ErrBusy`. Rare user actions (password change, logout) may use `db.Transaction`. Pages use Inertia + PRG (no `fetch()` for page data).
 
 ## matcha: the manager owns ops
 
@@ -99,7 +99,7 @@ Jobs are a `BackgroundWorker` registered with cartridge, so they start and stop 
 | Writing a `main()` loop, shutdown handler, or middleware cartridge already provides | Configure `ApplicationOptions`; let cartridge own it |
 | Business logic in an `internal/http` handler | Move it to the domain context; handler just parses + renders |
 | A context importing `internal/http` | Contexts are HTTP-agnostic; pass `*gorm.DB` |
-| Raw `db.Exec` writes scattered around | `sqlite.PerformWrite(...)` (single-writer safety) |
+| Raw `db.Exec` writes scattered around | `cartridge.Write(...)` (single-writer queue) |
 | Hand-rolled Docker/deploy logic in the manager | A `matcha` call |
 | Mocks in tests | Real test DB via `testsupport` |
 | A job that starts its own ticker/goroutine | `Run() error` + register in the scheduler |
