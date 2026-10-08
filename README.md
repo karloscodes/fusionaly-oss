@@ -47,15 +47,22 @@
 
 ## Install
 
-```bash
-curl -fsSL https://fusionaly.com/install | bash
-```
-
-One command. It installs Docker if needed, gets a TLS certificate for your domain, and sets up nightly auto-updates and backups. Or pull the image yourself:
+On your server, as root:
 
 ```bash
-docker pull karloscodes/fusionaly:latest
+curl -fsSL https://fusionaly.com/install | sudo bash -s data.example.com
 ```
+
+It installs [Chasen](https://chasenhq.com) (and Docker, when the server has none) and runs Fusionaly: HTTPS, live backups of the database, and an update each night. Run it again to update now.
+
+From your computer instead:
+
+```bash
+curl -fsSL https://chasenhq.com/cli | sh
+chasen deploy karloscodes/fusionaly --server root@203.0.113.5 --domain data.example.com --auto-update
+```
+
+Or run the image yourself: `karloscodes/fusionaly` on Docker Hub, or `ghcr.io/karloscodes/fusionaly`. Servers that the older installer set up keep working; to move one to Chasen, see [Move to Chasen](https://fusionaly.com/docs/move-to-chasen/).
 
 Full setup in the [Installation Guide](https://fusionaly.com/docs/installation/).
 

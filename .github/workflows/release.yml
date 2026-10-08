@@ -128,10 +128,14 @@ jobs:
           docker logs fusionaly-app-1 2>&1 | tail -100 || true
           docker logs fusionaly-caddy 2>&1 | tail -50 || true
 
+  # The install paths with Chasen: see chasen.yml.
+  chasen:
+    uses: ./.github/workflows/chasen.yml
+
   release:
     name: Build and Release
     runs-on: ubuntu-latest
-    needs: [test, test-manager, test-install]
+    needs: [test, test-manager, test-install, chasen]
     steps:
       - uses: actions/checkout@v4
         with:

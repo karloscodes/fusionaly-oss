@@ -1,222 +1,104 @@
 #!/bin/bash
+# Installs Fusionaly on this server with Chasen (https://chasenhq.com):
+# HTTPS, live backups of the database, and an update each night.
+#   curl -fsSL https://fusionaly.com/install | sudo bash -s data.example.com
+#
+# The domain is the first argument, or FUSIONALY_DOMAIN. Without either, it
+# asks. FUSIONALY_IMAGE deploys another image than karloscodes/fusionaly:latest,
+# for a test. Run it again to update Fusionaly now.
+#
+# A Fusionaly Pro install of the older installer moves to the free Fusionaly with:
+#   curl -fsSL https://fusionaly.com/install | sudo bash -s migrate-to-oss
+#
+# fusionaly.com/install serves this file from the main branch: a push here
+# reaches people at once.
+set -euo pipefail
 
-# Script to install Fusionaly from GitHub releases
-# Run as: curl -fsSL https://fusionaly.com/install | sudo bash
-
-# Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
-NC='\033[0m' # No Color
+NC='\033[0m'
+image="${FUSIONALY_IMAGE:-karloscodes/fusionaly:latest}"
 
-# Configuration
-GITHUB_REPO="karloscodes/fusionaly-oss"
-INSTALL_DIR="/usr/local/bin"
+fail() { echo -e "${RED}Error: $*${NC}" >&2; exit 1; }
 
-# Action: "install" (default, fresh setup) or "migrate-to-oss" (switch an
-# existing Fusionaly Pro install to the free Fusionaly — keeps your data).
-ACTION="${1:-install}"
+[ "$(id -u)" -eq 0 ] || fail "run it as root: curl -fsSL https://fusionaly.com/install | sudo bash -s data.example.com"
+[ "$(uname -s)" = Linux ] || fail "Fusionaly installs on a Linux server. From your computer, deploy it with Chasen: https://fusionaly.com/docs/installation/"
 
-run_installer() {
-    # Verify running as root
-    if [ "$(id -u)" -ne 0 ]; then
-        echo -e "${RED}Error: This script requires root privileges. Use 'sudo su' and then re-run the installation command.${NC}"
-        exit 1
-    fi
-
-    # Detect architecture
-    ARCH=$(uname -m)
-    case "$ARCH" in
-        x86_64)
-            ARCH="amd64"
-            ;;
-        aarch64|arm64)
-            ARCH="arm64"
-            ;;
-        *)
-            echo -e "${RED}Unsupported architecture: $ARCH. Only amd64 and arm64 are supported.${NC}"
-            exit 1
-            ;;
-    esac
-
-    BINARY_PATH="$INSTALL_DIR/fusionaly"
-    TEMP_FILE="/tmp/fusionaly-$ARCH"
-
-    # Install dependencies if needed
-    NEED_UPDATE=false
-    if ! command -v jq >/dev/null 2>&1; then
-        NEED_UPDATE=true
-    fi
-    if ! command -v file >/dev/null 2>&1; then
-        NEED_UPDATE=true
-    fi
-    if [ "$NEED_UPDATE" = true ]; then
-        apt-get update -qq > /dev/null 2>&1
-    fi
-    if ! command -v jq >/dev/null 2>&1; then
-        apt-get install -y -qq jq > /dev/null 2>&1 || {
-            echo -e "${RED}Error: Failed to install jq. This script requires jq to parse GitHub API responses.${NC}"
-            exit 1
-        }
-    fi
-    if ! command -v file >/dev/null 2>&1; then
-        apt-get install -y -qq file > /dev/null 2>&1 || {
-            echo -e "${RED}Error: Failed to install 'file'. Binary verification will be skipped.${NC}"
-        }
-    fi
-
-    # Fetch the latest release information
-    echo "Fetching latest release information..."
-    RELEASE_INFO=$(curl -fsSL "https://api.github.com/repos/$GITHUB_REPO/releases/latest")
-
-    # Check for rate limit or other API errors
-    if echo "$RELEASE_INFO" | grep -q "API rate limit exceeded"; then
-        echo -e "${RED}Error: GitHub API rate limit exceeded. Please try again later.${NC}"
-        exit 1
-    fi
-
-    if echo "$RELEASE_INFO" | grep -q "Not Found"; then
-        echo -e "${RED}Error: No releases found in $GITHUB_REPO.${NC}"
-        exit 1
-    fi
-
-    # Extract the latest version
-    LATEST_VERSION=$(echo "$RELEASE_INFO" | jq -r '.tag_name' | sed 's/^v//')
-
-    if [ -z "$LATEST_VERSION" ]; then
-        echo -e "${RED}Error: Could not determine latest version.${NC}"
-        exit 1
-    fi
-
-    echo "Latest version: $LATEST_VERSION"
-
-    # Look for the correct asset
-    ASSET_NAME="fusionaly-linux-$ARCH"
-    if ! echo "$RELEASE_INFO" | jq -r '.assets[].name' | grep -q "$ASSET_NAME"; then
-        echo -e "${RED}Error: No binary found for $ARCH in release v$LATEST_VERSION.${NC}"
-        echo "Available assets:"
-        echo "$RELEASE_INFO" | jq -r '.assets[].name'
-        exit 1
-    fi
-
-    # Construct download URLs
-    BINARY_URL="https://github.com/$GITHUB_REPO/releases/download/v$LATEST_VERSION/$ASSET_NAME"
-    CHECKSUMS_URL="https://github.com/$GITHUB_REPO/releases/download/v$LATEST_VERSION/checksums.txt"
-    echo "Download URL: $BINARY_URL"
-
-    # Download the binary
-    echo "Downloading Fusionaly v$LATEST_VERSION for $ARCH..."
-    curl -L --fail --progress-bar -o "$TEMP_FILE" "$BINARY_URL" || {
-        echo -e "${RED}Error: Failed to download binary.${NC}"
-        rm -f "$TEMP_FILE"
-        exit 1
-    }
-
-    # Verify the download
-    if [ ! -s "$TEMP_FILE" ]; then
-        echo -e "${RED}Error: Downloaded file is empty.${NC}"
-        rm -f "$TEMP_FILE"
-        exit 1
-    fi
-
-    # Verify SHA256 checksum
-    echo "Verifying SHA256 checksum..."
-    CHECKSUMS_FILE="/tmp/fusionaly-checksums.txt"
-    if curl -fsSL -o "$CHECKSUMS_FILE" "$CHECKSUMS_URL" 2>/dev/null; then
-        EXPECTED_HASH=$(grep "$ASSET_NAME" "$CHECKSUMS_FILE" | awk '{print $1}')
-        if [ -n "$EXPECTED_HASH" ]; then
-            ACTUAL_HASH=$(sha256sum "$TEMP_FILE" | awk '{print $1}')
-            if [ "$ACTUAL_HASH" != "$EXPECTED_HASH" ]; then
-                echo -e "${RED}Error: SHA256 checksum mismatch!${NC}"
-                echo "  Expected: $EXPECTED_HASH"
-                echo "  Got:      $ACTUAL_HASH"
-                rm -f "$TEMP_FILE" "$CHECKSUMS_FILE"
-                exit 1
-            fi
-            echo -e "${GREEN}Checksum verified.${NC}"
-        else
-            echo "Warning: No checksum found for $ASSET_NAME, skipping verification."
-        fi
-        rm -f "$CHECKSUMS_FILE"
-    else
-        echo "Warning: Could not download checksums file, skipping verification."
-    fi
-
-    # Check file type
-    if command -v file >/dev/null 2>&1; then
-        FILE_TYPE=$(file -b "$TEMP_FILE" | cut -d',' -f1-2)
-        echo "Verifying file: $FILE_TYPE"
-        if ! echo "$FILE_TYPE" | grep -q "ELF"; then
-            echo -e "${RED}Error: Downloaded file is not a valid binary.${NC}"
-            rm -f "$TEMP_FILE"
-            exit 1
-        fi
-    fi
-
-    # Install the binary
-    echo "Installing to $BINARY_PATH..."
-    mv "$TEMP_FILE" "$BINARY_PATH" && chmod +x "$BINARY_PATH" || {
-        echo -e "${RED}Error: Failed to install binary.${NC}"
-        rm -f "$TEMP_FILE"
-        exit 1
-    }
-
-    # Migrate an existing Fusionaly Pro install to the free Fusionaly.
-    if [ "$ACTION" = "migrate-to-oss" ] || [ "$ACTION" = "migrate" ]; then
-        echo -e "${GREEN}Migrating this installation to Fusionaly (free)...${NC}"
-        echo ""
-        if "$BINARY_PATH" migrate-to-oss; then
-            echo -e "${GREEN}Migration complete!${NC}"
-        else
-            MIGRATE_EXIT_CODE=$?
-            echo -e "${RED}Migration failed with exit code $MIGRATE_EXIT_CODE.${NC}"
-            exit $MIGRATE_EXIT_CODE
-        fi
-        return 0
-    fi
-
-    # Run the installer interactively
-    echo -e "${GREEN}Running Fusionaly installer...${NC}"
-    echo ""
-    echo "  Note: avoid 'analytics' in your domain (also 'tracking', 'stats',"
-    echo "  'telemetry'). Ad/privacy blockers like uBlock Origin block those"
-    echo "  hostnames, so visitor requests get dropped before reaching your server."
-    echo "  A neutral subdomain such as data.example.com is safer than"
-    echo "  analytics.example.com."
-    echo ""
-    if "$BINARY_PATH" install; then
-        echo -e "${GREEN}Installation complete!${NC}"
-    else
-        INSTALL_EXIT_CODE=$?
-        echo -e "${RED}Installation failed with exit code $INSTALL_EXIT_CODE.${NC}"
-        exit $INSTALL_EXIT_CODE
-    fi
+# Fusionaly Pro to the free Fusionaly, on a server of the older installer: its
+# own command does it, from the newest release, checked against its checksum.
+migrate_to_oss() {
+	case "$(uname -m)" in
+		x86_64) arch=amd64 ;;
+		aarch64 | arm64) arch=arm64 ;;
+		*) fail "no build for $(uname -m)" ;;
+	esac
+	base="https://github.com/karloscodes/fusionaly-oss/releases/latest/download"
+	tmp="$(mktemp -d)"
+	curl -fsSL -o "$tmp/fusionaly" "$base/fusionaly-linux-$arch" || fail "cannot download the fusionaly command"
+	curl -fsSL -o "$tmp/checksums.txt" "$base/checksums.txt" || fail "cannot download checksums.txt"
+	expected="$(grep " fusionaly-linux-$arch\$" "$tmp/checksums.txt" | cut -d' ' -f1)"
+	[ -n "$expected" ] && [ "$(sha256sum "$tmp/fusionaly" | cut -d' ' -f1)" = "$expected" ] || fail "the checksum of the fusionaly command does not match"
+	install -m 755 "$tmp/fusionaly" /usr/local/bin/fusionaly
+	rm -f "$tmp/fusionaly" "$tmp/checksums.txt"
+	rmdir "$tmp"
+	if [ -r /dev/tty ]; then
+		/usr/local/bin/fusionaly migrate-to-oss </dev/tty
+	else
+		/usr/local/bin/fusionaly migrate-to-oss
+	fi
 }
 
-# Handle piped execution (curl | sudo bash)
-# When piped, stdin is not a TTY, so we need to re-exec with /dev/tty
-if [ ! -t 0 ]; then
-    echo "Detected piped execution. Creating temporary installer for interactive mode..."
-    TEMP_SCRIPT=$(mktemp /tmp/fusionaly-install-XXXXXX.sh)
-
-    # Export the function and variables to a temp script
-    {
-        echo '#!/bin/bash'
-        echo "RED='$RED'"
-        echo "GREEN='$GREEN'"
-        echo "NC='$NC'"
-        echo "GITHUB_REPO='$GITHUB_REPO'"
-        echo "INSTALL_DIR='$INSTALL_DIR'"
-        echo "ACTION='$ACTION'"
-        declare -f run_installer
-        echo 'run_installer'
-    } > "$TEMP_SCRIPT"
-
-    chmod +x "$TEMP_SCRIPT"
-    bash "$TEMP_SCRIPT" < /dev/tty
-    EXIT_CODE=$?
-    rm -f "$TEMP_SCRIPT"
-    exit $EXIT_CODE
+if [ "${1:-}" = migrate-to-oss ] || [ "${1:-}" = migrate ]; then
+	migrate_to_oss
+	exit 0
 fi
 
-# Run the installer
-run_installer
+# A server that the older installer set up keeps it: it updates itself each
+# night. This script never touches a Fusionaly that runs.
+if [ -f /etc/cron.d/fusionaly-update ] || grep -qs '^ *fusionaly:' /etc/matcha/config.yml; then
+	echo "This server runs Fusionaly from the older installer. It keeps updating itself each night,"
+	echo "and its commands stay: fusionaly update, restore-db, change-admin-password."
+	echo "Nothing changed. To move it to Chasen: https://fusionaly.com/docs/move-to-chasen/"
+	exit 0
+fi
+
+# Fusionaly runs on Chasen already, also after a move from the older
+# installer: deploy the newest image, keep the settings, and update it each
+# night from now on.
+if command -v chasen-server >/dev/null 2>&1 && chasen-server list 2>/dev/null | grep -q '^fusionaly '; then
+	echo "Updating Fusionaly to the newest $image..."
+	printf '{"image":"%s","keep_settings":true,"auto_update":true,"env":{}}\n' "$image" | chasen-server deploy fusionaly latest
+	echo -e "${GREEN}Fusionaly is up to date.${NC}"
+	exit 0
+fi
+
+domain="${1:-${FUSIONALY_DOMAIN:-}}"
+if [ -z "$domain" ]; then
+	[ -r /dev/tty ] || fail "no domain: curl -fsSL https://fusionaly.com/install | sudo bash -s data.example.com"
+	echo "Tip: avoid 'analytics', 'tracking', 'stats', or 'telemetry' in the domain: ad blockers"
+	echo "block those hostnames. A neutral one such as data.example.com is safer."
+	read -r -p "Domain for Fusionaly (e.g. data.example.com): " domain </dev/tty
+fi
+domain="$(echo "$domain" | tr '[:upper:]' '[:lower:]')"
+[[ "$domain" =~ ^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$ && "$domain" == *.* ]] || fail "\"$domain\" is not a domain"
+if [[ "$domain" =~ (analytics|tracking|stats|telemetry) ]]; then
+	echo "Note: ad blockers often block hostnames with \"${BASH_REMATCH[1]}\". A neutral name such as data.example.com is safer."
+fi
+
+echo "Installing Chasen..."
+curl -fsSL https://chasenhq.com/server | sh
+chasen-server setup >/dev/null # it installs Docker when the server has none
+
+echo "Deploying Fusionaly at $domain..."
+printf '{"image":"%s","domain":"%s","auto_update":true,"env":{}}\n' "$image" "$domain" | chasen-server deploy fusionaly latest
+
+echo
+echo -e "${GREEN}Fusionaly runs at https://$domain${NC}"
+echo "  Point an A record for $domain to this server: HTTPS comes on the first request."
+echo "  Open it now and create your account: until you do, anyone who opens it can."
+echo "  It updates itself each night, with a backup of the database first."
+echo
+echo "Manage it from your computer:"
+echo "  curl -fsSL https://chasenhq.com/cli | sh"
+echo "  chasen add server root@<this server>"
+echo "  chasen -a fusionaly status        # also: logs, backups, restore, rollback"

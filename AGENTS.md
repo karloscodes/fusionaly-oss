@@ -146,6 +146,20 @@ make release v=1.0.0    # Tag + Push + GoReleaser builds
 
 ---
 
+## Install
+
+New installs run on Chasen (chasenhq.com). `install.sh` is the script behind
+`curl -fsSL https://fusionaly.com/install | sudo bash -s data.example.com`, and
+fusionaly.com serves it from `main`, so a push reaches people at once: run the
+e2e scripts first. It installs chasen-server and deploys `karloscodes/fusionaly:latest`
+with nightly updates; `bash -s migrate-to-oss` still moves a Pro install of the
+older installer to the free version. `cmd/manager` (the `fusionaly` command,
+built on matcha) stays for servers of the older installer: keep its release
+binaries. On Chasen the image needs no settings: it reads `PRIVATE_KEY`, which
+Chasen sets. `e2e/chasen.sh`, `e2e/installer.sh`, and `e2e/move-to-chasen.sh`
+test the three paths; `.github/workflows/chasen.yml` runs them, and a release
+waits for them.
+
 ## Everyday Commands
 
 ```bash

@@ -1,0 +1,60 @@
+name: Chasen
+
+# The install paths of Fusionaly with Chasen, each on a fresh runner: a deploy
+# from a computer, the install line on a server, and the move of a server of
+# the older installer. A release runs them before it publishes; a push or a
+# pull request runs them when the install can change.
+on:
+  push:
+    branches: [main]
+    paths:
+      - install.sh
+      - e2e/*.sh
+      - Dockerfile
+      - scripts/entrypoint.sh
+      - internal/config/**
+      - .github/workflows/chasen.yml
+  pull_request:
+    paths:
+      - install.sh
+      - e2e/*.sh
+      - Dockerfile
+      - scripts/entrypoint.sh
+      - internal/config/**
+      - .github/workflows/chasen.yml
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy with Chasen
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Deploy the image of this commit, as a new user does
+        run: e2e/chasen.sh
+
+  installer:
+    name: Install line
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install on a fresh server, as a new user does
+        run: e2e/installer.sh
+
+  move:
+    name: Move to Chasen
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Move a server of the older installer to Chasen
+        run: e2e/move-to-chasen.sh
