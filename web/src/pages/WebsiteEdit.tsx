@@ -40,6 +40,8 @@ const ConversionGoalsSelector: React.FC<{
 }> = ({ events, initialGoals, onGoalsChange }) => {
   const [selectedGoals, setSelectedGoals] = React.useState<string[]>(initialGoals);
   const [searchTerm, setSearchTerm] = React.useState("");
+  // Goals typed by hand or saved earlier, which may not have fired in the last 30 days
+  const [extraNames, setExtraNames] = React.useState<string[]>(initialGoals);
 
   const handleGoalToggle = (eventName: string) => {
     setSelectedGoals(prev => {
@@ -53,15 +55,28 @@ const ConversionGoalsSelector: React.FC<{
     });
   };
 
-  const filteredEvents = React.useMemo(() => {
+  const eventNames = React.useMemo(() => {
+    const names = new Set([...events.map(event => event.event_name), ...extraNames]);
+    return Array.from(names).sort();
+  }, [events, extraNames]);
+
+  const filteredNames = React.useMemo(() => {
     if (!searchTerm.trim()) {
-      return events;
+      return eventNames;
     }
     const lowerSearchTerm = searchTerm.toLowerCase();
-    return events.filter(event =>
-      event.event_name.toLowerCase().includes(lowerSearchTerm)
-    );
-  }, [events, searchTerm]);
+    return eventNames.filter(name => name.toLowerCase().includes(lowerSearchTerm));
+  }, [eventNames, searchTerm]);
+
+  const newGoalName = searchTerm.trim();
+  const canAddGoal = newGoalName.length > 0 && !eventNames.includes(newGoalName);
+
+  const handleAddGoal = () => {
+    if (!canAddGoal) return;
+    setExtraNames(prev => [...prev, newGoalName]);
+    handleGoalToggle(newGoalName);
+    setSearchTerm("");
+  };
 
   return (
     <div className="bg-white border rounded-lg shadow-sm overflow-hidden mt-4">
@@ -72,9 +87,16 @@ const ConversionGoalsSelector: React.FC<{
         <div className="relative">
           <input
             type="search"
-            placeholder="Search by event name..."
+            placeholder="Search or type an event name..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyDown={(e) => {
+              // Enter adds the typed name instead of submitting the form
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleAddGoal();
+              }
+            }}
             className="w-full border border-gray-300 focus:border-black focus:ring-black rounded-md pl-9 py-2 text-sm"
           />
           <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
@@ -99,39 +121,48 @@ const ConversionGoalsSelector: React.FC<{
 
       {/* Events List */}
       <div className="max-h-72 overflow-y-auto">
-        {filteredEvents.length > 0 ? (
-          filteredEvents.map((event) => {
-            const isChecked = selectedGoals.includes(event.event_name);
+        {canAddGoal && (
+          <button
+            type="button"
+            onClick={handleAddGoal}
+            className="w-full text-left px-4 py-2 border-b text-sm hover:bg-gray-50"
+          >
+            Add <span className="font-medium text-gray-900">{newGoalName}</span> as a goal
+          </button>
+        )}
+        {filteredNames.length > 0 ? (
+          filteredNames.map((name) => {
+            const isChecked = selectedGoals.includes(name);
             return (
               <div
-                key={event.event_name}
+                key={name}
                 className="flex items-center px-4 py-2 border-b last:border-0 hover:bg-gray-50"
               >
                 <input
                   type="checkbox"
-                  id={`goal-${event.event_name}`}
+                  id={`goal-${name}`}
                   checked={isChecked}
-                  onChange={() => handleGoalToggle(event.event_name)}
+                  onChange={() => handleGoalToggle(name)}
                   className="h-4 w-4 text-black focus:ring-black border-gray-300 rounded"
                 />
                 <label
-                  htmlFor={`goal-${event.event_name}`}
+                  htmlFor={`goal-${name}`}
                   className="ml-3 cursor-pointer flex-grow"
                 >
                   <span className="font-medium text-gray-900">
-                    {event.event_name}
+                    {name}
                   </span>
                 </label>
               </div>
             );
           })
-        ) : (
+        ) : !canAddGoal && (
           <div className="p-6 text-center">
             <p className="text-sm text-gray-600">
-              No events found for this website{searchTerm ? " matching your search" : ""}.
+              No events from the last 30 days.
             </p>
             <p className="text-xs text-gray-500 mt-1">
-              Events will appear here once your website starts tracking user interactions.
+              Type an event name above to add it as a goal before it fires.
             </p>
           </div>
         )}
@@ -256,6 +287,7 @@ const WebsiteEdit: React.FC = () => {
                 <p className="text-sm text-gray-500 mb-4">
                   Select the events you want to track as conversion goals for this website.
                   These will be used in conversion rate calculations and funnel analysis.
+                  The list shows events from the last 30 days. To add a new event, type its exact name.
                 </p>
 
                 <div className="bg-gray-50 border rounded-lg p-4 mb-4">
