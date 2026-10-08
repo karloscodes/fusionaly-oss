@@ -141,9 +141,11 @@ func MountAppRoutes(srv *cartridge.Server) {
 	// === ROOT ROUTES ===
 	srv.Get("/", http.HomeIndexAction)
 
-	// Health check endpoint
+	// Health check endpoint. /up is the path that Chasen asks.
 	srv.Get("/_health", http.HealthIndexAction)
 	srv.Head("/_health", http.HealthIndexAction)
+	srv.Get("/up", http.HealthIndexAction)
+	srv.Head("/up", http.HealthIndexAction)
 
 	srv.Get("/_demo", http.DemoIndexAction)
 

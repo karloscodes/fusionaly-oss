@@ -54,6 +54,20 @@ func TestLoad(t *testing.T) {
 		assert.Equal(t, LogLevel(""), c.LogLevel)
 	})
 
+	t.Run("reads PRIVATE_KEY, the name Chasen gives the key", func(t *testing.T) {
+		c, err := load(env(map[string]string{"PRIVATE_KEY": strings.Repeat("c", 64)}))
+
+		assert.NoError(t, err)
+		assert.Equal(t, strings.Repeat("c", 64), c.PrivateKey)
+	})
+
+	t.Run("FUSIONALY_PRIVATE_KEY wins over PRIVATE_KEY", func(t *testing.T) {
+		c, err := load(env(map[string]string{"FUSIONALY_PRIVATE_KEY": strings.Repeat("f", 64), "PRIVATE_KEY": strings.Repeat("c", 64)}))
+
+		assert.NoError(t, err)
+		assert.Equal(t, strings.Repeat("f", 64), c.PrivateKey)
+	})
+
 	t.Run("reads every FUSIONALY_ variable", func(t *testing.T) {
 		c, err := load(env(map[string]string{
 			"FUSIONALY_APP_NAME": "acme", "FUSIONALY_APP_PORT": "8080", "FUSIONALY_ENV": Production,

@@ -56,6 +56,9 @@ ENV FUSIONALY_ENV=production \
 
 EXPOSE ${FUSIONALY_APP_PORT}
 
+# The data: Chasen backs up this volume, and a plain docker run should mount it.
+VOLUME /app/storage
+
 # Health check using curl
 # -f flag makes curl fail on HTTP errors (4xx, 5xx)
 # Using shell form to ensure environment variable expansion

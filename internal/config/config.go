@@ -133,8 +133,8 @@ func load(getenv func(string) string) (*Config, error) {
 		AppName:                     str("FUSIONALY_APP_NAME", "fusionaly"),
 		AppPort:                     str("FUSIONALY_APP_PORT", "3000"),
 		Environment:                 str("FUSIONALY_ENV", Development),
-		LogLevel:                    LogLevel(str("FUSIONALY_LOG_LEVEL", "")), // empty: cartridge picks one per environment
-		PrivateKey:                  str("FUSIONALY_PRIVATE_KEY", "88888888888888888888888888888888"),
+		LogLevel:                    LogLevel(str("FUSIONALY_LOG_LEVEL", "")),                                             // empty: cartridge picks one per environment
+		PrivateKey:                  str("FUSIONALY_PRIVATE_KEY", str("PRIVATE_KEY", "88888888888888888888888888888888")), // PRIVATE_KEY: the name Chasen gives it
 		SessionTimeoutSeconds:       num("FUSIONALY_SESSION_TIMEOUT_SECONDS", 1800),
 		LoginSessionTimeoutSeconds:  num("FUSIONALY_LOGIN_SESSION_TIMEOUT_SECONDS", 7776000), // 90 days
 		CSRFContextKey:              "csrf",
