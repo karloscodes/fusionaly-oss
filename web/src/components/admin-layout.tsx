@@ -3,6 +3,7 @@ import { Link, router } from "@inertiajs/react";
 import { AlertTriangle } from "lucide-react";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { CommandSearch } from "@/components/command-search";
+import { Byline } from "@/components/byline";
 
 interface AdminLayoutProps {
 	children: ReactNode;
@@ -98,6 +99,7 @@ export function AdminLayout({ children, currentPath, badge }: AdminLayoutProps) 
 			<main className="max-w-7xl mx-auto px-4">
 				{children}
 			</main>
+			<Byline />
 		</div>
 	);
 }

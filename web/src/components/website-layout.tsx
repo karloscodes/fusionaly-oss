@@ -3,6 +3,7 @@ import { Link, router } from "@inertiajs/react";
 import { Settings, ChevronDown, Check, AlertTriangle } from "lucide-react";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { CommandSearch } from "@/components/command-search";
+import { Byline } from "@/components/byline";
 
 interface Website {
 	id: number;
@@ -246,6 +247,7 @@ export function WebsiteLayout({
 
 			{/* Main Content */}
 			<main className="max-w-7xl mx-auto px-4">{children}</main>
+			<Byline />
 		</div>
 	);
 }
