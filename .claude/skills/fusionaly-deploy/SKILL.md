@@ -74,15 +74,15 @@ dig +short <domain> @1.1.1.1     # repeat until it prints <ip>
 Tell the user to run this in their own terminal:
 
 ```
-ssh -t <user>@<ip> 'curl -fsSL https://fusionaly.com/install | sudo bash'
+ssh -t <user>@<ip> 'curl -fsSL https://fusionaly.com/install | sudo bash -s <domain>'
 ```
 
-The installer asks for the domain, checks DNS, installs Docker, starts Fusionaly with HTTPS, and sets up nightly backups and updates. Wait until the user says it finished.
+It installs Chasen (and Docker, when the server has none) and runs Fusionaly with HTTPS, live backups of the database, and an update each night. Wait until the user says it finished, then tell them to open https://<domain> and create the first account at once.
 
 ## 4. Check
 
 ```bash
-curl -s -o /dev/null -w "%{http_code}\n" https://<domain>/_health    # 200
+curl -s -o /dev/null -w "%{http_code}\n" https://<domain>/up    # 200
 ```
 
 Then the user opens `https://<domain>/setup` to create the admin account and add the first website.
