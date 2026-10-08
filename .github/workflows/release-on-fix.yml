@@ -1,0 +1,44 @@
+name: Release on fix
+
+# When a Dependabot update that touches what ships (go.mod, go.sum, Dockerfile, web/package.json, web/package-lock.json)
+# is merged and "PR Checks" passes on main, tag the next patch version and start
+# the release. The release still runs its own end-to-end tests before it
+# publishes, and servers take the new version on their next nightly update.
+# Updates of tests, CI, or the website merge with no release.
+on:
+  workflow_run:
+    workflows: ["PR Checks"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  release:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+
+      - name: Tag the next patch version when a shipped dependency changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          author="$(git log -1 --format='%an')"
+          case "$author" in *dependabot*) ;; *) echo "Not a Dependabot commit ($author): no release."; exit 0 ;; esac
+          if git describe --exact-match --tags HEAD >/dev/null 2>&1; then echo "Already tagged."; exit 0; fi
+          if ! git diff --name-only HEAD~1 HEAD -- go.mod go.sum Dockerfile web/package.json web/package-lock.json | grep -q .; then echo "Nothing that ships changed: no release."; exit 0; fi
+          last="$(git tag --list 'v[0-9]*' --sort=-v:refname | grep -v -- - | head -1)"
+          [ -n "$last" ] || { echo "No release tag yet."; exit 1; }
+          IFS=. read -r major minor patch <<<"${last#v}"
+          next="v$major.$minor.$((patch + 1))"
+          echo "Releasing $next after $last: $(git log -1 --format=%s)"
+          git tag "$next"
+          git push origin "$next"
+          # A tag pushed with this token starts no workflow by itself: start the release.
+          gh workflow run release.yml --ref "$next"

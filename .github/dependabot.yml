@@ -1,0 +1,64 @@
+# Monthly, grouped version updates, each a week old at least. Security
+# updates come as their own pull requests, as soon as an advisory is out.
+# A merged update that touches what ships starts a patch release:
+# .github/workflows/release-on-fix.yml.
+version: 2
+updates:
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    # A new version waits a week: a compromised release is usually pulled by then.
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 3
+    groups:
+      go:
+        patterns: ["*"]
+    ignore:
+      # First-party modules: bumped by hand when a new version is cut.
+      - dependency-name: "github.com/karloscodes/*"
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    # A new version waits a week: a compromised release is usually pulled by then.
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 3
+    groups:
+      docker:
+        patterns: ["*"]
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    # A new version waits a week: a compromised release is usually pulled by then.
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 3
+    groups:
+      actions:
+        patterns: ["*"]
+  - package-ecosystem: "npm"
+    directory: "/web"
+    schedule:
+      interval: "monthly"
+    # A new version waits a week: a compromised release is usually pulled by then.
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 3
+    groups:
+      npm-web:
+        patterns: ["*"]
+  - package-ecosystem: "npm"
+    directory: "/e2e"
+    schedule:
+      interval: "monthly"
+    # A new version waits a week: a compromised release is usually pulled by then.
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 3
+    groups:
+      npm-e2e:
+        patterns: ["*"]

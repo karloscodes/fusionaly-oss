@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - 'v*'
+  # Release on fix starts it for a tag it pushed: see release-on-fix.yml.
+  workflow_dispatch:
 
 permissions:
   contents: write
