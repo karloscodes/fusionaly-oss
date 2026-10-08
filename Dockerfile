@@ -32,7 +32,7 @@ RUN mkdir -p dist && \
   CGO_ENABLED=1 go build -o dist/fnctl cmd/fnctl/main.go
 
 # Final stage - minimal runtime image
-FROM alpine:3.19
+FROM alpine:3.24
 WORKDIR /app
 
 # Install runtime dependencies and create directories
