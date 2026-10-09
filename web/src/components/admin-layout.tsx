@@ -75,8 +75,7 @@ export function AdminLayout({ children, currentPath, badge }: AdminLayoutProps) 
 							)}
 							<Link
 								href="/admin/administration/ingestion"
-								className="relative text-sm font-medium transition-colors hover:text-gray-600 py-4 text-gray-900 hidden sm:inline"
-								title="Settings"
+								className="relative text-sm font-medium transition-colors hover:text-gray-600 py-4 text-gray-900 shrink-0"
 							>
 								Settings
 								{isCurrentPath("/admin/administration") && (
@@ -87,8 +86,7 @@ export function AdminLayout({ children, currentPath, badge }: AdminLayoutProps) 
 								href="#"
 								id="logout"
 								onClick={handleLogout}
-								className="text-sm font-medium transition-colors hover:text-gray-600 text-gray-900 hidden sm:inline"
-								title="Logout"
+								className="text-sm font-medium transition-colors hover:text-gray-600 text-gray-900 shrink-0"
 							>
 								Logout
 							</a>
