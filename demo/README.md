@@ -8,7 +8,7 @@ Run this from your terminal:
 
 ```bash
 # Raw GitHub (main branch)
-curl -fsSL https://raw.githubusercontent.com/karloscodes/fusionaly-devbox/refs/heads/main/setup.sh | bash
+curl -fsSL https://raw.githubusercontent.com/karloscodes/fusionaly-oss/main/demo/setup.sh | bash
 ```
 
 - Demo site: http://localhost:8080
@@ -25,8 +25,8 @@ curl -fsSL https://raw.githubusercontent.com/karloscodes/fusionaly-devbox/refs/h
 ## Manual Setup (clone + run)
 
 ```bash
-git clone https://github.com/karloscodes/fusionaly-devbox.git
-cd fusionaly-devbox
+git clone https://github.com/karloscodes/fusionaly-oss.git
+cd fusionaly-oss/demo
 chmod +x setup.sh
 ./setup.sh
 ```
@@ -60,7 +60,7 @@ docker compose restart
 
 ## Documentation
 
-Full docs and one‑liner: https://fusionaly.com/docs/devbox/
+Full docs and one‑liner: https://fusionaly.com/docs/demo/
 
 ## Contributing
 
