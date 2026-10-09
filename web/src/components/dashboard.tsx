@@ -395,12 +395,15 @@ export const Dashboard = (props: DashboardComponentProps) => {
 
 	// Calculate maximum value for y-axis domain
 	// The y axis tops out at a round number, labelled at 0, half and top, as in the design.
+	// Revenue is in cents, so its floor is 4 currency units. Without the floor, a range
+	// with no sales gives ticks [0, 0, 0], all drawn as one "$0" at the middle.
 	const getMaxValue = () => {
-		if (!hasData) return 4;
+		const floor = activeChart === "revenue" ? 400 : 4;
+		if (!hasData) return floor;
 		const dataKey = getActiveDataKey();
 		const maxValue = Math.max(...chartData.map((item) => item[dataKey] || 0));
 		const step = maxValue <= 10 ? 2 : maxValue <= 100 ? 10 : Math.pow(10, Math.floor(Math.log10(maxValue)));
-		return Math.ceil(maxValue / step) * step;
+		return Math.max(floor, Math.ceil(maxValue / step) * step);
 	};
 
 	// Define colors for different chart types
@@ -540,7 +543,9 @@ export const Dashboard = (props: DashboardComponentProps) => {
 					dy={8}
 					interval={Math.max(0, Math.ceil(chartData.length / (isMobile ? 4 : 6)) - 1)}
 				/>
+				{/* One axis per tab: a shared axis kept stale ticks from the last tab. */}
 				<YAxis
+					key={activeChart}
 					strokeWidth={1}
 					tick={{ fill: chartColors.axisText, fontSize: isMobile ? 9 : 11, fontFamily: "var(--c-mono)" }}
 					axisLine={false}
