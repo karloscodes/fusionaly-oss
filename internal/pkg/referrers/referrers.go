@@ -192,7 +192,16 @@ var knownReferrers = map[string]referrer{
 	"producthunt": {"Product Hunt", Referral},
 	"github":      {"GitHub", Referral},
 	"chatgpt":     {"ChatGPT", AI},
+	"openai":      {"ChatGPT", AI},
 	"perplexity":  {"Perplexity", AI},
+	"claude":      {"Claude", AI},
+	"gemini":      {"Gemini", AI},
+	"copilot":     {"Copilot", AI},
+	"deepseek":    {"DeepSeek", AI},
+	"grok":        {"Grok", AI},
+	"mistral":     {"Mistral", AI},
+	"phind":       {"Phind", AI},
+	"poe":         {"Poe", AI},
 }
 
 // paymentProviders are checkout pages a visitor returns from. A return is

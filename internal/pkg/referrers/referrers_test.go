@@ -121,6 +121,9 @@ func TestCategoryOf(t *testing.T) {
 			"com.reddit.frontpage":   Social,
 			"twitter":                Social,
 			"chatgpt":                AI,
+			"claude":                 AI,
+			"grok":                   AI,
+			"gemini":                 AI,
 		}
 
 		for host, want := range tests {
