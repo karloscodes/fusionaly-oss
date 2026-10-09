@@ -20,7 +20,7 @@ curl -fsSL https://raw.githubusercontent.com/karloscodes/fusionaly-oss/main/demo
 - Beautiful demo at `/` with interactive event buttons
 - Admin dashboard under `/admin`
 - Runs on http://localhost:8080 (no HTTPS needed)
-- No license required — DevBox runs in test mode with a test key
+- Free: no license, no key. The demo runs Fusionaly in test mode
 
 ## Manual Setup (clone + run)
 

@@ -8,7 +8,8 @@ services:
       - FUSIONALY_ENV=test
       - FUSIONALY_DOMAIN=localhost
       - FUSIONALY_APP_PORT=8080
-      - FUSIONALY_LICENSE_KEY=IM-DEMO-TEST-ONLY
+      # Test mode listens on loopback only; Caddy reaches it on the demo's own network.
+      - FUSIONALY_HOST=0.0.0.0
       # Optional: Better demo experience
       - FUSIONALY_LOG_LEVEL=info
       - FUSIONALY_JOB_INTERVAL_SECONDS=3
@@ -32,11 +33,11 @@ services:
     environment:
       - DOMAIN=localhost
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080" # this computer only: the app runs in test mode
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - ./index.html:/usr/share/caddy/devbox.html:ro
-      - ./alt.html:/usr/share/caddy/alt.html:ro
+      - ./index.html:/usr/share/caddy/alt.html:ro # the demo's subpage: the same page under another path
       - caddy_data:/data
       - caddy_config:/config
     networks:

@@ -123,28 +123,12 @@ if [ "$ENV_MODE" != "test" ]; then
 fi
 print_status "Verified test mode"
 
-# Safety guard: ensure test-only license key is set
-LIC_KEY=$(run_in_container 'printenv FUSIONALY_LICENSE_KEY || echo ""' 2>/dev/null || echo "")
-if [ "$LIC_KEY" != "IM-DEMO-TEST-ONLY" ]; then
-  print_error "Unexpected license key inside container. Expected IM-DEMO-TEST-ONLY. Aborting."
-  exit 1
-fi
-print_status "Verified test license key"
-
 # Ensure a 'localhost' website exists for event ingestion
 print_info "Ensuring 'localhost' website exists..."
 if run_in_container "sqlite3 /app/storage/fusionaly-test.db \"INSERT OR IGNORE INTO websites (domain, created_at) VALUES ('localhost', datetime('now'));\"" >/dev/null 2>&1; then
   print_status "Website 'localhost' is present"
 else
   print_warn "Could not create 'localhost' website automatically. You can add it later in the dashboard."
-fi
-
-# Ensure test license key is persisted in DB settings
-print_info "Persisting test license key in settings..."
-if run_in_container "sqlite3 /app/storage/fusionaly-test.db \"INSERT INTO settings (key, value, created_at, updated_at) VALUES ('license_key','IM-DEMO-TEST-ONLY', datetime('now'), datetime('now')) ON CONFLICT(key) DO UPDATE SET value='IM-DEMO-TEST-ONLY', updated_at=datetime('now');\"" >/dev/null 2>&1; then
-  print_status "License key persisted to DB"
-else
-  print_warn "Could not persist license key into DB. Env key will still be used."
 fi
 
 # Ensure an admin user exists with known credentials
