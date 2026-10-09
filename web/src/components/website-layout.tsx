@@ -112,11 +112,12 @@ export function WebsiteLayout({
 
 							{/* Website domain with dropdown selector and settings icon */}
 							<div className="flex items-center gap-2 min-w-0">
-								{/* Website Selector Dropdown */}
-								<div className="relative" ref={dropdownRef}>
+								{/* Website Selector Dropdown. min-w-0 lets it shrink: without it the button kept its
+								    full width and a long domain ran under the links on the right. */}
+								<div className="relative min-w-0" ref={dropdownRef}>
 									<button
 										onClick={() => websites.length > 1 && setIsDropdownOpen(!isDropdownOpen)}
-										className={`flex items-center gap-2 h-8 px-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm font-medium text-gray-900 min-w-0 ${
+										className={`flex max-w-full items-center gap-2 h-8 px-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm font-medium text-gray-900 min-w-0 ${
 											websites.length > 1 ? "hover:border-gray-400 cursor-pointer" : ""
 										}`}
 									>
@@ -164,7 +165,7 @@ export function WebsiteLayout({
 
 								<Link
 									href={`/admin/websites/${websiteId}/edit`}
-									className="text-gray-500 hover:text-gray-900 transition-colors"
+									className="shrink-0 text-gray-500 hover:text-gray-900 transition-colors"
 									title="Website settings"
 								>
 									<Settings className="w-4 h-4" />
@@ -189,8 +190,9 @@ export function WebsiteLayout({
 							))}
 						</div>
 
-						{/* Right side: Search + Theme + Health warning + Settings + Logout */}
-						<div className="flex items-center space-x-2 sm:space-x-4 min-w-0 shrink">
+						{/* Right side: Search + Theme + Health warning + Settings + Logout. On a phone,
+						    Settings and Logout sit in the row below, so the domain has room. */}
+						<div className="flex items-center space-x-2 sm:space-x-4 shrink-0">
 							<CommandSearch websiteId={websiteId} websites={websites} />
 							<ThemeSwitcher />
 							{/* System health warning indicator */}
@@ -206,7 +208,7 @@ export function WebsiteLayout({
 							)}
 							<Link
 								href="/admin/administration/ingestion"
-								className="relative text-sm font-medium transition-colors hover:text-gray-600 py-4 text-gray-900 shrink-0"
+								className="relative hidden text-sm font-medium transition-colors hover:text-gray-600 py-4 text-gray-900 shrink-0 sm:block"
 							>
 								Settings
 								{/* Active indicator - accent underline */}
@@ -218,7 +220,7 @@ export function WebsiteLayout({
 								href="#"
 								id="logout"
 								onClick={handleLogout}
-								className="text-sm font-medium transition-colors hover:text-gray-600 text-gray-900 shrink-0"
+								className="hidden text-sm font-medium transition-colors hover:text-gray-600 text-gray-900 shrink-0 sm:block"
 							>
 								Logout
 							</a>
@@ -237,10 +239,23 @@ export function WebsiteLayout({
 									{route.name}
 								</span>
 								{isCurrentPath(route.path) && (
-									<span className="absolute bottom-0 left-0 right-0 h-0.5 bg-black" />
+									<span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[rgb(var(--c-accent))]" />
 								)}
 							</Link>
 						))}
+						<Link
+							href="/admin/administration/ingestion"
+							className="!ml-auto py-3 text-sm font-medium text-gray-900 whitespace-nowrap transition-colors hover:text-gray-600"
+						>
+							Settings
+						</Link>
+						<a
+							href="#"
+							onClick={handleLogout}
+							className="py-3 text-sm font-medium text-gray-900 whitespace-nowrap transition-colors hover:text-gray-600"
+						>
+							Logout
+						</a>
 					</div>
 				</div>
 			</nav>
