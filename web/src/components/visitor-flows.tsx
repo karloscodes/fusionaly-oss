@@ -206,10 +206,10 @@ export const VisitorFlows = ({ links }: { links: UserFlowLink[] }) => {
 					</div>
 				) : (
 					<>
-						<div className="overflow-x-auto">
+						<div className="overflow-x-auto -mx-4 px-4">
 							<svg
 								viewBox={`0 0 ${WIDTH} ${flow.height}`}
-								className="block w-full min-w-[720px] h-auto"
+								className="block w-full min-w-[720px] h-auto mx-auto"
 								role="img"
 								aria-label="Visitor flows from entry pages to exit pages"
 							>

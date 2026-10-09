@@ -98,38 +98,38 @@ export function WebsiteLayout({
 			{/* Navigation Banner */}
 			<nav className="border-b border-gray-200">
 				<div className="max-w-7xl mx-auto px-4">
-					<div className="flex h-14 items-center justify-between">
+					<div className="flex h-14 items-center justify-between gap-2">
 						{/* Left side: Back + Website name + Sub-nav */}
-						<div className="flex items-center space-x-4">
+						<div className="flex items-center space-x-4 min-w-0 flex-1">
 							{/* Wordmark: back to Home */}
 							<Link
 								href="/admin"
-								className="font-mono font-extrabold text-base tracking-tight text-gray-900"
+								className="font-mono font-extrabold text-base tracking-tight text-gray-900 shrink-0"
 								title="Home"
 							>
 								fusionaly<span className="text-[rgb(var(--c-accent))]">_</span>
 							</Link>
 
 							{/* Website domain with dropdown selector and settings icon */}
-							<div className="flex items-center gap-2">
+							<div className="flex items-center gap-2 min-w-0">
 								{/* Website Selector Dropdown */}
 								<div className="relative" ref={dropdownRef}>
 									<button
 										onClick={() => websites.length > 1 && setIsDropdownOpen(!isDropdownOpen)}
-										className={`flex items-center gap-2 h-8 px-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm font-medium text-gray-900 ${
+										className={`flex items-center gap-2 h-8 px-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm font-medium text-gray-900 min-w-0 ${
 											websites.length > 1 ? "hover:border-gray-400 cursor-pointer" : ""
 										}`}
 									>
-										<span className="w-2 h-2 rounded-full bg-emerald-500" aria-hidden="true" />
-										<span>{websiteDomain}</span>
+										<span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" aria-hidden="true" />
+										<span className="truncate">{websiteDomain}</span>
 										{websites.length > 1 && (
-											<ChevronDown className={`w-3.5 h-3.5 transition-transform ${isDropdownOpen ? "rotate-180" : ""}`} />
+											<ChevronDown className={`w-3.5 h-3.5 transition-transform shrink-0 ${isDropdownOpen ? "rotate-180" : ""}`} />
 										)}
 									</button>
 
 									{/* Dropdown Menu */}
 									{isDropdownOpen && websites.length > 1 && (
-										<div className="absolute top-full left-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1">
+										<div className="absolute top-full left-0 mt-2 w-56 max-w-[calc(100vw-2rem)] bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1">
 											<div className="px-3 py-2 text-xs font-medium text-gray-500 border-b border-gray-100">
 												Switch website
 											</div>
@@ -190,14 +190,14 @@ export function WebsiteLayout({
 						</div>
 
 						{/* Right side: Search + Theme + Health warning + Settings + Logout */}
-						<div className="flex items-center space-x-4">
+						<div className="flex items-center space-x-2 sm:space-x-4 min-w-0 shrink">
 							<CommandSearch websiteId={websiteId} websites={websites} />
 							<ThemeSwitcher />
 							{/* System health warning indicator */}
 							{health && !health.healthy && (
 								<Link
 									href="/admin/administration/system"
-									className="flex items-center gap-1 text-amber-600 hover:text-amber-700 transition-colors"
+									className="flex items-center gap-1 text-amber-600 hover:text-amber-700 transition-colors shrink-0"
 									title={health.warning}
 								>
 									<AlertTriangle className="h-5 w-5" />
@@ -206,7 +206,8 @@ export function WebsiteLayout({
 							)}
 							<Link
 								href="/admin/administration/ingestion"
-								className="relative text-sm font-medium transition-colors hover:text-gray-600 py-4 text-gray-900"
+								className="relative text-sm font-medium transition-colors hover:text-gray-600 py-4 text-gray-900 hidden sm:inline"
+								title="Settings"
 							>
 								Settings
 								{/* Active indicator - accent underline */}
@@ -218,7 +219,8 @@ export function WebsiteLayout({
 								href="#"
 								id="logout"
 								onClick={handleLogout}
-								className="text-sm font-medium transition-colors hover:text-gray-600 text-gray-900"
+								className="text-sm font-medium transition-colors hover:text-gray-600 text-gray-900 hidden sm:inline"
+								title="Logout"
 							>
 								Logout
 							</a>

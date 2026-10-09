@@ -49,24 +49,24 @@ export function AdminLayout({ children, currentPath, badge }: AdminLayoutProps) 
 			{/* Navigation Banner */}
 			<nav className="border-b border-gray-200">
 				<div className="max-w-7xl mx-auto px-4">
-					<div className="flex h-14 items-center justify-between">
-						<div className="flex items-center space-x-4">
+					<div className="flex h-14 items-center justify-between gap-2">
+						<div className="flex items-center space-x-4 min-w-0 flex-1">
 							<Link
 								href="/admin"
-								className="flex items-center gap-2 text-gray-900 hover:text-black transition-colors"
+								className="flex items-center gap-2 text-gray-900 hover:text-black transition-colors shrink-0"
 							>
 								<FusionalyLogo />
 								{badge}
 							</Link>
 						</div>
 
-						<div className="flex items-center space-x-4">
+						<div className="flex items-center space-x-2 sm:space-x-4 min-w-0 shrink">
 							<CommandSearch />
 							<ThemeSwitcher />
 							{health && !health.healthy && (
 								<Link
 									href="/admin/administration/system"
-									className="flex items-center gap-1 text-amber-600 hover:text-amber-700 transition-colors"
+									className="flex items-center gap-1 text-amber-600 hover:text-amber-700 transition-colors shrink-0"
 									title={health.warning}
 								>
 									<AlertTriangle className="h-5 w-5" />
@@ -75,7 +75,8 @@ export function AdminLayout({ children, currentPath, badge }: AdminLayoutProps) 
 							)}
 							<Link
 								href="/admin/administration/ingestion"
-								className="relative text-sm font-medium transition-colors hover:text-gray-600 py-4 text-gray-900"
+								className="relative text-sm font-medium transition-colors hover:text-gray-600 py-4 text-gray-900 hidden sm:inline"
+								title="Settings"
 							>
 								Settings
 								{isCurrentPath("/admin/administration") && (
@@ -86,7 +87,8 @@ export function AdminLayout({ children, currentPath, badge }: AdminLayoutProps) 
 								href="#"
 								id="logout"
 								onClick={handleLogout}
-								className="text-sm font-medium transition-colors hover:text-gray-600 text-gray-900"
+								className="text-sm font-medium transition-colors hover:text-gray-600 text-gray-900 hidden sm:inline"
+								title="Logout"
 							>
 								Logout
 							</a>
