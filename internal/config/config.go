@@ -39,6 +39,7 @@ type Config struct {
 	// Application settings
 	AppName                    string
 	AppPort                    string
+	Host                       string
 	Environment                string
 	LogLevel                   LogLevel
 	PrivateKey                 string
@@ -132,6 +133,7 @@ func load(getenv func(string) string) (*Config, error) {
 	c := &Config{
 		AppName:                     str("FUSIONALY_APP_NAME", "fusionaly"),
 		AppPort:                     str("FUSIONALY_APP_PORT", "3000"),
+		Host:                        str("FUSIONALY_HOST", ""),
 		Environment:                 str("FUSIONALY_ENV", Development),
 		LogLevel:                    LogLevel(str("FUSIONALY_LOG_LEVEL", "")),                                             // empty: cartridge picks one per environment
 		PrivateKey:                  str("FUSIONALY_PRIVATE_KEY", str("PRIVATE_KEY", "88888888888888888888888888888888")), // PRIVATE_KEY: the name Chasen gives it
@@ -208,6 +210,13 @@ func (c *Config) IsTest() bool {
 }
 
 // GetPort returns the HTTP server port (implements cartridge.Config interface).
+// GetHost returns the address to listen on. Empty lets cartridge choose:
+// every interface in production, loopback only in development and test. A
+// test-mode container behind a proxy, like the local demo, sets 0.0.0.0.
+func (c *Config) GetHost() string {
+	return c.Host
+}
+
 func (c *Config) GetPort() string {
 	return c.AppPort
 }

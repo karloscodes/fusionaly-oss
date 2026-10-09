@@ -54,6 +54,15 @@ func TestLoad(t *testing.T) {
 		assert.Equal(t, LogLevel(""), c.LogLevel)
 	})
 
+	t.Run("reads FUSIONALY_HOST, empty by default", func(t *testing.T) {
+		def, _ := load(env(nil))
+		c, err := load(env(map[string]string{"FUSIONALY_HOST": "0.0.0.0"}))
+
+		assert.NoError(t, err)
+		assert.Equal(t, "", def.GetHost())
+		assert.Equal(t, "0.0.0.0", c.GetHost())
+	})
+
 	t.Run("reads PRIVATE_KEY, the name Chasen gives the key", func(t *testing.T) {
 		c, err := load(env(map[string]string{"PRIVATE_KEY": strings.Repeat("c", 64)}))
 
