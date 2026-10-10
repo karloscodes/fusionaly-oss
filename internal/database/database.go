@@ -12,10 +12,10 @@ import (
 	"fusionaly/internal/events"
 	"fusionaly/internal/feed"
 	"fusionaly/internal/onboarding"
-	"github.com/karloscodes/cartridge/cache"
 	"fusionaly/internal/settings"
 	"fusionaly/internal/users"
 	"fusionaly/internal/websites"
+	"github.com/karloscodes/cartridge/cache"
 )
 
 // DBManager wraps cartridge's sqlite.Manager with fusionaly-specific migration methods.
@@ -34,7 +34,10 @@ func NewDBManager(cfg *config.Config, logger *slog.Logger) *DBManager {
 		EnableWAL:    true,
 		TxImmediate:  true,
 		BusyTimeout:  5000,
-		ReadPool:     true, // Enable SQLite read pool: one write connection + many read-only connections
+		// One write connection and a pool of read-only ones. Events then
+		// cannot fail with "database is locked" against each other, and a
+		// dashboard does not wait for the ingestion of events.
+		ReadPool: true,
 	}
 
 	return &DBManager{
