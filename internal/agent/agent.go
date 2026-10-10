@@ -12,6 +12,8 @@ import (
 
 	"github.com/mattn/go-sqlite3"
 	"gorm.io/gorm"
+
+	"github.com/karloscodes/cartridge/sqlite"
 )
 
 // SchemaResponse is the response format for the schema endpoint
@@ -240,10 +242,15 @@ func isWordByte(c byte) bool {
 }
 
 // Query validates and runs one read-only query with a timeout and a row cap.
-// It runs on a dedicated connection with PRAGMA query_only, so SQLite itself
-// rejects any write the validator misses. query_only is switched off again
-// before the connection returns to the pool; if that fails, the connection
-// is discarded instead.
+// It runs on a dedicated connection that SQLite itself keeps read-only, so
+// SQLite rejects any write the validator misses.
+//
+// With the read pool of the database, the connection comes from the pool of
+// read-only connections. It must not come from db.DB(): that is the one
+// write connection, and a slow query on it would stop the ingestion of
+// events. Without the read pool, the query sets PRAGMA query_only on a
+// connection of the one pool and switches it off again before the
+// connection returns; if that fails, the connection is discarded.
 func Query(ctx context.Context, db *gorm.DB, sqlQuery string, timeout time.Duration) (*SQLResponse, error) {
 	var tableNames []string
 	if err := db.Raw("SELECT name FROM sqlite_master WHERE type = 'table'").Scan(&tableNames).Error; err != nil {
@@ -256,9 +263,12 @@ func Query(ctx context.Context, db *gorm.DB, sqlQuery string, timeout time.Durat
 	queryCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	sqlDB, err := db.DB()
-	if err != nil {
-		return nil, err
+	sqlDB, readOnlyPool := sqlite.ReadPoolOf(db)
+	if !readOnlyPool {
+		var err error
+		if sqlDB, err = db.DB(); err != nil {
+			return nil, err
+		}
 	}
 	conn, err := sqlDB.Conn(queryCtx)
 	if err != nil {
@@ -266,9 +276,12 @@ func Query(ctx context.Context, db *gorm.DB, sqlQuery string, timeout time.Durat
 	}
 	previousLengthLimit := -1
 	defer func() {
-		// Background context: the reset must run even after a timeout.
-		if _, err := conn.ExecContext(context.Background(), "PRAGMA query_only = OFF"); err != nil {
-			_ = conn.Raw(func(any) error { return driver.ErrBadConn })
+		// Background context: the reset must run even after a timeout. A
+		// connection of the read pool stays read-only.
+		if !readOnlyPool {
+			if _, err := conn.ExecContext(context.Background(), "PRAGMA query_only = OFF"); err != nil {
+				_ = conn.Raw(func(any) error { return driver.ErrBadConn })
+			}
 		}
 		if previousLengthLimit >= 0 {
 			_ = setLengthLimit(conn, previousLengthLimit, nil)
@@ -276,8 +289,10 @@ func Query(ctx context.Context, db *gorm.DB, sqlQuery string, timeout time.Durat
 		_ = conn.Close()
 	}()
 
-	if _, err := conn.ExecContext(queryCtx, "PRAGMA query_only = ON"); err != nil {
-		return nil, fmt.Errorf("failed to enter read-only mode: %w", err)
+	if !readOnlyPool {
+		if _, err := conn.ExecContext(queryCtx, "PRAGMA query_only = ON"); err != nil {
+			return nil, fmt.Errorf("failed to enter read-only mode: %w", err)
+		}
 	}
 	// SQLite itself refuses to build a value over MaxResultBytes, so a query
 	// cannot exhaust memory with a value it never returns.
