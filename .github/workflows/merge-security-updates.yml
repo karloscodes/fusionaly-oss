@@ -1,0 +1,42 @@
+name: Merge security updates
+
+# A Dependabot security update merges by itself when the tests pass on its
+# pull request. The merge starts no release: the fix ships with the next
+# release candidate, as all other work on main does (release-candidate.yml).
+#
+# How it knows a security update: .github/dependabot.yml puts security updates
+# in a group named "security", and Dependabot puts the group name in the branch
+# name, for example dependabot/go_modules/security-1a2b3c4d5e.
+#
+# To adapt:
+#   - Merge every Dependabot update: delete the last line of `if`.
+#   - Merge nothing: delete this file.
+# This file is the same in Formlander, LogNorth, and Fusionaly. `workflows`
+# names the test workflow of each one.
+on:
+  workflow_run:
+    workflows: ["CI", "Test", "PR Checks"]
+    types: [completed]
+
+jobs:
+  merge:
+    # The tests passed, on a pull request, from a branch of this repository
+    # (not of a fork), that Dependabot made for the "security" group.
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      startsWith(github.event.workflow_run.head_branch, 'dependabot/') &&
+      contains(github.event.workflow_run.head_branch, '/security-')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      # --match-head-commit: merge only the commit that the tests ran on.
+      - run: gh pr merge "$BRANCH" --rebase --match-head-commit "$SHA"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+          SHA: ${{ github.event.workflow_run.head_sha }}

@@ -1,0 +1,75 @@
+name: Release candidate
+
+# Every Monday: when main holds changes after the last stable release, tag a
+# release candidate (v1.5.0-rc.1) and start the release. A candidate publishes
+# its own version only. It never moves `latest`, so no server takes it at night.
+#
+#   Run it on a server:  chasen deploy --tag 1.5.0-rc.1
+#   Promote it:          gh workflow run "Release candidate" -f promote=v1.5.0-rc.1
+#
+# To promote is to release the commit of the candidate as v1.5.0, the stable
+# version. This moves `latest`, so servers take it at night.
+#
+# To adapt:
+#   - Another day or time: change `cron` (minute hour * * weekday, in UTC).
+#   - A candidate now: gh workflow run "Release candidate"
+#   - No candidates: delete this file.
+# This file is the same in Formlander, LogNorth, and Fusionaly.
+on:
+  schedule:
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+    inputs:
+      promote:
+        description: "Candidate to promote to a stable release, for example v1.5.0-rc.1. Empty: tag a new candidate."
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  candidate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Promote the candidate to a stable release
+        if: inputs.promote
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CANDIDATE: ${{ inputs.promote }}
+        run: |
+          case "$CANDIDATE" in v*-rc.*) ;; *) echo "$CANDIDATE is not a candidate: give a tag such as v1.5.0-rc.1."; exit 1 ;; esac
+          stable="${CANDIDATE%-rc.*}"
+          echo "Releasing $stable: the commit of $CANDIDATE"
+          git tag "$stable" "$CANDIDATE^{commit}"
+          git push origin "$stable"
+          # A tag that a workflow pushes starts no other workflow: start the release here.
+          gh workflow run Release --ref "$stable"
+
+      - name: Tag the next release candidate when main has unreleased changes
+        if: ${{ !inputs.promote }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # The last stable release: the highest version tag with no hyphen.
+          last="$(git tag --list 'v[0-9]*' --sort=-v:refname | grep -v -- - | head -1)"
+          [ -n "$last" ] || { echo "No release tag yet."; exit 1; }
+
+          # Nothing to do when main is that release (docs and CI files do not count),
+          # or when this commit is a candidate already.
+          if git diff --quiet "$last" HEAD -- . ':!*.md' ':!.github'; then echo "main holds nothing new after $last."; exit 0; fi
+          if tag="$(git describe --exact-match --tags HEAD 2>/dev/null)"; then echo "This commit is $tag already."; exit 0; fi
+
+          # The candidate is for the next minor version: v1.4.2 -> v1.5.0-rc.1, then -rc.2.
+          IFS=. read -r major minor _ <<<"${last#v}"
+          version="v$major.$((minor + 1)).0"
+          next="$version-rc.$(($(git tag --list "$version-rc.*" | wc -l) + 1))"
+
+          echo "Releasing $next: $(git rev-list --count "$last..HEAD") commits after $last"
+          git tag "$next"
+          git push origin "$next"
+          # A tag that a workflow pushes starts no other workflow: start the release here.
+          gh workflow run Release --ref "$next"

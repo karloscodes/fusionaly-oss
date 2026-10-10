@@ -1,7 +1,8 @@
-# Monthly, grouped version updates, each a week old at least. Security
-# updates come as their own pull requests, as soon as an advisory is out.
-# A merged update that touches what ships starts a patch release:
-# .github/workflows/release-on-fix.yml.
+# Monthly, grouped version updates, each a week old at least. A person merges
+# them, and they ship with the next release candidate.
+# Security updates come as soon as an advisory is out, in the "security" group.
+# They merge by themselves when the tests pass, and ship with the next release
+# candidate too: .github/workflows/merge-security-updates.yml.
 version: 2
 updates:
   - package-ecosystem: "gomod"
@@ -14,6 +15,10 @@ updates:
     open-pull-requests-limit: 3
     groups:
       go:
+        patterns: ["*"]
+      # merge-security-updates.yml knows a security update by this group name.
+      security:
+        applies-to: security-updates
         patterns: ["*"]
     ignore:
       # First-party modules: bumped by hand when a new version is cut.
@@ -51,6 +56,10 @@ updates:
     groups:
       npm-web:
         patterns: ["*"]
+      # merge-security-updates.yml knows a security update by this group name.
+      security:
+        applies-to: security-updates
+        patterns: ["*"]
   - package-ecosystem: "npm"
     directory: "/e2e"
     schedule:
@@ -61,4 +70,8 @@ updates:
     open-pull-requests-limit: 3
     groups:
       npm-e2e:
+        patterns: ["*"]
+      # merge-security-updates.yml knows a security update by this group name.
+      security:
+        applies-to: security-updates
         patterns: ["*"]

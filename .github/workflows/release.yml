@@ -4,7 +4,7 @@ on:
   push:
     tags:
       - 'v*'
-  # Release on fix starts it for a tag it pushed: see release-on-fix.yml.
+  # Release candidate starts it for a tag it pushed: see release-candidate.yml.
   workflow_dispatch:
 
 permissions:
