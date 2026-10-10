@@ -175,6 +175,14 @@ docker_manifests:
       - "karloscodes/fusionaly:{{ .Version }}-amd64"
       - "karloscodes/fusionaly:{{ .Version }}-arm64"
 
+  # `rc` is the newest release candidate (a tag with a hyphen). A stable release
+  # does not move it. Your own server follows it; customer servers follow `latest`.
+  - name_template: "karloscodes/fusionaly:rc"
+    skip_push: "{{ if .Prerelease }}false{{ else }}true{{ end }}"
+    image_templates:
+      - "karloscodes/fusionaly:{{ .Version }}-amd64"
+      - "karloscodes/fusionaly:{{ .Version }}-arm64"
+
   # GitHub Container Registry manifests
   - name_template: "ghcr.io/karloscodes/fusionaly:{{ .Version }}"
     image_templates:
@@ -195,6 +203,14 @@ docker_manifests:
 
   - name_template: "ghcr.io/karloscodes/fusionaly:latest"
     skip_push: "auto"
+    image_templates:
+      - "ghcr.io/karloscodes/fusionaly:{{ .Version }}-amd64"
+      - "ghcr.io/karloscodes/fusionaly:{{ .Version }}-arm64"
+
+  # `rc` is the newest release candidate (a tag with a hyphen). A stable release
+  # does not move it. Your own server follows it; customer servers follow `latest`.
+  - name_template: "ghcr.io/karloscodes/fusionaly:rc"
+    skip_push: "{{ if .Prerelease }}false{{ else }}true{{ end }}"
     image_templates:
       - "ghcr.io/karloscodes/fusionaly:{{ .Version }}-amd64"
       - "ghcr.io/karloscodes/fusionaly:{{ .Version }}-arm64"
