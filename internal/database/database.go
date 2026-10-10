@@ -34,6 +34,7 @@ func NewDBManager(cfg *config.Config, logger *slog.Logger) *DBManager {
 		EnableWAL:    true,
 		TxImmediate:  true,
 		BusyTimeout:  5000,
+		ReadPool:     true, // Enable SQLite read pool: one write connection + many read-only connections
 	}
 
 	return &DBManager{
