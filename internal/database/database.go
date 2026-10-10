@@ -89,6 +89,10 @@ func (dm *DBManager) MigrateDatabase() error {
 		return err
 	}
 
+	// Read connections that were open during the migration would plan
+	// their next query with the old schema once.
+	dm.SchemaChanged()
+
 	// One-time cleanup of legacy low-volume traffic_drop feed items left over from
 	// before the drop detector was retuned (see feed.CleanupLegacyDrops). Safe to
 	// run on every boot; it only ever deletes drops the current rule won't produce.
