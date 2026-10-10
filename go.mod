@@ -6,7 +6,7 @@ toolchain go1.26.5
 
 require (
 	github.com/dlclark/regexp2/v2 v2.8.3
-	github.com/karloscodes/cartridge v1.6.2
+	github.com/karloscodes/cartridge v1.9.0-rc.1
 	github.com/karloscodes/matcha v0.12.18
 	github.com/mattn/go-sqlite3 v1.14.32
 	github.com/oschwald/geoip2-golang v1.13.0
@@ -14,7 +14,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/crypto v0.52.0
 	golang.org/x/term v0.43.0
-	golang.org/x/text v0.40.0
+	golang.org/x/text v0.41.0
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/driver/sqlite v1.6.0
 	gorm.io/gorm v1.31.0
