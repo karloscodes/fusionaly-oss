@@ -6,7 +6,7 @@ toolchain go1.26.5
 
 require (
 	github.com/dlclark/regexp2/v2 v2.8.3
-	github.com/karloscodes/cartridge v1.9.0-rc.4
+	github.com/karloscodes/cartridge v1.9.0
 	github.com/karloscodes/matcha v0.12.18
 	github.com/mattn/go-sqlite3 v1.14.32
 	github.com/oschwald/geoip2-golang v1.13.0
