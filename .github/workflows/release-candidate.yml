@@ -55,13 +55,16 @@ jobs:
           CANDIDATE: ${{ inputs.promote }}
         run: |
           # On Monday nobody names a candidate: take the newest one after the last
-          # stable release, when it is old enough.
+          # stable release, when it adds something and is old enough.
           if [ -z "$CANDIDATE" ]; then
             last="$(git tag --list 'v[0-9]*' --sort=-v:refname | grep -v -- - | head -1)"
             [ -n "$last" ] || { echo "No release tag yet."; exit 1; }
             IFS=. read -r major minor _ <<<"${last#v}"
             CANDIDATE="$(git tag --list "v$major.$((minor + 1)).0-rc.*" --sort=-v:refname | head -1)"
             [ -n "$CANDIDATE" ] || { echo "No candidate after $last."; exit 0; }
+            # A candidate that adds nothing for users stays a candidate (docs, CI, and
+            # release settings do not count). `a...b` is what b adds after a.
+            if git diff --quiet "$last...$CANDIDATE" -- . ':!*.md' ':!.github' ':!.goreleaser.yml'; then echo "$CANDIDATE adds nothing after $last."; exit 0; fi
             made="$(git for-each-ref --format='%(creatordate:unix)' "refs/tags/$CANDIDATE")"
             days=$((($(date +%s) - made) / 86400))
             [ "$days" -ge "$MIN_DAYS" ] || { echo "$CANDIDATE is $days days old: it waits until it is $MIN_DAYS."; exit 0; }
