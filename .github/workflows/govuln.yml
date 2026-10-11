@@ -17,8 +17,8 @@ jobs:
     name: Scan for reachable vulnerabilities
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           # go.mod pins an explicit `toolchain` line (not just `go 1.26`) so
           # stdlib CVEs already patched upstream don't show as reachable —
