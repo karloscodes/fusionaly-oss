@@ -10,7 +10,7 @@
 <p align="center">
   <a href="https://github.com/karloscodes/fusionaly-oss/releases/latest"><img src="https://img.shields.io/github/v/release/karloscodes/fusionaly-oss?color=00D1FF" alt="Latest release"></a>
   <a href="https://hub.docker.com/r/karloscodes/fusionaly"><img src="https://img.shields.io/docker/pulls/karloscodes/fusionaly?color=00D1FF" alt="Docker pulls"></a>
-  <a href="https://github.com/karloscodes/fusionaly-oss/actions"><img src="https://github.com/karloscodes/fusionaly-oss/actions/workflows/pr.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/karloscodes/fusionaly-oss/actions"><img src="https://github.com/karloscodes/fusionaly-oss/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/github/license/karloscodes/fusionaly-oss?color=00D678" alt="License: MIT"></a>
   <a href="https://github.com/karloscodes/fusionaly-oss/stargazers"><img src="https://img.shields.io/github/stars/karloscodes/fusionaly-oss?style=flat&color=00D678" alt="GitHub stars"></a>
   <br>

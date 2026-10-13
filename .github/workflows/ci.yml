@@ -1,4 +1,4 @@
-name: PR Checks
+name: CI
 
 on:
   pull_request:
@@ -118,3 +118,25 @@ jobs:
           docker ps -a
           docker logs fusionaly-app-1 2>&1 | tail -100 || true
           docker logs fusionaly-caddy 2>&1 | tail -50 || true
+
+
+  gitleaks:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Scan the history for secrets
+        run: |
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.28.0/gitleaks_8.28.0_linux_x64.tar.gz | tar -xz gitleaks
+          ./gitleaks git --redact --verbose .
+  # The one check to require on main: it passes when every job above passed
+  # (or was skipped on a fork).
+  test:
+    name: test
+    if: always()
+    needs: [gitleaks, test, test-manager, test-install]
+    runs-on: ubuntu-latest
+    steps:
+      - run: '! grep -qE "failure|cancelled" <<<"${{ join(needs.*.result, ' ') }}"'

@@ -1,42 +1,47 @@
 name: Merge security updates
 
-# A Dependabot security update merges by itself when the tests pass on its
-# pull request. The merge starts no release: the fix ships with the next
-# release candidate, as all other work on main does (release-candidate.yml).
+# Dependabot pull requests merge by themselves when CI passes on them:
+#   - security updates (the "security" group in .github/dependabot.yml), and
+#   - patch updates: every "from X.Y.Z to X.Y.W" in the pull request body keeps
+#     its major and minor version.
+# Minor and major updates wait for a person. A merge starts no release: the
+# change ships with the next release candidate (release-candidate.yml).
 #
-# How it knows a security update: .github/dependabot.yml puts security updates
-# in a group named "security", and Dependabot puts the group name in the branch
-# name, for example dependabot/go_modules/security-1a2b3c4d5e.
-#
-# To adapt:
-#   - Merge every Dependabot update: delete the last line of `if`.
-#   - Merge nothing: delete this file.
-# This file is the same in Formlander, LogNorth, and Fusionaly. `workflows`
-# names the test workflow of each one.
+# This file is the same in Formlander, LogNorth, and Fusionaly. Each one names
+# its test workflow "CI".
 on:
   workflow_run:
-    workflows: ["CI", "Test", "PR Checks"]
+    workflows: ["CI"]
     types: [completed]
 
 jobs:
   merge:
-    # The tests passed, on a pull request, from a branch of this repository
-    # (not of a fork), that Dependabot made for the "security" group.
+    # CI passed, on a pull request, from a branch of this repository (not of a
+    # fork), that Dependabot made.
     if: >-
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event == 'pull_request' &&
       github.event.workflow_run.head_repository.full_name == github.repository &&
-      startsWith(github.event.workflow_run.head_branch, 'dependabot/') &&
-      contains(github.event.workflow_run.head_branch, '/security-')
+      startsWith(github.event.workflow_run.head_branch, 'dependabot/')
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
     steps:
-      # --match-head-commit: merge only the commit that the tests ran on.
-      - run: gh pr merge "$BRANCH" --rebase --match-head-commit "$SHA"
+      - name: Merge a security or patch update
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           BRANCH: ${{ github.event.workflow_run.head_branch }}
           SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          if [[ "$BRANCH" != */security-* ]]; then
+            body="$(gh pr view "$BRANCH" --json author,body --jq 'select(.author.login == "app/dependabot") | .body')"
+            pairs="$(grep -oE 'from `?v?[0-9]+\.[0-9]+\.[0-9]+[^ `]*`? to `?v?[0-9]+\.[0-9]+\.[0-9]+' <<<"$body" | tr -d '`v' | sort -u || true)"
+            if [ -z "$pairs" ]; then echo "No versions found: not a patch update."; exit 0; fi
+            while read -r _ from _ to; do
+              if [ "${from%.*}" != "${to%.*}" ]; then echo "$from -> $to is not a patch: a person merges it."; exit 0; fi
+            done <<<"$pairs"
+          fi
+          # --match-head-commit: merge only the commit that CI ran on.
+          gh pr merge "$BRANCH" --rebase --match-head-commit "$SHA"
