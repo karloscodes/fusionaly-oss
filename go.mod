@@ -1,8 +1,6 @@
 module fusionaly
 
-go 1.26
-
-toolchain go1.26.9
+go 1.26.9
 
 require (
 	github.com/dlclark/regexp2/v2 v2.8.3
