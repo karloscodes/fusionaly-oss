@@ -8,7 +8,7 @@ echo ""
 if [ "$USE_ACT" = "1" ] && command -v act &> /dev/null; then
   echo "🎬 Running GitHub Actions PR checks locally with act..."
   # Only run PR checks workflow, not deploy workflow
-  act pull_request -j test -W .github/workflows/pr.yml --container-architecture linux/amd64
+  act pull_request -j test -W .github/workflows/ci.yml --container-architecture linux/amd64
 else
   if [ "$USE_ACT" = "1" ]; then
     echo -e "${YELLOW}⚠️  USE_ACT=1 but 'act' is not installed. Install with: brew install act${NC}"
