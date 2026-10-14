@@ -2,10 +2,14 @@ name: Merge security updates
 
 # Dependabot pull requests merge by themselves when CI passes on them:
 #   - security updates (the "security" group in .github/dependabot.yml), and
-#   - patch updates: every "from X.Y.Z to X.Y.W" in the pull request body keeps
-#     its major and minor version.
+#   - patch updates: every updated dependency is a semver patch.
 # Minor and major updates wait for a person. A merge starts no release and no
 # deploy: the change ships the next time a person releases or deploys.
+#
+# It fails closed: anything it can't read or check waits for a person. It reads
+# the update metadata that Dependabot writes into its signed commit, the same
+# data dependabot/fetch-metadata reads (that action needs a pull_request
+# event, so it can't run on workflow_run).
 #
 # This file is the same in every product, self-hosted or SaaS. Each one names
 # its test workflow "CI".
@@ -34,15 +38,46 @@ jobs:
           GH_REPO: ${{ github.repository }}
           BRANCH: ${{ github.event.workflow_run.head_branch }}
           SHA: ${{ github.event.workflow_run.head_sha }}
+          PULL_REQUESTS: ${{ toJSON(github.event.workflow_run.pull_requests) }}
         run: |
-          body="$(gh pr view "$BRANCH" --json author,body --jq 'select(.author.login == "app/dependabot") | .body')"
-          if [ -z "$body" ]; then echo "Not a pull request by Dependabot."; exit 0; fi
-          if [[ "$BRANCH" != */security-* ]]; then
-            pairs="$(grep -oE 'from `?v?[0-9]+\.[0-9]+\.[0-9]+[^ `]*`? to `?v?[0-9]+\.[0-9]+\.[0-9]+' <<<"$body" | tr -d '`v' | sort -u || true)"
-            if [ -z "$pairs" ]; then echo "No versions found: not a patch update."; exit 0; fi
-            while read -r _ from _ to; do
-              if [ "${from%.*}" != "${to%.*}" ]; then echo "$from -> $to is not a patch: a person merges it."; exit 0; fi
-            done <<<"$pairs"
+          set -euo pipefail
+          hold() { echo "$1: a person merges it."; exit 0; }
+
+          # The pull request is Dependabot's, and CI ran on its head commit.
+          # Take the PR number from the CI run itself, not a branch lookup.
+          PR="$(jq -r 'if length == 1 then .[0].number else empty end' <<<"$PULL_REQUESTS")" || hold "Can't read the pull request"
+          [ -n "$PR" ] || hold "CI did not run for exactly one pull request"
+          pr="$(gh pr view "$PR" --json author,headRefName,headRefOid --jq 'select(.author.login == "app/dependabot") | "\(.headRefName) \(.headRefOid)"')" || hold "No pull request"
+          [ -n "$pr" ] || hold "Not a pull request by Dependabot"
+          [ "$pr" = "$BRANCH $SHA" ] || hold "The branch moved after CI ran"
+
+          # Every commit in the pull request is Dependabot's own: authored by
+          # dependabot[bot], committed by GitHub (web-flow) and signed by
+          # GitHub. A person pushing to the branch makes it wait.
+          commits="$(gh api "repos/$GH_REPO/pulls/$PR/commits?per_page=100")" || hold "Can't read the commits"
+          total="$(jq 'length' <<<"$commits")"
+          [ "$total" -ge 1 ] && [ "$total" -lt 100 ] || hold "Unexpected number of commits"
+          [ "$(jq -r '.[-1].sha' <<<"$commits")" = "$SHA" ] || hold "The head commit is not the one CI ran on"
+          good="$(jq '[.[] | select(
+              .author.login == "dependabot[bot]" and
+              .committer.login == "web-flow" and
+              .commit.committer.email == "noreply@github.com" and
+              .commit.verification.verified == true and
+              .commit.verification.reason == "valid")] | length' <<<"$commits")"
+          [ "$good" = "$total" ] || hold "Not every commit is Dependabot's own, signed by GitHub"
+          commit="$(gh api "repos/$GH_REPO/commits/$SHA")"
+          meta="$(jq -r '.commit.message' <<<"$commit" | sed -n '/^updated-dependencies:$/,/^\.\.\.$/p')"
+          count="$(grep -c '^- dependency-name:' <<<"$meta" || true)"
+          [ "$count" -gt 0 ] || hold "No update metadata in the commit"
+
+          # A security update: a grouped "security" branch, and every
+          # dependency in the security group.
+          if [[ "$BRANCH" =~ ^dependabot/[a-z_]+/([a-z0-9._-]+/)*security-[0-9a-f]{10}$ ]]; then
+            [ "$(grep -c '^  dependency-group: security$' <<<"$meta" || true)" = "$count" ] || hold "Security branch, but not every dependency is in the security group"
+            echo "Security update of $count dependencies."
+          else
+            [ "$(grep -c '^  update-type: version-update:semver-patch$' <<<"$meta" || true)" = "$count" ] || hold "Not every update is a patch"
+            echo "Patch update of $count dependencies."
           fi
           # --match-head-commit: merge only the commit that CI ran on.
-          gh pr merge "$BRANCH" --rebase --match-head-commit "$SHA"
+          gh pr merge "$PR" --rebase --match-head-commit "$SHA"
