@@ -14,6 +14,10 @@ updates:
       default-days: 7
     open-pull-requests-limit: 3
     groups:
+      # Patch updates in their own group, so one minor bump does not hold them.
+      go-patch:
+        update-types: ["patch"]
+        patterns: ["*"]
       go:
         patterns: ["*"]
       # merge-security-updates.yml knows a security update by this group name.
@@ -32,6 +36,10 @@ updates:
       default-days: 7
     open-pull-requests-limit: 3
     groups:
+      # Patch updates in their own group, so one minor bump does not hold them.
+      docker-patch:
+        update-types: ["patch"]
+        patterns: ["*"]
       docker:
         patterns: ["*"]
   - package-ecosystem: "github-actions"
@@ -43,6 +51,10 @@ updates:
       default-days: 7
     open-pull-requests-limit: 3
     groups:
+      # Patch updates in their own group, so one minor bump does not hold them.
+      actions-patch:
+        update-types: ["patch"]
+        patterns: ["*"]
       actions:
         patterns: ["*"]
   - package-ecosystem: "npm"
@@ -54,6 +66,10 @@ updates:
       default-days: 7
     open-pull-requests-limit: 3
     groups:
+      # Patch updates in their own group, so one minor bump does not hold them.
+      npm-web-patch:
+        update-types: ["patch"]
+        patterns: ["*"]
       npm-web:
         patterns: ["*"]
       # merge-security-updates.yml knows a security update by this group name.
@@ -69,6 +85,10 @@ updates:
       default-days: 7
     open-pull-requests-limit: 3
     groups:
+      # Patch updates in their own group, so one minor bump does not hold them.
+      npm-e2e-patch:
+        update-types: ["patch"]
+        patterns: ["*"]
       npm-e2e:
         patterns: ["*"]
       # merge-security-updates.yml knows a security update by this group name.
