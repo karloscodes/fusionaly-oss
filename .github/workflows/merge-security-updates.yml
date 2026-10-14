@@ -85,9 +85,14 @@ jobs:
           # Behind main where main requires an up-to-date branch: ask Dependabot
           # to rebase (its rebased commits stay signed). CI runs again on the
           # new head and this workflow merges it then.
-          if [ "$state" = "BEHIND" ]; then
-            gh pr comment "$PR" --body "@dependabot rebase" || true
+          rebase() {
+            gh pr comment "$PR" --body "@dependabot rebase" || hold "Behind main, and can't ask Dependabot to rebase"
             hold "Behind main, asked Dependabot to rebase"
+          }
+          if [ "$state" = "BEHIND" ]; then rebase; fi
+          # --match-head-commit: merge only the commit that CI ran on. If main
+          # moved while this ran, rebase instead of failing.
+          if ! gh pr merge "$PR" --rebase --match-head-commit "$SHA"; then
+            if [ "$(gh pr view "$PR" --json mergeStateStatus --jq .mergeStateStatus)" = "BEHIND" ]; then rebase; fi
+            exit 1
           fi
-          # --match-head-commit: merge only the commit that CI ran on.
-          gh pr merge "$PR" --rebase --match-head-commit "$SHA"
