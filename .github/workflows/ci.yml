@@ -30,7 +30,7 @@ jobs:
           go mod download
           go mod tidy
           make install-tools
-          go install honnef.co/go/tools/cmd/staticcheck@latest
+          go install honnef.co/go/tools/cmd/staticcheck@v0.8.2
 
       - name: Install web dependencies
         run: |
