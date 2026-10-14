@@ -6,7 +6,7 @@ require (
 	github.com/dlclark/regexp2/v2 v2.8.3
 	github.com/karloscodes/cartridge v1.9.0
 	github.com/karloscodes/matcha v0.12.18
-	github.com/mattn/go-sqlite3 v1.14.32
+	github.com/mattn/go-sqlite3 v1.14.52
 	github.com/oschwald/geoip2-golang v1.13.0
 	github.com/pariz/gountries v0.1.6
 	github.com/stretchr/testify v1.11.1
@@ -15,7 +15,7 @@ require (
 	golang.org/x/text v0.41.0
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/driver/sqlite v1.6.0
-	gorm.io/gorm v1.31.0
+	gorm.io/gorm v1.31.2
 )
 
 require (
