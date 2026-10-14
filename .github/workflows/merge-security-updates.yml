@@ -6,10 +6,11 @@ name: Merge security updates
 # Minor and major updates wait for a person. A merge starts no release and no
 # deploy: the change ships the next time a person releases or deploys.
 #
-# It fails closed: anything it can't read or check waits for a person. It reads
-# the update metadata that Dependabot writes into its signed commit, the same
-# data dependabot/fetch-metadata reads (that action needs a pull_request
-# event, so it can't run on workflow_run).
+# A pull request that is behind main gets "@dependabot rebase" and waits for CI
+# to pass again. It fails closed: anything it can't read or check waits for a
+# person. It reads the update metadata that Dependabot writes into its signed
+# commit, the same data dependabot/fetch-metadata reads (that action needs a
+# pull_request event, so it can't run on workflow_run).
 #
 # This file is the same in every product, self-hosted or SaaS. Each one names
 # its test workflow "CI".
@@ -47,9 +48,11 @@ jobs:
           # Take the PR number from the CI run itself, not a branch lookup.
           PR="$(jq -r 'if length == 1 then .[0].number else empty end' <<<"$PULL_REQUESTS")" || hold "Can't read the pull request"
           [ -n "$PR" ] || hold "CI did not run for exactly one pull request"
-          pr="$(gh pr view "$PR" --json author,headRefName,headRefOid --jq 'select(.author.login == "app/dependabot") | "\(.headRefName) \(.headRefOid)"')" || hold "No pull request"
+          # gh shows Dependabot as "app/dependabot"; the REST API as "dependabot[bot]".
+          pr="$(gh pr view "$PR" --json author,headRefName,headRefOid,mergeStateStatus --jq 'select(.author.login == "app/dependabot") | "\(.headRefName) \(.headRefOid) \(.mergeStateStatus)"')" || hold "No pull request"
           [ -n "$pr" ] || hold "Not a pull request by Dependabot"
-          [ "$pr" = "$BRANCH $SHA" ] || hold "The branch moved after CI ran"
+          read -r head_ref head_sha state <<<"$pr"
+          [ "$head_ref $head_sha" = "$BRANCH $SHA" ] || hold "The branch moved after CI ran"
 
           # Every commit in the pull request is Dependabot's own: authored by
           # dependabot[bot], committed by GitHub (web-flow) and signed by
@@ -78,6 +81,13 @@ jobs:
           else
             [ "$(grep -c '^  update-type: version-update:semver-patch$' <<<"$meta" || true)" = "$count" ] || hold "Not every update is a patch"
             echo "Patch update of $count dependencies."
+          fi
+          # Behind main where main requires an up-to-date branch: ask Dependabot
+          # to rebase (its rebased commits stay signed). CI runs again on the
+          # new head and this workflow merges it then.
+          if [ "$state" = "BEHIND" ]; then
+            gh pr comment "$PR" --body "@dependabot rebase" || true
+            hold "Behind main, asked Dependabot to rebase"
           fi
           # --match-head-commit: merge only the commit that CI ran on.
           gh pr merge "$PR" --rebase --match-head-commit "$SHA"
