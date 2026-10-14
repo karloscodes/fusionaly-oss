@@ -128,8 +128,8 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
-      # The app embeds the built web files. gosec only needs them to exist.
-      - run: mkdir -p web/dist/assets web/dist/.vite && touch web/dist/assets/stub.txt && echo '{}' > web/dist/.vite/manifest.json
+      # The app embeds built files (web/dist, the minified SDK). gosec only needs them to exist.
+      - run: mkdir -p web/dist/assets web/dist/.vite && touch web/dist/assets/stub.txt api/v1/sdk.min.js && echo '{}' > web/dist/.vite/manifest.json
       - run: go run github.com/securego/gosec/v2/cmd/gosec@v2.29.0 -exclude-dir=e2e -severity high -confidence high ./...
 
   govulncheck:
