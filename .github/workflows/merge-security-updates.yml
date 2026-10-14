@@ -38,19 +38,34 @@ jobs:
           GH_REPO: ${{ github.repository }}
           BRANCH: ${{ github.event.workflow_run.head_branch }}
           SHA: ${{ github.event.workflow_run.head_sha }}
+          PULL_REQUESTS: ${{ toJSON(github.event.workflow_run.pull_requests) }}
         run: |
           set -euo pipefail
           hold() { echo "$1: a person merges it."; exit 0; }
 
           # The pull request is Dependabot's, and CI ran on its head commit.
-          pr="$(gh pr view "$BRANCH" --json author,headRefOid --jq 'select(.author.login == "app/dependabot") | .headRefOid')" || hold "No pull request"
+          # Take the PR number from the CI run itself, not a branch lookup.
+          PR="$(jq -r 'if length == 1 then .[0].number else empty end' <<<"$PULL_REQUESTS")" || hold "Can't read the pull request"
+          [ -n "$PR" ] || hold "CI did not run for exactly one pull request"
+          pr="$(gh pr view "$PR" --json author,headRefName,headRefOid --jq 'select(.author.login == "app/dependabot") | "\(.headRefName) \(.headRefOid)"')" || hold "No pull request"
           [ -n "$pr" ] || hold "Not a pull request by Dependabot"
-          [ "$pr" = "$SHA" ] || hold "The branch moved after CI ran"
+          [ "$pr" = "$BRANCH $SHA" ] || hold "The branch moved after CI ran"
 
-          # The commit is Dependabot's own, signed by GitHub.
+          # Every commit in the pull request is Dependabot's own: authored by
+          # dependabot[bot], committed by GitHub (web-flow) and signed by
+          # GitHub. A person pushing to the branch makes it wait.
+          commits="$(gh api "repos/$GH_REPO/pulls/$PR/commits?per_page=100")" || hold "Can't read the commits"
+          total="$(jq 'length' <<<"$commits")"
+          [ "$total" -ge 1 ] && [ "$total" -lt 100 ] || hold "Unexpected number of commits"
+          [ "$(jq -r '.[-1].sha' <<<"$commits")" = "$SHA" ] || hold "The head commit is not the one CI ran on"
+          good="$(jq '[.[] | select(
+              .author.login == "dependabot[bot]" and
+              .committer.login == "web-flow" and
+              .commit.committer.email == "noreply@github.com" and
+              .commit.verification.verified == true and
+              .commit.verification.reason == "valid")] | length' <<<"$commits")"
+          [ "$good" = "$total" ] || hold "Not every commit is Dependabot's own, signed by GitHub"
           commit="$(gh api "repos/$GH_REPO/commits/$SHA")"
-          [ "$(jq -r '.author.login' <<<"$commit")" = "dependabot[bot]" ] || hold "The commit is not by Dependabot"
-          [ "$(jq -r '.commit.verification.verified' <<<"$commit")" = "true" ] || hold "The commit is not verified"
           meta="$(jq -r '.commit.message' <<<"$commit" | sed -n '/^updated-dependencies:$/,/^\.\.\.$/p')"
           count="$(grep -c '^- dependency-name:' <<<"$meta" || true)"
           [ "$count" -gt 0 ] || hold "No update metadata in the commit"
@@ -65,4 +80,4 @@ jobs:
             echo "Patch update of $count dependencies."
           fi
           # --match-head-commit: merge only the commit that CI ran on.
-          gh pr merge "$BRANCH" --rebase --match-head-commit "$SHA"
+          gh pr merge "$PR" --rebase --match-head-commit "$SHA"
