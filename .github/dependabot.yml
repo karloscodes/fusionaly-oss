@@ -42,6 +42,10 @@ updates:
         patterns: ["*"]
       docker:
         patterns: ["*"]
+      # merge-security-updates.yml knows a security update by this group name.
+      security:
+        applies-to: security-updates
+        patterns: ["*"]
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
@@ -56,6 +60,10 @@ updates:
         update-types: ["patch"]
         patterns: ["*"]
       actions:
+        patterns: ["*"]
+      # merge-security-updates.yml knows a security update by this group name.
+      security:
+        applies-to: security-updates
         patterns: ["*"]
   - package-ecosystem: "npm"
     directory: "/web"
