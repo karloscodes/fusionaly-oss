@@ -33,7 +33,7 @@ jobs:
     name: Deploy with Chasen
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - name: Deploy the image of this commit, as a new user does
@@ -43,7 +43,7 @@ jobs:
     name: Install line
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - name: Install on a fresh server, as a new user does
@@ -53,7 +53,7 @@ jobs:
     name: Move to Chasen
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - name: Move a server of the older installer to Chasen
