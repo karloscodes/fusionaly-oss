@@ -1,8 +1,8 @@
-# Monthly, grouped version updates, each a week old at least. A person merges
-# them, and they ship with the next release candidate.
+# Monthly, grouped version updates, each a week old at least.
 # Security updates come as soon as an advisory is out, in the "security" group.
-# They merge by themselves when the tests pass, and ship with the next release
-# candidate too: .github/workflows/merge-security-updates.yml.
+# Security and patch updates merge by themselves when CI passes; minor and major
+# updates wait for a person: .github/workflows/merge-security-updates.yml.
+# A merge releases nothing: updates ship with the next release candidate.
 version: 2
 updates:
   - package-ecosystem: "gomod"
