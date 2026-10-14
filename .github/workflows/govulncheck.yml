@@ -17,8 +17,8 @@ jobs:
     name: Scan for reachable vulnerabilities
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           # go.mod is the one source of the Go version: its `go` line pins the
           # patch release (e.g. 1.26.9), so stdlib CVEs already fixed upstream

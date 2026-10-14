@@ -18,7 +18,7 @@ UA_DATABASE_DIR := internal/pkg/user_agent/database
 # Version from git tag or dev
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 
-.PHONY: default install deps install-tools dev watch-web watch-go dev-server dev-web db-seed db-migrate db-drop test test-e2e test-installer test-installer-clean perftest perf-run loadtest loadtest-quick loadtest-heavy build build-manager build-manager-linux clean dist lint update-ua-database download-test-fixtures test-ua-parser test-ua-fixtures check release minify-sdk
+.PHONY: default install deps install-tools dev watch-web watch-go dev-server dev-web db-seed db-migrate db-drop test test-e2e test-installer test-installer-clean perftest perf-run loadtest loadtest-quick loadtest-heavy build build-manager build-manager-linux clean dist lint update-ua-database download-test-fixtures test-ua-parser test-ua-fixtures check minify-sdk
 
 # Default target
 default: dev
@@ -26,22 +26,6 @@ default: dev
 # Run all CI checks locally
 check:
 	@./scripts/check.sh
-
-# Create a new release (triggers GoReleaser via GitHub Actions)
-# Usage: make release v=1.0.0
-release:
-	@if [ -z "$(v)" ]; then \
-		echo "Usage: make release v=1.0.0"; \
-		exit 1; \
-	fi
-	@echo "Creating release v$(v)..."
-	@git diff --quiet || (echo "Error: Uncommitted changes. Commit first." && exit 1)
-	git tag -a "v$(v)" -m "Release v$(v)"
-	git push origin "v$(v)"
-	@echo ""
-	@echo "Release v$(v) triggered!"
-	@echo "GoReleaser will build: binaries + Docker images + GitHub release"
-	@echo "Watch: https://github.com/$$(gh repo view --json nameWithOwner -q .nameWithOwner)/actions"
 
 # Test release locally (without publishing)
 release-dry-run:
@@ -61,7 +45,7 @@ install-tools:
 	brew install watchexec golangci-lint act || true  # Ignore if already installed
 	@if [ -z "$(GOTESTSUM)" ]; then \
 		echo "Installing gotestsum..."; \
-		$(GO) install gotest.tools/gotestsum@latest; \
+		$(GO) install gotest.tools/gotestsum@v1.13.0; \
 	else \
 		echo "gotestsum already installed at $(GOTESTSUM)"; \
 	fi
@@ -342,4 +326,4 @@ test-ua-fixtures:
 # Scan for known reachable vulnerabilities (CVEs)
 .PHONY: vuln
 vuln:
-	$(GO) run golang.org/x/vuln/cmd/govulncheck@latest ./...
+	$(GO) run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...

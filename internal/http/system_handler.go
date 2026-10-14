@@ -167,9 +167,10 @@ func AdministrationSystemPageAction(ctx *cartridge.Context) error {
 		}
 
 		// Check if log file exists
+		// #nosec G703 -- logPath is the operator's FUSIONALY_LOG_FILE, not request input.
 		if _, err := os.Stat(logPath); !os.IsNotExist(err) {
 			// Read the log file
-			content, err := os.ReadFile(logPath)
+			content, err := os.ReadFile(logPath) // #nosec G703 -- operator-set path, see above.
 			if err == nil {
 				// Limit log size to last 100KB to prevent overwhelming the browser
 				maxSize := 100 * 1024 // 100KB
