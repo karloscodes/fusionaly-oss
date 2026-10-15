@@ -2,7 +2,7 @@
   "name": "fusionaly",
   "displayName": "Fusionaly",
   "version": "2.4.2",
-  "description": "Ask your self-hosted Fusionaly analytics from Cursor. Read-only MCP: traffic, referrers, and what changed.",
+  "description": "Ask your self-hosted Fusionaly analytics from your coding agent. Read-only MCP: traffic, referrers, and what changed.",
   "author": {
     "name": "Carlos Castellanos",
     "url": "https://fusionaly.com"
