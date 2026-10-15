@@ -1,13 +1,16 @@
 {
   "name": "fusionaly",
+  "displayName": "Fusionaly",
   "version": "2.4.2",
-  "description": "Ask your analytics from Cursor. Bundles the Fusionaly MCP server with the analytics skill.",
+  "description": "Ask your self-hosted Fusionaly analytics from Cursor. Read-only MCP: traffic, referrers, and what changed.",
   "author": {
     "name": "Carlos Castellanos",
     "url": "https://fusionaly.com"
   },
-  "homepage": "https://fusionaly.com/docs/agent-api/",
+  "homepage": "https://fusionaly.com/agents/",
   "repository": "https://github.com/karloscodes/fusionaly-oss",
   "license": "MIT",
+  "logo": "assets/logo.png",
+  "keywords": ["analytics", "web-analytics", "privacy", "self-hosted", "mcp"],
   "skills": "./skills/"
 }

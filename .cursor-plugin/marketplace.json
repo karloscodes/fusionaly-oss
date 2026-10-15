@@ -12,7 +12,7 @@
     {
       "name": "fusionaly",
       "source": "./plugin",
-      "description": "Ask your analytics from inside your AI client. MCP server plus the analytics skill.",
+      "description": "Ask your self-hosted Fusionaly analytics from Cursor. Read-only MCP: traffic, referrers, and what changed.",
       "version": "2.4.2",
       "category": "analytics",
       "keywords": ["analytics", "web-analytics", "privacy", "self-hosted", "mcp"]
