@@ -11,6 +11,31 @@
   "repository": "https://github.com/karloscodes/fusionaly-oss",
   "license": "MIT",
   "logo": "assets/logo.png",
+  "category": "analytics",
   "keywords": ["analytics", "web-analytics", "privacy", "self-hosted", "mcp"],
-  "skills": "./skills/"
+  "skills": "./skills/",
+  "variables": {
+    "type": "object",
+    "properties": {
+      "FUSIONALY_URL": {
+        "type": "string",
+        "title": "Fusionaly URL",
+        "description": "Your Fusionaly address, for example https://data.yoursite.com. No trailing slash."
+      },
+      "FUSIONALY_AGENT_KEY": {
+        "type": "string",
+        "title": "Agent key",
+        "description": "Read-only key from Administration > Agents in Fusionaly."
+      }
+    },
+    "required": ["FUSIONALY_URL", "FUSIONALY_AGENT_KEY"]
+  },
+  "mcpServers": {
+    "fusionaly": {
+      "url": "${FUSIONALY_URL}/mcp",
+      "headers": {
+        "Authorization": "Bearer ${FUSIONALY_AGENT_KEY}"
+      }
+    }
+  }
 }
