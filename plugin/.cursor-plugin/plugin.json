@@ -1,13 +1,41 @@
 {
   "name": "fusionaly",
-  "version": "2.4.2",
-  "description": "Ask your analytics from Cursor. Bundles the Fusionaly MCP server with the analytics skill.",
+  "displayName": "Fusionaly",
+  "version": "2.4.3",
+  "description": "Ask your self-hosted Fusionaly analytics from your coding agent. Read-only MCP: traffic, referrers, and what changed.",
   "author": {
     "name": "Carlos Castellanos",
     "url": "https://fusionaly.com"
   },
-  "homepage": "https://fusionaly.com/docs/agent-api/",
+  "homepage": "https://fusionaly.com/agents/",
   "repository": "https://github.com/karloscodes/fusionaly-oss",
   "license": "MIT",
-  "skills": "./skills/"
+  "logo": "assets/logo.png",
+  "category": "analytics",
+  "keywords": ["analytics", "web-analytics", "privacy", "self-hosted", "mcp"],
+  "skills": "./skills/",
+  "variables": {
+    "type": "object",
+    "properties": {
+      "FUSIONALY_URL": {
+        "type": "string",
+        "title": "Fusionaly URL",
+        "description": "Your Fusionaly address, for example https://data.yoursite.com. No trailing slash."
+      },
+      "FUSIONALY_AGENT_KEY": {
+        "type": "string",
+        "title": "Agent key",
+        "description": "Read-only key from Administration > Agents in Fusionaly."
+      }
+    },
+    "required": ["FUSIONALY_URL", "FUSIONALY_AGENT_KEY"]
+  },
+  "mcpServers": {
+    "fusionaly": {
+      "url": "${FUSIONALY_URL}/mcp",
+      "headers": {
+        "Authorization": "Bearer ${FUSIONALY_AGENT_KEY}"
+      }
+    }
+  }
 }
