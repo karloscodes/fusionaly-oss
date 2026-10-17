@@ -10,6 +10,14 @@ name: Release candidate
 #   latest   the newest stable release   customer servers
 #   rc       the newest candidate        your own server
 #
+# The fast lane: a security update skips the train. When
+# merge-security-updates.yml merges one, this cuts a patch release (v1.5.0 ->
+# v1.5.1): the last stable release plus the security updates on main, nothing
+# else. Release tests it like any release before it moves `latest`. When an
+# update does not apply cleanly on the stable release, the run fails and emails
+# you: promote the candidate, or cut the patch by hand. The candidate and `rc`
+# stay as they are: your own server gets the update with the next candidate.
+#
 # By hand:
 #   A candidate now:       gh workflow run "Release candidate"
 #   Promote one now:       gh workflow run "Release candidate" -f promote=v1.5.0-rc.2
@@ -29,6 +37,16 @@ on:
     inputs:
       promote:
         description: "Candidate to promote now, for example v1.5.0-rc.2. Empty: make a candidate from main."
+  # The fast lane. A merge by GITHUB_TOKEN starts no push workflow, so it
+  # listens for the workflow that merged.
+  workflow_run:
+    workflows: ["Merge security updates"]
+    types: [completed]
+
+# One train at a time: the fast lane and Monday never tag at once.
+concurrency:
+  group: release-train
+  cancel-in-progress: false
 
 env:
   MIN_DAYS: 6
@@ -39,6 +57,8 @@ permissions:
 
 jobs:
   train:
+    # A merge workflow that skipped or failed merged nothing.
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
@@ -78,8 +98,41 @@ jobs:
           # A tag that a workflow pushes starts no other workflow: start the release here.
           gh workflow run Release --ref "$stable"
 
+      - name: Release the security updates on main now
+        if: github.event_name == 'workflow_run'
+        run: |
+          set -euo pipefail
+          last="$(git tag --list 'v[0-9]*' --sort=-v:refname | grep -v -- - | head -1)"
+          [ -n "$last" ] || { echo "No release tag yet."; exit 0; }
+
+          # Dependabot's security commits on main that $last lacks. The merge keeps
+          # Dependabot's metadata in the message. --cherry-pick drops a commit that
+          # $last already holds by content, so each update ships once.
+          fixes="$(git log --reverse --format=%H --right-only --cherry-pick --no-merges \
+            --author='^dependabot\[bot\]' --grep='^  dependency-group: security$' "$last...HEAD")"
+          [ -n "$fixes" ] || { echo "No security update after $last."; exit 0; }
+
+          IFS=. read -r major minor patch <<<"${last#v}"
+          next="v$major.$minor.$((patch + 1))"
+          echo "Releasing $next: $last and $(wc -l <<<"$fixes") security updates"
+
+          git checkout -q --detach "$last"
+          for commit in $fixes; do
+            echo "  $(git log -1 --format=%s "$commit")"
+            if ! git cherry-pick -x "$commit"; then
+              git cherry-pick --abort
+              echo "::error::$(git log -1 --format=%s "$commit") does not apply on $last. Promote the candidate, or cut the patch by hand."
+              exit 1
+            fi
+          done
+
+          git tag -a "$next" -m "Security release $next: $last and the security updates on main"
+          git push origin "$next"
+          # A tag that a workflow pushes starts no other workflow: start the release here.
+          gh workflow run Release --ref "$next"
+
       - name: Make main the next candidate
-        if: ${{ !inputs.promote }}
+        if: github.event_name != 'workflow_run' && !inputs.promote
         run: |
           # The last stable release: the highest version tag with no hyphen.
           last="$(git tag --list 'v[0-9]*' --sort=-v:refname | grep -v -- - | head -1)"
