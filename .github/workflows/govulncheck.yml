@@ -1,11 +1,10 @@
 name: govulncheck
 
+# Vulnerabilities that the code of this repository actually calls, from the Go
+# team's database. Weekly, for newly disclosed CVEs; pull requests and main are
+# scanned by the govulncheck job of ci.yml. A red run emails you.
 on:
-  pull_request:
-  push:
-    branches: [main, master]
   schedule:
-    # Weekly catch for newly-disclosed stdlib/toolchain CVEs. A red run emails you.
     - cron: "0 6 * * 1"
   workflow_dispatch:
 
@@ -20,12 +19,6 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:
-          # go.mod is the one source of the Go version: its `go` line pins the
-          # patch release (e.g. 1.26.9), so stdlib CVEs already fixed upstream
-          # don't show as reachable. Bump that line when new CVEs land.
           go-version-file: go.mod
-          cache: true
-      # golang.org/x/vuln is maintained by the Go team and verified via the Go
-      # checksum DB; the vulnerability database is fetched fresh on every run.
       - name: Run govulncheck
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
