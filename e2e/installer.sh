@@ -54,7 +54,7 @@ docker build -q -t "$image" . >/dev/null
 docker push -q "$image" >/dev/null
 
 echo "--- the installer, on a fresh machine"
-out="$(install 2>&1)" || { echo "$out"; fail "install.sh failed"; }
+out="$(install 2>&1)" || { echo "$out"; fail "install.sh failed: $(tail -n 15 <<<"$out")"; }
 echo "$out" | tail -8
 
 [[ "$(web -o /dev/null -w '%{http_code}' http://127.0.0.1/up)" == 200 ]] || fail "/up does not answer 200"
