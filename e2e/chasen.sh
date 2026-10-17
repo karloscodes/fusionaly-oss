@@ -8,7 +8,7 @@
 # It needs Docker, sudo, and the ports 80 and 443, and it changes the
 # machine: run it on a CI runner or in a throwaway VM, not on your computer.
 #   e2e/chasen.sh
-set -euo pipefail
+set -Eeuo pipefail
 cd "$(dirname "$0")/.."
 
 registry=localhost:5000 # a registry with no login, like Docker Hub for a public image
@@ -18,7 +18,12 @@ email=owner@example.com
 password=correct-horse-battery
 
 pass() { echo "ok   - $*"; }
-fail() { echo "FAIL - $*" >&2; exit 1; }
+# A red run says why on GitHub: an ::error:: line shows on the run and on the
+# pull request. fail() names the check; the ERR trap names any other command
+# that stops the script under set -e.
+report() { local m="$*"; m="${m//\%/%25}"; m="${m//$'\r'/%0D}"; echo "::error title=$(basename "$0")::${m//$'\n'/%0A}"; }
+fail() { echo "FAIL - $*" >&2; report "$*"; exit 1; }
+trap 'report "line $LINENO failed: $BASH_COMMAND"' ERR
 web() { curl -s -H "Host: $host" "$@"; } # through the proxy of Chasen
 app() { chasen -a fusionaly "$@"; }      # the app is named after the image
 # Where a form sends the browser: the home page when it works, a form again when not.
