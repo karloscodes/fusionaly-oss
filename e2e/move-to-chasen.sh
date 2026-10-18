@@ -21,9 +21,20 @@ pass() { echo "ok   - $*"; }
 # A red run says why on GitHub: an ::error:: line shows on the run and on the
 # pull request. fail() names the check; the ERR trap names any other command
 # that stops the script under set -e.
-report() { local m="$*"; m="${m//\%/%25}"; m="${m//$'\r'/%0D}"; echo "::error title=$(basename "$0")::${m//$'\n'/%0A}"; }
+# fd 3 is the job log even inside $(...), so an error line from a captured
+# command still reaches GitHub instead of the variable.
+exec 3>&1
+report() { local m="$*"; m="${m//\%/%25}"; m="${m//$'\r'/%0D}"; echo "::error title=$(basename "$0")::${m//$'\n'/%0A}" >&3; }
 fail() { echo "FAIL - $*" >&2; report "$*"; exit 1; }
-trap 'report "line $LINENO failed: $BASH_COMMAND"' ERR
+trap 'report "line $LINENO failed: $BASH_COMMAND${FUNCNAME:+ (in ${FUNCNAME[0]}, called from line ${BASH_LINENO[0]})}"' ERR
+# A command that fails puts its own output in the error line: the last 15
+# lines say what Chasen answered.
+must() {
+  local out code=0
+  out="$("$@" 2>&1)" || code=$?
+  [[ -z "$out" ]] || printf '%s\n' "$out"
+  [[ $code -eq 0 ]] || fail "$* exited $code: $(tail -n 15 <<<"$out")"
+}
 web() { curl -s -H "Host: $host" "$@"; }
 post() { web -o /dev/null -w '%{http_code} %{redirect_url}' -H "Origin: http://$host" "$@"; }
 login() { post -d "email=$email" --data-urlencode "password=$1" http://127.0.0.1/login; }
@@ -58,15 +69,15 @@ echo "--- the move, as the docs say"
 sudo fusionaly update >/tmp/old-update.log 2>&1 || { cat /tmp/old-update.log; fail "fusionaly update failed"; }
 curl -fsSL https://chasenhq.com/server | sudo sh >/dev/null
 sudo chasen-server setup >/dev/null
-sudo chasen-server adopt fusionaly
+must sudo chasen-server adopt fusionaly
 sudo rm /etc/cron.d/fusionaly-update /usr/local/bin/fusionaly
-sudo FUSIONALY_IMAGE="$image" bash install.sh
+must sudo FUSIONALY_IMAGE="$image" bash install.sh
 
 [[ "$(web -o /dev/null -w '%{http_code}' http://127.0.0.1/up)" == 200 ]] || fail "/up does not answer after the move"
 pass "/up answers after the move"
 [[ "$(login "$password")" == 302" http://127.0.0.1/admin" ]] || fail "the account does not log in after the move"
 pass "the account stays"
-status="$(sudo chasen-server status fusionaly)" # not in a pipe: grep -q stops early, and pipefail fails the status
+status="$(must sudo chasen-server status fusionaly)" # not in a pipe: grep -q stops early, and pipefail fails the status
 [[ -n "$old_key" && "$(key)" == "$old_key" ]] || fail "the session key changed: every login ends"
 pass "the session key stays, so the logins stay"
 grep -q "Updates:  each night" <<<"$status" || fail "the nightly updates of Chasen are off"
@@ -76,7 +87,7 @@ grep -qE "^URL: +.*$host" <<<"$status" || fail "the domain changed: $status"
 pass "the domain stays"
 
 echo "--- the install line on the moved server: an update"
-again="$(sudo FUSIONALY_IMAGE="$image" bash install.sh 2>&1)" || { echo "$again"; fail "the install line failed on the moved server"; }
+again="$(sudo FUSIONALY_IMAGE="$image" bash install.sh 2>&1)" || { echo "$again"; fail "the install line failed on the moved server: $(tail -n 15 <<<"$again")"; }
 grep -q "Fusionaly is up to date" <<<"$again" || fail "the install line did not update the moved server: $again"
 [[ "$(login "$password")" == 302" http://127.0.0.1/admin" ]] || fail "the login fails after the update"
 pass "the install line updates the moved server"

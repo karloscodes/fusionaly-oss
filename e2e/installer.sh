@@ -22,9 +22,20 @@ pass() { echo "ok   - $*"; }
 # A red run says why on GitHub: an ::error:: line shows on the run and on the
 # pull request. fail() names the check; the ERR trap names any other command
 # that stops the script under set -e.
-report() { local m="$*"; m="${m//\%/%25}"; m="${m//$'\r'/%0D}"; echo "::error title=$(basename "$0")::${m//$'\n'/%0A}"; }
+# fd 3 is the job log even inside $(...), so an error line from a captured
+# command still reaches GitHub instead of the variable.
+exec 3>&1
+report() { local m="$*"; m="${m//\%/%25}"; m="${m//$'\r'/%0D}"; echo "::error title=$(basename "$0")::${m//$'\n'/%0A}" >&3; }
 fail() { echo "FAIL - $*" >&2; report "$*"; exit 1; }
-trap 'report "line $LINENO failed: $BASH_COMMAND"' ERR
+trap 'report "line $LINENO failed: $BASH_COMMAND${FUNCNAME:+ (in ${FUNCNAME[0]}, called from line ${BASH_LINENO[0]})}"' ERR
+# A command that fails puts its own output in the error line: the last 15
+# lines say what Chasen answered.
+must() {
+  local out code=0
+  out="$("$@" 2>&1)" || code=$?
+  [[ -z "$out" ]] || printf '%s\n' "$out"
+  [[ $code -eq 0 ]] || fail "$* exited $code: $(tail -n 15 <<<"$out")"
+}
 web() { curl -s -H "Host: $host" "$@"; } # through the proxy of Chasen
 post() { web -o /dev/null -w '%{http_code} %{redirect_url}' -H "Origin: http://$host" "$@"; }
 login() { post -d "email=$email" --data-urlencode "password=$1" http://127.0.0.1/login; }
@@ -43,12 +54,12 @@ docker build -q -t "$image" . >/dev/null
 docker push -q "$image" >/dev/null
 
 echo "--- the installer, on a fresh machine"
-out="$(install 2>&1)" || { echo "$out"; fail "install.sh failed"; }
+out="$(install 2>&1)" || { echo "$out"; fail "install.sh failed: $(tail -n 15 <<<"$out")"; }
 echo "$out" | tail -8
 
 [[ "$(web -o /dev/null -w '%{http_code}' http://127.0.0.1/up)" == 200 ]] || fail "/up does not answer 200"
 pass "/up answers 200"
-status="$(sudo chasen-server status fusionaly)" # not in a pipe: grep -q stops early, and pipefail fails the status
+status="$(must sudo chasen-server status fusionaly)" # not in a pipe: grep -q stops early, and pipefail fails the status
 grep -q "Updates:  each night" <<<"$status" || fail "the nightly updates are off"
 pass "Fusionaly updates itself each night"
 
