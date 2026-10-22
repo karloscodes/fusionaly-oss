@@ -201,6 +201,11 @@ func processEventBatch(tx *gorm.DB, logger *slog.Logger, batch []IngestedEvent, 
 			if err := storePageHide(tx, &tempEvent, visit); err != nil {
 				return nil, nil, err
 			}
+			if !visit.isNewSession {
+				if err := addVisitTime(tx, tempEvent.WebsiteID, tempEvent.UserSignature, visit, 0); err != nil {
+					return nil, nil, err
+				}
+			}
 			continue
 		}
 
@@ -221,6 +226,9 @@ func processEventBatch(tx *gorm.DB, logger *slog.Logger, batch []IngestedEvent, 
 
 		if err := tx.Create(event).Error; err != nil {
 			return nil, nil, fmt.Errorf("failed to create event: %w", err)
+		}
+		if err := addVisitTime(tx, tempEvent.WebsiteID, tempEvent.UserSignature, visit, event.ID); err != nil {
+			return nil, nil, err
 		}
 
 		// Pass the already parsed UA struct
@@ -418,6 +426,7 @@ func prepareEventProcessingData(db *gorm.DB, tempEvent *IngestedEvent, eventID u
 //     visit and is counted once
 type visit struct {
 	at           time.Time  // the event's time, after the late-arrival rule
+	previous     time.Time  // the visitor's latest event before this one; zero for a new visitor
 	isNewVisitor bool       // the visitor's first event
 	isNewSession bool       // the visit's first event
 	sessionStart *time.Time // nil when the visit began before visits were recorded
@@ -443,18 +452,19 @@ func visitStatus(db *gorm.DB, websiteID uint, userSignature string, timestamp ti
 		return visit{}, fmt.Errorf("failed to query previous event: %w", err)
 	}
 
-	if latest.Timestamp.After(at) {
-		at = latest.Timestamp.UTC()
+	previous := latest.Timestamp.UTC()
+	if previous.After(at) {
+		at = previous
 	}
-	if at.Sub(latest.Timestamp) > sessionTimeout {
+	if at.Sub(previous) > sessionTimeout {
 		start := at
-		return visit{at: at, isNewSession: true, sessionStart: &start}, nil
+		return visit{at: at, previous: previous, isNewSession: true, sessionStart: &start}, nil
 	}
 	if latest.SessionStart == nil {
-		return visit{at: at}, nil // the visit began before visits were recorded
+		return visit{at: at, previous: previous}, nil // the visit began before visits were recorded
 	}
 	sessionStart := latest.SessionStart.UTC()
-	return visit{at: at, sessionStart: &sessionStart}, nil
+	return visit{at: at, previous: previous, sessionStart: &sessionStart}, nil
 }
 
 // The checks below run after the event is stored, so they skip it by ID.

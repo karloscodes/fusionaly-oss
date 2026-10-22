@@ -29,44 +29,6 @@ func setupTimeFrame(t *testing.T) *timeframe.TimeFrame {
 	return timeFrame
 }
 
-// Testanalytics.GetVisitDurationInTimeFrame tests the average session duration calculation
-func TestGetVisitDurationInTimeFrame(t *testing.T) {
-	// Create a test DBManager
-	dbManager, _ := testsupport.SetupTestDBManager(t)
-	db := dbManager.GetConnection()
-	// Create test website
-	testsupport.CreateTestWebsite(db, "example.com")
-	websiteID, err := websites.GetWebsiteOrNotFound(db, "example.com")
-	require.NoError(t, err)
-
-	// Create events for two sessions
-	// Session 1: 20 minutes
-	testsupport.CreateEvent(t, dbManager, websiteID, "visitor1", "/page1", time.Date(2024, 7, 1, 10, 0, 0, 0, time.UTC))
-	testsupport.CreateEvent(t, dbManager, websiteID, "visitor1", "/page2", time.Date(2024, 7, 1, 10, 10, 0, 0, time.UTC))
-	testsupport.CreateEvent(t, dbManager, websiteID, "visitor1", "/page3", time.Date(2024, 7, 1, 10, 20, 0, 0, time.UTC))
-
-	// Session 2: 20 minutes
-	testsupport.CreateEvent(t, dbManager, websiteID, "visitor2", "/page1", time.Date(2024, 7, 1, 11, 0, 0, 0, time.UTC))
-	testsupport.CreateEvent(t, dbManager, websiteID, "visitor2", "/page2", time.Date(2024, 7, 1, 11, 10, 0, 0, time.UTC))
-	testsupport.CreateEvent(t, dbManager, websiteID, "visitor2", "/page3", time.Date(2024, 7, 1, 11, 20, 0, 0, time.UTC))
-
-	// Set up time frame
-	timeFrame := setupTimeFrame(t)
-	queryParams := analytics.NewWebsiteScopedQueryParams(timeFrame, int(websiteID))
-
-	// Set limit to ensure we get all results in tests
-	queryParams.Limit = 10
-
-	// Get the visit duration
-	duration, err := analytics.GetVisitDurationInTimeFrame(db, queryParams)
-	require.NoError(t, err)
-
-	// Two sessions of 20 minutes each = average of 1200 seconds
-	expectedDuration := float64(1200)
-	assert.InDelta(t, expectedDuration, duration, 1.0,
-		"Expected average duration of %.2f seconds, got %.2f", expectedDuration, duration)
-}
-
 // TestMetricsFromAggregationTables tests metrics that use aggregation tables
 func TestMetricsFromAggregationTables(t *testing.T) {
 	dbManager, _ := testsupport.SetupTestDBManager(t)

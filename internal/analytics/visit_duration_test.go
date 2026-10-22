@@ -10,8 +10,27 @@ import (
 
 	"fusionaly/internal/analytics"
 	"fusionaly/internal/events"
+	"fusionaly/internal/testsupport"
 	"fusionaly/internal/timeframe"
 )
+
+// processedDB sends the events through the event processor, as live
+// traffic goes, so the summary tables hold their visits.
+func processedDB(t *testing.T, evts ...events.Event) *gorm.DB {
+	t.Helper()
+	dbManager, logger := testsupport.SetupTestDBManager(t)
+	db := dbManager.GetConnection()
+	testsupport.CleanAllTables(db)
+	for _, e := range evts {
+		require.NoError(t, db.Create(&events.IngestedEvent{
+			WebsiteID: e.WebsiteID, UserSignature: e.UserSignature, Hostname: e.Hostname, Pathname: e.Pathname,
+			ReferrerHostname: events.DirectOrUnknownReferrer, EventType: e.EventType, CustomEventName: e.CustomEventName,
+			Timestamp: e.Timestamp, UserAgent: "Mozilla/5.0", CreatedAt: e.Timestamp,
+		}).Error)
+	}
+	require.NoError(t, testsupport.ProcessAllTestEvents(dbManager, logger))
+	return db
+}
 
 func averageVisitDuration(t *testing.T, db *gorm.DB, from, to time.Time) float64 {
 	t.Helper()
@@ -25,7 +44,7 @@ func TestVisitDuration(t *testing.T) {
 	endOfDay := at("24h").Add(-time.Nanosecond)
 
 	t.Run("a two-page visit lasts from its first to its last page view", func(t *testing.T) {
-		db := setupFlowDB(t,
+		db := processedDB(t,
 			pageView("u1", "/", at("10h00m")),
 			pageView("u1", "/pricing", at("10h02m")),
 		)
@@ -34,7 +53,7 @@ func TestVisitDuration(t *testing.T) {
 	})
 
 	t.Run("a single-page visit lasts 0 seconds and counts in the average", func(t *testing.T) {
-		db := setupFlowDB(t,
+		db := processedDB(t,
 			pageView("u1", "/", at("10h00m")),
 			pageView("u1", "/pricing", at("10h02m")),
 			pageView("u2", "/", at("11h00m")),
@@ -44,7 +63,7 @@ func TestVisitDuration(t *testing.T) {
 	})
 
 	t.Run("a visit longer than the session timeout keeps its full length", func(t *testing.T) {
-		db := setupFlowDB(t,
+		db := processedDB(t,
 			pageView("u1", "/a", at("10h00m")),
 			pageView("u1", "/b", at("10h20m")),
 			pageView("u1", "/c", at("10h40m")),
@@ -54,7 +73,7 @@ func TestVisitDuration(t *testing.T) {
 	})
 
 	t.Run("a custom event keeps the visit going", func(t *testing.T) {
-		db := setupFlowDB(t,
+		db := processedDB(t,
 			pageView("u1", "/", at("10h00m")),
 			customEvent("u1", at("10h20m")),
 			pageView("u1", "/pricing", at("10h40m")),
@@ -64,7 +83,7 @@ func TestVisitDuration(t *testing.T) {
 	})
 
 	t.Run("a visit counts in the range of its first page view", func(t *testing.T) {
-		db := setupFlowDB(t,
+		db := processedDB(t,
 			pageView("u1", "/", at("09h55m")),
 			pageView("u1", "/pricing", at("10h05m")),
 		)
@@ -74,7 +93,7 @@ func TestVisitDuration(t *testing.T) {
 	})
 
 	t.Run("a single-page visit lasts until the page is hidden", func(t *testing.T) {
-		db := setupFlowDB(t,
+		db := processedDB(t,
 			pageView("u1", "/", at("10h00m")),
 			pageHide("u1", at("10h03m")),
 		)
@@ -83,7 +102,7 @@ func TestVisitDuration(t *testing.T) {
 	})
 
 	t.Run("a page hide without a page view is no visit", func(t *testing.T) {
-		db := setupFlowDB(t,
+		db := processedDB(t,
 			pageView("u1", "/", at("10h00m")),
 			pageHide("u1", at("10h03m")),
 			pageHide("u2", at("11h00m")),

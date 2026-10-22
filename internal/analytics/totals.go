@@ -10,30 +10,19 @@ import (
 	"fusionaly/internal/events"
 )
 
-// visitDurationQuery averages the length of the visits that start in the
-// range: from a visit's first to its last event, of any type. A visit counts
-// at its first page view, like sessions. A page hide (the SDK sends one when
-// the visitor leaves or hides a page) extends the visit to that time; a visit
-// with a single page view and no other event lasts 0 seconds.
-const visitDurationQuery = `
-WITH ` + events.VisitsCTE + `,
-durations AS (
-	SELECT
-		MIN(CASE WHEN event_type = @page_view THEN timestamp END) AS first_page_view,
-		(JULIANDAY(MAX(timestamp)) - JULIANDAY(MIN(timestamp))) * 86400 AS seconds
-	FROM visits
-	GROUP BY website_id, user_signature, visit
-)
-SELECT COALESCE(AVG(seconds), 0)
-FROM durations
-WHERE first_page_view >= @from AND first_page_view <= @to
-`
-
-// GetVisitDurationInTimeFrame returns the average visit duration in seconds.
+// GetVisitDurationInTimeFrame returns the average visit duration in seconds,
+// over the visits that start in the range. A visit lasts from its first to
+// its last event, of any type; a single page view with no other event lasts
+// 0 seconds. The event processor sums it in site_stats (see
+// events.addVisitTime).
 func GetVisitDurationInTimeFrame(db *gorm.DB, params WebsiteScopedQueryParams) (float64, error) {
 	var seconds float64
-	query := events.VisitsParams(uint(params.WebsiteID), params.TimeFrame.From, params.TimeFrame.To)
-	if err := db.Raw(visitDurationQuery, query).Scan(&seconds).Error; err != nil {
+	err := db.Raw(`
+		SELECT COALESCE(SUM(visit_seconds) / NULLIF(SUM(sessions), 0), 0)
+		FROM site_stats
+		WHERE website_id = ? AND hour BETWEEN ? AND ?
+	`, params.WebsiteID, params.TimeFrame.From.UTC(), params.TimeFrame.To.UTC()).Scan(&seconds).Error
+	if err != nil {
 		return 0, fmt.Errorf("error calculating visit duration: %w", err)
 	}
 	return seconds, nil

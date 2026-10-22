@@ -62,13 +62,16 @@ func aggregatedSessionsInTimeFrameRaw(db *gorm.DB, params WebsiteScopedQueryPara
 
 // SiteStat represents aggregated site-wide statistics including sessions
 type SiteStat struct {
-	ID          uint      `gorm:"primaryKey;autoIncrement"`
-	WebsiteID   uint      `gorm:"uniqueIndex:idx_site_hour;not null"`
-	PageViews   int       `gorm:"not null;default:0"`
-	Visitors    int       `gorm:"not null;default:0"`
-	Sessions    int       `gorm:"not null;default:0"`
-	BounceCount int       `gorm:"not null;default:0"`
-	Hour        time.Time `gorm:"uniqueIndex:idx_site_hour;type:datetime;not null"`
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID          uint `gorm:"primaryKey;autoIncrement"`
+	WebsiteID   uint `gorm:"uniqueIndex:idx_site_hour;not null"`
+	PageViews   int  `gorm:"not null;default:0"`
+	Visitors    int  `gorm:"not null;default:0"`
+	Sessions    int  `gorm:"not null;default:0"`
+	BounceCount int  `gorm:"not null;default:0"`
+	// VisitSeconds sums the length of the visits that start in this bucket:
+	// from a visit's first to its last event, of any type.
+	VisitSeconds float64   `gorm:"not null;default:0"`
+	Hour         time.Time `gorm:"uniqueIndex:idx_site_hour;type:datetime;not null"`
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
