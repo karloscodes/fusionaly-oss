@@ -45,7 +45,11 @@ jobs:
       - name: Install Playwright browsers
         run: |
           cd e2e
-          npm install
+          npm ci
+          version=$(node -p "require('playwright/package.json').version")
+          echo "Playwright $version"
+          # npm ci follows the lockfile. Install the browsers this package asks for.
+          rm -rf "${PLAYWRIGHT_BROWSERS_PATH:-$HOME/.cache/ms-playwright}"
           npx playwright install --with-deps chromium
 
       - name: Run tests
