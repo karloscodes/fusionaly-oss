@@ -5,7 +5,16 @@ on:
     tags:
       - 'v*'
   # Release candidate starts it for a tag it pushed: see release-candidate.yml.
+  # A tag whose own workflow is older than this file is published from main:
+  #   gh workflow run Release --ref main -f tag=v2.11.0
+  # The jobs below check that tag out. GoReleaser is pinned to it, because two
+  # tags on one commit otherwise sort to the prerelease.
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release, for example v2.11.0. Empty: the tag this run was started on."
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -18,6 +27,28 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+
+      - name: The checkout is the release tag
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          tag="$RELEASE_TAG"
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]]; then
+            echo "Release runs on vX.Y.Z or vX.Y.Z-rc.N, got: ${tag}"
+            exit 1
+          fi
+          head="$(git rev-parse HEAD)"
+          tagged="$(git rev-parse "${tag}^{}")"
+          echo "tag ${tag} is ${tagged}; HEAD is ${head}"
+          [ "$head" = "$tagged" ]
+          if [[ "$tag" == *-* ]]; then
+            echo "${tag} is a release candidate"
+          else
+            echo "${tag} is stable, so GoReleaser will not mark it as a prerelease"
+          fi
 
       - name: Set up Go
         uses: actions/setup-go@v7
@@ -51,6 +82,28 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+
+      - name: The checkout is the release tag
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          tag="$RELEASE_TAG"
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]]; then
+            echo "Release runs on vX.Y.Z or vX.Y.Z-rc.N, got: ${tag}"
+            exit 1
+          fi
+          head="$(git rev-parse HEAD)"
+          tagged="$(git rev-parse "${tag}^{}")"
+          echo "tag ${tag} is ${tagged}; HEAD is ${head}"
+          [ "$head" = "$tagged" ]
+          if [[ "$tag" == *-* ]]; then
+            echo "${tag} is a release candidate"
+          else
+            echo "${tag} is stable, so GoReleaser will not mark it as a prerelease"
+          fi
 
       - name: Set up Go
         uses: actions/setup-go@v7
@@ -82,6 +135,28 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+
+      - name: The checkout is the release tag
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          tag="$RELEASE_TAG"
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]]; then
+            echo "Release runs on vX.Y.Z or vX.Y.Z-rc.N, got: ${tag}"
+            exit 1
+          fi
+          head="$(git rev-parse HEAD)"
+          tagged="$(git rev-parse "${tag}^{}")"
+          echo "tag ${tag} is ${tagged}; HEAD is ${head}"
+          [ "$head" = "$tagged" ]
+          if [[ "$tag" == *-* ]]; then
+            echo "${tag} is a release candidate"
+          else
+            echo "${tag} is stable, so GoReleaser will not mark it as a prerelease"
+          fi
 
       - name: Set up Go
         uses: actions/setup-go@v7
@@ -141,9 +216,12 @@ jobs:
           docker logs fusionaly-app-1 2>&1 | tail -100 || true
           docker logs fusionaly-caddy 2>&1 | tail -50 || true
 
-  # The install paths with Chasen: see chasen.yml.
+  # The install paths with Chasen: see chasen.yml. Test the tag being
+  # released, which is this run's ref unless workflow_dispatch names one.
   chasen:
     uses: ./.github/workflows/chasen.yml
+    with:
+      ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
 
   release:
     name: Build and Release
@@ -152,7 +230,32 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
           fetch-depth: 0
+          fetch-tags: true
+
+      - name: The checkout is the release tag
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          tag="$RELEASE_TAG"
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]]; then
+            echo "Release runs on vX.Y.Z or vX.Y.Z-rc.N, got: ${tag}"
+            exit 1
+          fi
+          head="$(git rev-parse HEAD)"
+          tagged="$(git rev-parse "${tag}^{}")"
+          echo "tag ${tag} is ${tagged}; HEAD is ${head}"
+          [ "$head" = "$tagged" ]
+          if [[ "$tag" == *-* ]]; then
+            echo "${tag} is a release candidate"
+          else
+            echo "${tag} is stable, so GoReleaser will not mark it as a prerelease"
+          fi
+          # The GoReleaser step reads this. It is the tag the guard just
+          # checked, which is GITHUB_REF_NAME unless the dispatch input set one.
+          echo "RELEASE_TAG=${tag}" >> "$GITHUB_ENV"
 
       - name: Set up Go
         uses: actions/setup-go@v7
@@ -186,3 +289,7 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Pin the tag. GoReleaser's default sort (-version:refname) lists
+          # v2.11.0-rc.3 ahead of v2.11.0 when both point at HEAD, and
+          # prerelease: auto then follows that rc tag.
+          GORELEASER_CURRENT_TAG: ${{ env.RELEASE_TAG }}
