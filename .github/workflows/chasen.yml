@@ -26,7 +26,7 @@ on:
   workflow_call:
     inputs:
       ref:
-        description: "Git ref to test. Empty checks out the caller commit."
+        description: "Commit SHA to test. Release passes the tag's commit. Empty uses the event ref."
         required: false
         type: string
 
@@ -41,7 +41,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-          ref: ${{ inputs.ref || github.sha }}
+          ref: ${{ inputs.ref }}
       - name: Deploy the image of this commit, as a new user does
         run: e2e/chasen.sh
 
@@ -52,7 +52,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-          ref: ${{ inputs.ref || github.sha }}
+          ref: ${{ inputs.ref }}
       - name: Install on a fresh server, as a new user does
         run: e2e/installer.sh
 
@@ -63,6 +63,6 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-          ref: ${{ inputs.ref || github.sha }}
+          ref: ${{ inputs.ref }}
       - name: Move a server of the older installer to Chasen
         run: e2e/move-to-chasen.sh
