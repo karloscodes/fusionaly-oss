@@ -69,7 +69,8 @@ type Config struct {
 	// Job scheduling settings
 	JobIntervalSeconds int
 
-	// Data retention settings
+	// Days to keep processed queue rows. They hold the full URL and the
+	// User-Agent, so keep them only long enough to look into a problem.
 	IngestedEventsRetentionDays int
 }
 
@@ -153,7 +154,7 @@ func load(getenv func(string) string) (*Config, error) {
 		DatabaseMaxOpenConns:        num("FUSIONALY_DB_MAX_OPEN_CONNS", 0),
 		DatabaseMaxIdleConns:        num("FUSIONALY_DB_MAX_IDLE_CONNS", 0),
 		JobIntervalSeconds:          num("FUSIONALY_JOB_INTERVAL_SECONDS", 60),
-		IngestedEventsRetentionDays: num("FUSIONALY_INGESTED_EVENTS_RETENTION_DAYS", 90),
+		IngestedEventsRetentionDays: num("FUSIONALY_INGESTED_EVENTS_RETENTION_DAYS", 15),
 	}
 	return c, bad
 }

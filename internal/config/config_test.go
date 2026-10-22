@@ -49,7 +49,7 @@ func TestLoad(t *testing.T) {
 		assert.Equal(t, 30, c.LogsMaxAgeInDays)
 		assert.Equal(t, SQLiteDatabase, c.DatabaseType)
 		assert.Equal(t, 60, c.JobIntervalSeconds)
-		assert.Equal(t, 90, c.IngestedEventsRetentionDays)
+		assert.Equal(t, 15, c.IngestedEventsRetentionDays)
 		assert.Equal(t, "csrf", c.CSRFContextKey)
 		assert.Equal(t, LogLevel(""), c.LogLevel)
 	})
