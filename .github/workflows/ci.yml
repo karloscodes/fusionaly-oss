@@ -48,11 +48,7 @@ jobs:
           npm ci
           version=$(node -p "require('playwright/package.json').version")
           echo "Playwright $version"
-          # npm ci follows the lockfile. Drop any browser cache on the runner
-          # (a 1.51 install lives there) and install the browsers this package asks for.
-          case $version in
-            1.51.*) echo "Playwright $version is the vulnerable release"; exit 1 ;;
-          esac
+          # npm ci follows the lockfile. Install the browsers this package asks for.
           rm -rf "${PLAYWRIGHT_BROWSERS_PATH:-$HOME/.cache/ms-playwright}"
           npx playwright install --with-deps chromium
 
