@@ -28,7 +28,7 @@ func TestDashboardVisitorNumbers(t *testing.T) {
 	for i := 1; i <= 10; i++ {
 		evts = append(evts, pageView(fmt.Sprintf("y%d", i), "/", at("09h")))
 	}
-	db := setupFlowDB(t, evts...)
+	db := processedDB(t, evts...)
 	require.NoError(t, db.Create(&websites.Website{ID: 1, Domain: "example.com", CreatedAt: at("0h")}).Error)
 
 	metrics, err := analytics.FetchDashboardMetrics(db, today, 1, slog.Default())

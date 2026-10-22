@@ -28,15 +28,16 @@ func TestDailyBucketsFollowTheUsersTimezone(t *testing.T) {
 		"2026-03-29T22:00:00Z": 4, // Mar 30 00:00 CEST: a fixed +1h offset would say Mar 29
 		"2026-03-30T21:00:00Z": 8, // Mar 30 23:00 CEST
 	}
+	var visits []events.Event
 	for utc, count := range hours {
 		h, err := time.Parse(time.RFC3339, utc)
 		require.NoError(t, err)
-		require.NoError(t, db.Create(&analytics.SiteStat{WebsiteID: 1, Visitors: count, PageViews: count, Hour: h}).Error)
 		for i := 0; i < count; i++ {
-			require.NoError(t, db.Create(&events.Event{WebsiteID: 1, UserSignature: fmt.Sprintf("%s-%d", utc, i),
-				Hostname: "example.com", Pathname: "/", EventType: events.EventTypePageView, Timestamp: h}).Error)
+			visits = append(visits, events.Event{WebsiteID: 1, UserSignature: fmt.Sprintf("%s-%d", utc, i),
+				Hostname: "example.com", Pathname: "/", EventType: events.EventTypePageView, Timestamp: h})
 		}
 	}
+	storeEvents(t, db, visits...)
 	tf, err := timeframe.NewTimeFrame(timeframe.TimeFrameParams{
 		FromTime:      time.Date(2026, 3, 28, 0, 0, 0, 0, madrid),
 		ToTime:        time.Date(2026, 3, 30, 23, 59, 59, 999999999, madrid),
@@ -53,7 +54,7 @@ func TestDailyBucketsFollowTheUsersTimezone(t *testing.T) {
 		assert.Equal(t, expected, countsByDate(series, 10))
 	})
 
-	t.Run("visitors from events", func(t *testing.T) {
+	t.Run("visitors from site_stats", func(t *testing.T) {
 		series, err := analytics.AggregatedVisitorsInTimeFrame(db, params)
 
 		require.NoError(t, err)

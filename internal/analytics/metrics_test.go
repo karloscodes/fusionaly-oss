@@ -471,16 +471,20 @@ func TestTotalCounts(t *testing.T) {
 
 	// Test total visitors
 	t.Run("TotalVisitors", func(t *testing.T) {
-		require.NoError(t, db.Create(&[]events.Event{
+		visits := []events.Event{
 			pageView("u1", "/", time.Date(2024, 7, 1, 12, 0, 0, 0, time.UTC)),
 			pageView("u1", "/about", time.Date(2024, 7, 1, 13, 0, 0, 0, time.UTC)),
 			pageView("u2", "/", time.Date(2024, 7, 1, 13, 0, 0, 0, time.UTC)),
-		}).Error)
+		}
+		for i := range visits {
+			visits[i].WebsiteID = 2 // apart from the site_stats rows of website 1 above
+		}
+		storeEvents(t, db, visits...)
 
-		totalVisitors, err := analytics.GetTotalVisitorsInTimeFrame(db, queryParams)
+		totalVisitors, err := analytics.GetTotalVisitorsInTimeFrame(db, analytics.NewWebsiteScopedQueryParams(timeFrame, 2))
 
 		require.NoError(t, err)
-		assert.Equal(t, int64(2), totalVisitors, "Visitors come from distinct page view signatures")
+		assert.Equal(t, int64(2), totalVisitors, "Visitors are distinct page view signatures")
 	})
 
 	// Test total sessions

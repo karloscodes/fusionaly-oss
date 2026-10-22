@@ -1,7 +1,6 @@
 package events
 
 import (
-	"context"
 	"fmt"
 	"log/slog"
 	"time"
@@ -10,7 +9,6 @@ import (
 	"gorm.io/gorm"
 
 	"fusionaly/internal/config"
-	"fusionaly/internal/settings"
 )
 
 // Visit time is the length of a visit: from its first to its last event, of
@@ -70,77 +68,17 @@ func addVisitTime(tx *gorm.DB, websiteID uint, userSignature string, v visit, ev
 const keyVisitTimeRebuilt = "visit_time_rebuilt_v1"
 
 // RebuildVisitTimeOnce fills the visit time of every website from the events
-// table, one time per install. The event processor calls it before it
-// processes new events, so no visit time counts twice. A failed run is
-// retried on the next one; each day is set, not added to, so a rerun is safe.
+// table, one time per install (see rebuildOnce).
 func RebuildVisitTimeOnce(dbManager cartridge.DBManager, logger *slog.Logger) error {
-	db := dbManager.GetConnection()
-	if done, _ := settings.GetSetting(db, keyVisitTimeRebuilt); done != "" {
-		return nil
-	}
-
-	var websiteIDs []uint
-	if err := db.Model(&Event{}).Distinct().Pluck("website_id", &websiteIDs).Error; err != nil {
-		return fmt.Errorf("failed to list websites with events: %w", err)
-	}
-
-	started := time.Now()
-	for _, id := range websiteIDs {
-		if err := RebuildVisitTime(dbManager, id); err != nil {
-			return fmt.Errorf("website %d: %w", id, err)
-		}
-	}
-
-	logger.Info("Rebuilt visit time",
-		slog.Int("websites", len(websiteIDs)),
-		slog.Duration("took", time.Since(started)))
-	return settings.CreateOrUpdateSetting(db, keyVisitTimeRebuilt, time.Now().UTC().Format(time.RFC3339))
+	return rebuildOnce(dbManager, logger, keyVisitTimeRebuilt, "visit time", RebuildVisitTime)
 }
 
-// RebuildVisitTime sets one website's visit time from its events. A
-// signature lasts one UTC day, so no visit spans two days, and each day is
-// one short write: ingestion goes on while it runs.
+// RebuildVisitTime sets one website's visit time from its events.
 func RebuildVisitTime(dbManager cartridge.DBManager, websiteID uint) error {
-	db := dbManager.GetConnection()
-
-	var first, last Event
-	if err := db.Select("timestamp").Where("website_id = ?", websiteID).Order("timestamp").Limit(1).Find(&first).Error; err != nil {
-		return fmt.Errorf("failed to find the first event: %w", err)
-	}
-	if err := db.Select("timestamp").Where("website_id = ?", websiteID).Order("timestamp DESC").Limit(1).Find(&last).Error; err != nil {
-		return fmt.Errorf("failed to find the last event: %w", err)
-	}
-	if first.Timestamp.IsZero() {
-		return nil
-	}
-
-	// Match the stored rows by their bucket's instant, not by the stored
-	// text, so rows written with another time zone offset still match.
-	var rows []struct {
-		ID   uint
-		Hour time.Time
-	}
-	if err := db.Table("site_stats").Select("id, hour").Where("website_id = ?", websiteID).Scan(&rows).Error; err != nil {
-		return fmt.Errorf("failed to read site stats: %w", err)
-	}
-	rowOfBucket := make(map[int64]uint, len(rows))
-	for _, r := range rows {
-		rowOfBucket[bucketOf(r.Hour)] = r.ID
-	}
-
-	for day := first.Timestamp.UTC().Truncate(24 * time.Hour); !day.After(last.Timestamp.UTC()); day = day.Add(24 * time.Hour) {
+	return rebuildByDay(dbManager, websiteID, func(db *gorm.DB, websiteID uint, day time.Time) (dayValues, error) {
 		seconds, err := tallyVisitTime(db, websiteID, day)
-		if err != nil {
-			return fmt.Errorf("day %s: %w", day.Format(time.DateOnly), err)
-		}
-		err = cartridge.Write(context.Background(), dbManager, func(tx *gorm.DB) error {
-			return writeVisitTime(tx, websiteID, day, seconds, rowOfBucket)
-		})
-		if err != nil {
-			return fmt.Errorf("day %s: %w", day.Format(time.DateOnly), err)
-		}
-	}
-	return nil
+		return dayValues{"visit_seconds": seconds}, err
+	})
 }
 
 // tallyVisitTime sums the visit time of one UTC day, by the bucket of each
@@ -196,31 +134,4 @@ func tallyVisitTime(db *gorm.DB, websiteID uint, day time.Time) (map[int64]float
 		endVisit()
 	}
 	return tally, nil
-}
-
-// writeVisitTime sets the visit time of one day's buckets: the tallied time,
-// or 0 for a bucket without a visit.
-func writeVisitTime(tx *gorm.DB, websiteID uint, day time.Time, seconds map[int64]float64, rowOfBucket map[int64]uint) error {
-	now := time.Now().UTC()
-	for bucket := day; bucket.Before(day.Add(24 * time.Hour)); bucket = bucket.Add(30 * time.Minute) {
-		value := seconds[bucket.Unix()]
-		if id, ok := rowOfBucket[bucket.Unix()]; ok {
-			if err := tx.Table("site_stats").Where("id = ?", id).Update("visit_seconds", value).Error; err != nil {
-				return fmt.Errorf("failed to update site stat %d: %w", id, err)
-			}
-			continue
-		}
-		if value == 0 {
-			continue
-		}
-		err := tx.Exec(`
-			INSERT INTO site_stats (website_id, hour, page_views, visitors, sessions, bounce_count, visit_seconds, created_at, updated_at)
-			VALUES (?, ?, 0, 0, 0, 0, ?, ?, ?)
-			ON CONFLICT (website_id, hour) DO UPDATE SET visit_seconds = excluded.visit_seconds
-		`, websiteID, bucket, value, now, now).Error
-		if err != nil {
-			return fmt.Errorf("failed to add site stat: %w", err)
-		}
-	}
-	return nil
 }

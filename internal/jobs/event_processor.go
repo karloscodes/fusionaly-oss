@@ -42,6 +42,9 @@ func (j *EventProcessorJob) Run() error {
 	if err := events.RebuildVisitTimeOnce(j.dbManager, j.logger); err != nil {
 		j.logger.Error("Failed to rebuild visit time", slog.Any("error", err))
 	}
+	if err := events.RebuildVisitorBucketsOnce(j.dbManager, j.logger); err != nil {
+		j.logger.Error("Failed to rebuild visitor buckets", slog.Any("error", err))
+	}
 
 	// Count unprocessed events
 	var unprocessedCount int64

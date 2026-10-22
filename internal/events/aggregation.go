@@ -43,6 +43,9 @@ func UpdateAllAggregatesBatch(tx *gorm.DB, logger *slog.Logger, dataList []*Even
 			if err := updateSiteStatForPageView(tx, data.WebsiteID, hourTime, data.IsNewVisitor, data.IsNewSession, isBounce); err != nil {
 				return fmt.Errorf("failed to update site stats: %w", err)
 			}
+			if err := updateVisitorBuckets(tx, data); err != nil {
+				return fmt.Errorf("failed to update visitor buckets: %w", err)
+			}
 			if err := updatePageStat(tx, data.WebsiteID, data.Hostname, data.Pathname, hourTime, data.IsEntrance, data.IsExit, data.IsNewPageVisitor); err != nil {
 				return fmt.Errorf("failed to update page stats: %w", err)
 			}

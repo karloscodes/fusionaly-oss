@@ -20,7 +20,7 @@ func visitorsAt(t *testing.T, db *gorm.DB, websiteID uint, n int, at time.Time) 
 	for i := 0; i < n; i++ {
 		e := events.Event{WebsiteID: websiteID, UserSignature: fmt.Sprintf("w%d-%s-%d", websiteID, at.Format(time.RFC3339), i),
 			Hostname: "example.com", Pathname: "/", EventType: events.EventTypePageView, Timestamp: at}
-		require.NoError(t, db.Create(&e).Error)
+		storeEvents(t, db, e)
 	}
 }
 
@@ -46,7 +46,7 @@ func TestDailyVisitorsForWebsites(t *testing.T) {
 		db := dbManager.GetConnection()
 		for _, at := range []time.Time{yesterday.Add(9 * time.Hour), yesterday.Add(15 * time.Hour)} {
 			e := events.Event{WebsiteID: 1, UserSignature: "same", Hostname: "example.com", Pathname: "/", EventType: events.EventTypePageView, Timestamp: at}
-			require.NoError(t, db.Create(&e).Error)
+			storeEvents(t, db, e)
 		}
 
 		series, err := analytics.DailyVisitorsForWebsites(db, []uint{1}, 1, now, time.UTC)
@@ -108,7 +108,7 @@ func TestDailyVisitorsForWebsites(t *testing.T) {
 		// One UTC day (May 23), two New York days: 21:30 May 22 and 10:00 May 23.
 		for _, at := range []time.Time{yesterday.Add(90 * time.Minute), yesterday.Add(14 * time.Hour)} {
 			e := events.Event{WebsiteID: 1, UserSignature: "same", Hostname: "example.com", Pathname: "/", EventType: events.EventTypePageView, Timestamp: at}
-			require.NoError(t, db.Create(&e).Error)
+			storeEvents(t, db, e)
 		}
 
 		series, err := analytics.DailyVisitorsForWebsites(db, []uint{1}, 3, now, newYork)

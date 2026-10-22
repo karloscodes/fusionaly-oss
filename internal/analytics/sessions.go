@@ -70,7 +70,14 @@ type SiteStat struct {
 	BounceCount int  `gorm:"not null;default:0"`
 	// VisitSeconds sums the length of the visits that start in this bucket:
 	// from a visit's first to its last event, of any type.
-	VisitSeconds float64   `gorm:"not null;default:0"`
+	VisitSeconds float64 `gorm:"not null;default:0"`
+	// Visitors counts the visitors whose first page view of their UTC day is
+	// in this bucket. LastVisitors counts those whose last page view of the
+	// day is in it, and HourVisitors those whose first page view of the UTC
+	// hour is in it. Together they give the visitors of any local day and
+	// hour (see visitors.go).
+	LastVisitors int       `gorm:"not null;default:0"`
+	HourVisitors int       `gorm:"not null;default:0"`
 	Hour         time.Time `gorm:"uniqueIndex:idx_site_hour;type:datetime;not null"`
 	CreatedAt    time.Time
 	UpdatedAt    time.Time

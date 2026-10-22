@@ -40,17 +40,13 @@ func DailyVisitorsForWebsites(db *gorm.DB, websiteIDs []uint, days int, now time
 
 	for _, id := range websiteIDs {
 		series[id] = make([]int64, days)
-		var rows []struct {
-			Day      string
-			Visitors int64
-		}
-		params := WebsiteScopedQueryParams{WebsiteID: int(id), TimeFrame: tf}
-		if err := db.Raw(dailyVisitorsQuery(tf), visitorQueryArgs(params)).Scan(&rows).Error; err != nil {
+		visitors, err := localDayVisitors(db, int(id), tf)
+		if err != nil {
 			return series, err
 		}
-		for _, r := range rows {
-			if i, ok := dayIndex[r.Day]; ok {
-				series[id][i] = r.Visitors
+		for day, count := range visitors {
+			if i, ok := dayIndex[day]; ok {
+				series[id][i] = count
 			}
 		}
 	}

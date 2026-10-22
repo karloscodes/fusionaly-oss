@@ -309,15 +309,16 @@ func prepareEventProcessingData(db *gorm.DB, tempEvent *IngestedEvent, eventID u
 
 	var isNewPageVisitor, isBounce bool
 	var previousPageView *PageViewRef
-	var unbounceAt *time.Time
+	var unbounceAt, earlierPageViewAt *time.Time
 	if isPageView {
 		// Page-view counters count a visitor at their first page view and a
 		// visit at its first page view. A custom event before it counts in
 		// neither, so a visit that opens with a custom event still counts.
-		isNewVisitor, err = checkIsFirstPageView(db, tempEvent.WebsiteID, tempEvent.UserSignature, tempEvent.Timestamp, eventID)
+		earlierPageViewAt, err = latestPageViewBefore(db, tempEvent.WebsiteID, tempEvent.UserSignature, tempEvent.Timestamp, eventID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to check visitor status: %w", err)
 		}
+		isNewVisitor = earlierPageViewAt == nil
 		isNewPageVisitor, err = checkIsNewPageVisitor(db, tempEvent.WebsiteID, tempEvent.UserSignature, tempEvent.Hostname, tempEvent.Pathname, tempEvent.Timestamp, eventID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to check page visitor status: %w", err)
@@ -385,36 +386,37 @@ func prepareEventProcessingData(db *gorm.DB, tempEvent *IngestedEvent, eventID u
 	}
 
 	return &EventProcessingData{
-		EventID:          eventID,
-		WebsiteID:        tempEvent.WebsiteID,
-		UserSignature:    tempEvent.UserSignature,
-		Hostname:         tempEvent.Hostname,
-		Pathname:         tempEvent.Pathname,
-		ReferrerHostname: sourceHostname,
-		ReferrerPathname: sourcePathname,
-		DeviceType:       getDeviceTypeFromParsedUA(parsedUA),
-		Browser:          getBrowserFromParsedUA(parsedUA, tempEvent.SecChUa),
-		OperatingSystem:  getOSFromParsedUA(parsedUA),
-		Country:          tempEvent.Country,
-		UTMSource:        utmSource,
-		UTMMedium:        utmMedium,
-		UTMCampaign:      utmCampaign,
-		UTMTerm:          utmTerm,
-		UTMContent:       utmContent,
-		QueryParams:      queryParams,
-		CustomEventName:  tempEvent.CustomEventName,
-		CustomEventKey:   customEventKey,
-		EventType:        EventType(tempEvent.EventType),
-		IsNewVisitor:     isNewVisitor,
-		IsNewSession:     isNewSession,
-		Timestamp:        tempEvent.Timestamp,
-		IsEntrance:       isEntrance,
-		IsExit:           isExit,
-		IsNewPageVisitor: isNewPageVisitor,
-		HasUTM:           hasUTM,
-		PreviousPageView: previousPageView,
-		UnbounceAt:       unbounceAt,
-		IsBounce:         isBounce,
+		EventID:           eventID,
+		WebsiteID:         tempEvent.WebsiteID,
+		UserSignature:     tempEvent.UserSignature,
+		Hostname:          tempEvent.Hostname,
+		Pathname:          tempEvent.Pathname,
+		ReferrerHostname:  sourceHostname,
+		ReferrerPathname:  sourcePathname,
+		DeviceType:        getDeviceTypeFromParsedUA(parsedUA),
+		Browser:           getBrowserFromParsedUA(parsedUA, tempEvent.SecChUa),
+		OperatingSystem:   getOSFromParsedUA(parsedUA),
+		Country:           tempEvent.Country,
+		UTMSource:         utmSource,
+		UTMMedium:         utmMedium,
+		UTMCampaign:       utmCampaign,
+		UTMTerm:           utmTerm,
+		UTMContent:        utmContent,
+		QueryParams:       queryParams,
+		CustomEventName:   tempEvent.CustomEventName,
+		CustomEventKey:    customEventKey,
+		EventType:         EventType(tempEvent.EventType),
+		IsNewVisitor:      isNewVisitor,
+		IsNewSession:      isNewSession,
+		Timestamp:         tempEvent.Timestamp,
+		IsEntrance:        isEntrance,
+		IsExit:            isExit,
+		IsNewPageVisitor:  isNewPageVisitor,
+		HasUTM:            hasUTM,
+		PreviousPageView:  previousPageView,
+		UnbounceAt:        unbounceAt,
+		IsBounce:          isBounce,
+		EarlierPageViewAt: earlierPageViewAt,
 	}, nil
 }
 
@@ -471,17 +473,24 @@ func visitStatus(db *gorm.DB, websiteID uint, userSignature string, timestamp ti
 // Events at the same time count as earlier: the late-arrival rule can give
 // two events the same time.
 
-// checkIsFirstPageView reports whether this is the visitor's first page view.
-func checkIsFirstPageView(db *gorm.DB, websiteID uint, userSignature string, timestamp time.Time, eventID uint) (bool, error) {
-	var count int64
-	err := db.Model(&Event{}).
+// latestPageViewBefore returns the time of the visitor's latest page view
+// before this one, or nil when this is their first.
+func latestPageViewBefore(db *gorm.DB, websiteID uint, userSignature string, timestamp time.Time, eventID uint) (*time.Time, error) {
+	var earlier Event
+	err := db.Select("id", "timestamp").
 		Where("website_id = ? AND user_signature = ? AND event_type = ? AND timestamp <= ? AND id != ?",
 			websiteID, userSignature, EventTypePageView, timestamp, eventID).
-		Count(&count).Error
+		Order("timestamp DESC, id DESC").
+		Limit(1).
+		Find(&earlier).Error
 	if err != nil {
-		return false, fmt.Errorf("failed to check previous page views: %w", err)
+		return nil, fmt.Errorf("failed to check previous page views: %w", err)
 	}
-	return count == 0, nil
+	if earlier.ID == 0 {
+		return nil, nil
+	}
+	at := earlier.Timestamp.UTC()
+	return &at, nil
 }
 
 // checkIsNewPageVisitor reports whether this is the visitor's first view of

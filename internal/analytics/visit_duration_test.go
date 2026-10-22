@@ -14,21 +14,14 @@ import (
 	"fusionaly/internal/timeframe"
 )
 
-// processedDB sends the events through the event processor, as live
-// traffic goes, so the summary tables hold their visits.
+// processedDB stores the events through the event processor in a clean
+// database.
 func processedDB(t *testing.T, evts ...events.Event) *gorm.DB {
 	t.Helper()
-	dbManager, logger := testsupport.SetupTestDBManager(t)
+	dbManager, _ := testsupport.SetupTestDBManager(t)
 	db := dbManager.GetConnection()
 	testsupport.CleanAllTables(db)
-	for _, e := range evts {
-		require.NoError(t, db.Create(&events.IngestedEvent{
-			WebsiteID: e.WebsiteID, UserSignature: e.UserSignature, Hostname: e.Hostname, Pathname: e.Pathname,
-			ReferrerHostname: events.DirectOrUnknownReferrer, EventType: e.EventType, CustomEventName: e.CustomEventName,
-			Timestamp: e.Timestamp, UserAgent: "Mozilla/5.0", CreatedAt: e.Timestamp,
-		}).Error)
-	}
-	require.NoError(t, testsupport.ProcessAllTestEvents(dbManager, logger))
+	storeEvents(t, db, evts...)
 	return db
 }
 

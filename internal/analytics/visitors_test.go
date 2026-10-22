@@ -14,19 +14,20 @@ import (
 	"fusionaly/internal/timeframe"
 )
 
-// visit records one event of a visitor at a UTC time.
-func visit(t *testing.T, db *gorm.DB, websiteID uint, signature string, at string, eventType events.EventType) {
+// visit records one event of a visitor at a UTC time. The server gives a
+// visitor a new signature each UTC day, so the signature holds the day.
+func visit(t *testing.T, db *gorm.DB, websiteID uint, visitor string, at string, eventType events.EventType) {
 	t.Helper()
 	ts, err := time.Parse(time.RFC3339, at)
 	require.NoError(t, err)
-	require.NoError(t, db.Create(&events.Event{
+	storeEvents(t, db, events.Event{
 		WebsiteID:     websiteID,
-		UserSignature: signature,
+		UserSignature: visitor + "@" + ts.UTC().Format(time.DateOnly),
 		Hostname:      "example.com",
 		Pathname:      "/",
 		EventType:     eventType,
 		Timestamp:     ts,
-	}).Error)
+	})
 }
 
 func visitorParams(t *testing.T, websiteID int, from, to time.Time, size timeframe.TimeFrameSize, tz *time.Location) analytics.WebsiteScopedQueryParams {
@@ -65,6 +66,22 @@ func TestVisitorsCountPerLocalDay(t *testing.T) {
 
 		assert.Equal(t, int64(2), total)
 		assert.Equal(t, map[string]int{"2024-07-01": 1, "2024-07-02": 1}, countsByDate(series, 10))
+	})
+
+	t.Run("east of UTC, a visitor across local midnight counts on both local days", func(t *testing.T) {
+		athens := time.FixedZone("UTC+2", 2*60*60)
+		// 23:30 on Oct 19 and 01:00 on Oct 20 in UTC+2 are both Oct 19 in UTC.
+		visit(t, db, 6, "gina", "2026-10-19T21:30:00Z", events.EventTypePageView)
+		visit(t, db, 6, "gina", "2026-10-19T23:00:00Z", events.EventTypePageView)
+		visit(t, db, 6, "hugo", "2026-10-19T10:00:00Z", events.EventTypePageView)
+		params := visitorParams(t, 6,
+			time.Date(2026, 10, 19, 0, 0, 0, 0, athens), time.Date(2026, 10, 20, 23, 59, 59, 0, athens),
+			timeframe.DailyTimeFrame, athens)
+
+		series, err := analytics.AggregatedVisitorsInTimeFrame(db, params)
+		require.NoError(t, err)
+
+		assert.Equal(t, map[string]int{"2026-10-19": 2, "2026-10-20": 1}, countsByDate(series, 10))
 	})
 
 	t.Run("a visitor with many page views on one day counts once", func(t *testing.T) {

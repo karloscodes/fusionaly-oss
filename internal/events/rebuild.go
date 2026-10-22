@@ -1,10 +1,12 @@
 package events
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"time"
 
+	"github.com/karloscodes/cartridge"
 	"gorm.io/gorm"
 
 	"fusionaly/internal/config"
@@ -207,6 +209,117 @@ func writeVisitTally(tx *gorm.DB, websiteID uint, tally visitTally) error {
 		}).Error
 		if err != nil {
 			return fmt.Errorf("failed to update site stat %d: %w", s.ID, err)
+		}
+	}
+	return nil
+}
+
+// dayValues holds the rebuilt values of one UTC day: column, bucket, value.
+type dayValues map[string]map[int64]float64
+
+// rebuildOnce runs a rebuild for every website with events, one time per
+// install. The event processor calls it before it processes new events, so
+// no event counts twice. A failed run is retried on the next one: each day
+// is set, not added to, so a rerun is safe.
+func rebuildOnce(dbManager cartridge.DBManager, logger *slog.Logger, key, name string, rebuild func(cartridge.DBManager, uint) error) error {
+	db := dbManager.GetConnection()
+	if done, _ := settings.GetSetting(db, key); done != "" {
+		return nil
+	}
+
+	var websiteIDs []uint
+	if err := db.Model(&Event{}).Distinct().Pluck("website_id", &websiteIDs).Error; err != nil {
+		return fmt.Errorf("failed to list websites with events: %w", err)
+	}
+
+	started := time.Now()
+	for _, id := range websiteIDs {
+		if err := rebuild(dbManager, id); err != nil {
+			return fmt.Errorf("website %d: %w", id, err)
+		}
+	}
+
+	logger.Info("Rebuilt "+name,
+		slog.Int("websites", len(websiteIDs)),
+		slog.Duration("took", time.Since(started)))
+	return settings.CreateOrUpdateSetting(db, key, time.Now().UTC().Format(time.RFC3339))
+}
+
+// rebuildByDay sets site_stats columns of one website from its events, one
+// UTC day per write. A signature lasts one UTC day, so no visit or visitor
+// spans two days, and ingestion goes on between the days. tally returns the
+// values of one day; a bucket without a value gets 0.
+func rebuildByDay(dbManager cartridge.DBManager, websiteID uint, tally func(*gorm.DB, uint, time.Time) (dayValues, error)) error {
+	db := dbManager.GetConnection()
+
+	var first, last Event
+	if err := db.Select("timestamp").Where("website_id = ?", websiteID).Order("timestamp").Limit(1).Find(&first).Error; err != nil {
+		return fmt.Errorf("failed to find the first event: %w", err)
+	}
+	if err := db.Select("timestamp").Where("website_id = ?", websiteID).Order("timestamp DESC").Limit(1).Find(&last).Error; err != nil {
+		return fmt.Errorf("failed to find the last event: %w", err)
+	}
+	if first.Timestamp.IsZero() {
+		return nil
+	}
+
+	// Match the stored rows by their bucket's instant, not by the stored
+	// text, so rows written with another time zone offset still match.
+	var rows []struct {
+		ID   uint
+		Hour time.Time
+	}
+	if err := db.Table("site_stats").Select("id, hour").Where("website_id = ?", websiteID).Scan(&rows).Error; err != nil {
+		return fmt.Errorf("failed to read site stats: %w", err)
+	}
+	rowOfBucket := make(map[int64]uint, len(rows))
+	for _, r := range rows {
+		rowOfBucket[bucketOf(r.Hour)] = r.ID
+	}
+
+	for day := first.Timestamp.UTC().Truncate(24 * time.Hour); !day.After(last.Timestamp.UTC()); day = day.Add(24 * time.Hour) {
+		values, err := tally(db, websiteID, day)
+		if err != nil {
+			return fmt.Errorf("day %s: %w", day.Format(time.DateOnly), err)
+		}
+		err = cartridge.Write(context.Background(), dbManager, func(tx *gorm.DB) error {
+			return writeDay(tx, websiteID, day, values, rowOfBucket)
+		})
+		if err != nil {
+			return fmt.Errorf("day %s: %w", day.Format(time.DateOnly), err)
+		}
+	}
+	return nil
+}
+
+// writeDay sets the values of one day's buckets.
+func writeDay(tx *gorm.DB, websiteID uint, day time.Time, values dayValues, rowOfBucket map[int64]uint) error {
+	for bucket := day; bucket.Before(day.Add(24 * time.Hour)); bucket = bucket.Add(30 * time.Minute) {
+		row := map[string]any{}
+		empty := true
+		for column, byBucket := range values {
+			row[column] = byBucket[bucket.Unix()]
+			empty = empty && byBucket[bucket.Unix()] == 0
+		}
+
+		id, ok := rowOfBucket[bucket.Unix()]
+		if !ok && empty {
+			continue
+		}
+		if !ok {
+			now := time.Now().UTC()
+			err := tx.Exec(`INSERT INTO site_stats (website_id, hour, created_at, updated_at) VALUES (?, ?, ?, ?)`,
+				websiteID, bucket, now, now).Error
+			if err != nil {
+				return fmt.Errorf("failed to add site stat: %w", err)
+			}
+			if err := tx.Raw("SELECT last_insert_rowid()").Scan(&id).Error; err != nil {
+				return fmt.Errorf("failed to add site stat: %w", err)
+			}
+			rowOfBucket[bucket.Unix()] = id
+		}
+		if err := tx.Table("site_stats").Where("id = ?", id).Updates(row).Error; err != nil {
+			return fmt.Errorf("failed to update site stat %d: %w", id, err)
 		}
 	}
 	return nil

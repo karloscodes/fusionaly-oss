@@ -86,6 +86,9 @@ type EventProcessingData struct {
 	PreviousPageView *PageViewRef // the visit's previous page view: no longer its exit
 	UnbounceAt       *time.Time   // the visit's only page view: no longer a bounce
 	IsBounce         bool         // the visit's first page view, with no engagement yet
+	// The visitor's page view before this one, in any visit; nil on their
+	// first. It is no longer their last page view of the day.
+	EarlierPageViewAt *time.Time
 }
 
 // PageViewRef identifies an earlier page view by where it was counted.
