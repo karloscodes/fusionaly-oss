@@ -95,6 +95,7 @@ const purchasesSQL = `
 		WHERE website_id = ?
 		AND timestamp BETWEEN ? AND ?
 		AND event_type = ?
+		AND ` + events.PricedEventSQL + `
 		AND ` + purchaseWhereSQL + `
 	),
 	purchases AS (
@@ -244,6 +245,7 @@ func GetEventRevenueTotals(db *gorm.DB, params WebsiteScopedQueryParams) (map[st
 		WHERE website_id = ?
 		AND timestamp BETWEEN ? AND ?
 		AND event_type = ?
+		AND ` + events.PricedEventSQL + `
 		AND LOWER(custom_event_name) <> 'revenue:purchased'
 		GROUP BY custom_event_name`
 

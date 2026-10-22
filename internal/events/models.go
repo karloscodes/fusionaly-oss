@@ -23,24 +23,33 @@ func (t EventType) Valid() bool {
 // Event represents a tracked page view or custom event in the main database.
 type Event struct {
 	ID               uint   `gorm:"primaryKey;autoIncrement"`
-	WebsiteID        uint   `gorm:"index:idx_website_timestamp;index:idx_events_visitors,priority:1;not null"`
+	WebsiteID        uint   `gorm:"index:idx_website_timestamp;index:idx_events_visitors,priority:1;index:idx_events_priced,priority:1,where:custom_event_meta LIKE '%\"price\"%';not null"`
 	UserSignature    string `gorm:"index;index:idx_events_visitors,priority:4;size:64;not null"`
 	Hostname         string `gorm:"index;not null"`
 	Pathname         string `gorm:"index;not null"`
 	ReferrerHostname string `gorm:"index"`
 	ReferrerPathname string
-	EventType        EventType `gorm:"index:idx_events_visitors,priority:3;not null;default:1"`
+	EventType        EventType `gorm:"index:idx_events_visitors,priority:3;index:idx_events_priced,priority:2;not null;default:1"`
 	CustomEventName  string    `gorm:"index"`
 	CustomEventMeta  string    `gorm:"type:text"`
 	// idx_events_visitors covers the visitor counts (distinct signatures of
 	// page views per website and time range), so they never read the rows.
-	Timestamp time.Time `gorm:"index:idx_website_timestamp;index:idx_events_visitors,priority:2;not null"`
+	//
+	// idx_events_priced holds only the events with a price, so revenue reads
+	// them without the rest. Its WHERE must stay equal to PricedEventSQL.
+	Timestamp time.Time `gorm:"index:idx_website_timestamp;index:idx_events_visitors,priority:2;index:idx_events_priced,priority:3;not null"`
 	// SessionStart is the time of the visit's first event. It links the events
 	// of one visit, so a later page view can correct the visit's bounce and
 	// exit. Nil for events recorded before it existed.
 	SessionStart *time.Time `gorm:"index"`
 	CreatedAt    time.Time
 }
+
+// PricedEventSQL matches the events whose metadata can hold a price, the rows
+// of idx_events_priced. Add it to a query on prices, so SQLite reads that
+// small index instead of every event in the range. It matches more than the
+// priced events, so the query still checks the price itself.
+const PricedEventSQL = `custom_event_meta LIKE '%"price"%'`
 
 // EventProcessingData holds enriched data for updating aggregates.
 // It is produced by the event processing pipeline.
