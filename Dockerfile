@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.26-alpine AS builder
+FROM golang:1.26.10-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache build-base musl-dev git nodejs npm
@@ -32,7 +32,7 @@ RUN mkdir -p dist && \
   CGO_ENABLED=1 go build -o dist/fnctl cmd/fnctl/main.go
 
 # Final stage - minimal runtime image
-FROM alpine:3.19
+FROM alpine:3.22
 WORKDIR /app
 
 # Install runtime dependencies and create directories
