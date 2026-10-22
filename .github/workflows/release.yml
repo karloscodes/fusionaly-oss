@@ -103,6 +103,17 @@ jobs:
       - name: Build Docker image locally
         run: docker build -t fusionaly:test .
 
+      - name: The image binary's Go matches go.mod
+        run: |
+          set -euo pipefail
+          want=$(awk '/^go / { print $2; exit }' go.mod)
+          id=$(docker create fusionaly:test)
+          docker cp "$id:/app/fusionaly-server" /tmp/fusionaly-server
+          docker rm "$id" >/dev/null
+          got=$(go version -m /tmp/fusionaly-server | awk 'NR==1 { sub(/^go/, "", $2); print $2 }')
+          echo "go.mod go $want; binary go $got"
+          [ "$got" = "$want" ]
+
       - name: Build manager
         run: go build -o bin/fusionaly ./cmd/manager
 
