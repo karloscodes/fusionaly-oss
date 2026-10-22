@@ -27,12 +27,12 @@ type MetricCountResult struct {
 // RefStat represents aggregated referrer statistics
 type RefStat struct {
 	ID             uint      `gorm:"primaryKey;autoIncrement"`
-	WebsiteID      uint      `gorm:"uniqueIndex:idx_ref_unique;not null"`
+	WebsiteID      uint      `gorm:"uniqueIndex:idx_ref_unique;index:idx_ref_site_hour;not null"`
 	Hostname       string    `gorm:"uniqueIndex:idx_ref_unique;not null"`
 	Pathname       string    `gorm:"uniqueIndex:idx_ref_unique"`
 	VisitorsCount  int       `gorm:"not null;default:0"`
 	PageViewsCount int       `gorm:"not null;default:0"`
-	Hour           time.Time `gorm:"uniqueIndex:idx_ref_unique;type:datetime;not null"`
+	Hour           time.Time `gorm:"uniqueIndex:idx_ref_unique;index:idx_ref_site_hour;type:datetime;not null"`
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }
@@ -40,11 +40,11 @@ type RefStat struct {
 // BrowserStat represents aggregated browser statistics
 type BrowserStat struct {
 	ID             uint      `gorm:"primaryKey;autoIncrement"`
-	WebsiteID      uint      `gorm:"uniqueIndex:idx_browser_unique;not null"`
+	WebsiteID      uint      `gorm:"uniqueIndex:idx_browser_unique;index:idx_browser_site_hour;not null"`
 	Browser        string    `gorm:"uniqueIndex:idx_browser_unique;not null"`
 	VisitorsCount  int       `gorm:"not null;default:0"`
 	PageViewsCount int       `gorm:"not null;default:0"`
-	Hour           time.Time `gorm:"uniqueIndex:idx_browser_unique;type:datetime;not null"`
+	Hour           time.Time `gorm:"uniqueIndex:idx_browser_unique;index:idx_browser_site_hour;type:datetime;not null"`
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }
@@ -52,11 +52,11 @@ type BrowserStat struct {
 // OSStat represents aggregated operating system statistics
 type OSStat struct {
 	ID              uint      `gorm:"primaryKey;autoIncrement"`
-	WebsiteID       uint      `gorm:"uniqueIndex:idx_os_unique;not null"`
+	WebsiteID       uint      `gorm:"uniqueIndex:idx_os_unique;index:idx_os_site_hour;not null"`
 	OperatingSystem string    `gorm:"uniqueIndex:idx_os_unique;not null"`
 	VisitorsCount   int       `gorm:"not null;default:0"`
 	PageViewsCount  int       `gorm:"not null;default:0"`
-	Hour            time.Time `gorm:"uniqueIndex:idx_os_unique;type:datetime;not null"`
+	Hour            time.Time `gorm:"uniqueIndex:idx_os_unique;index:idx_os_site_hour;type:datetime;not null"`
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 }
@@ -64,11 +64,11 @@ type OSStat struct {
 // DeviceStat represents aggregated device type statistics
 type DeviceStat struct {
 	ID             uint      `gorm:"primaryKey;autoIncrement"`
-	WebsiteID      uint      `gorm:"uniqueIndex:idx_device_unique;not null"`
+	WebsiteID      uint      `gorm:"uniqueIndex:idx_device_unique;index:idx_device_site_hour;not null"`
 	DeviceType     string    `gorm:"uniqueIndex:idx_device_unique;not null"`
 	VisitorsCount  int       `gorm:"not null;default:0"`
 	PageViewsCount int       `gorm:"not null;default:0"`
-	Hour           time.Time `gorm:"uniqueIndex:idx_device_unique;type:datetime;not null"`
+	Hour           time.Time `gorm:"uniqueIndex:idx_device_unique;index:idx_device_site_hour;type:datetime;not null"`
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }
@@ -76,11 +76,11 @@ type DeviceStat struct {
 // CountryStat represents aggregated country statistics
 type CountryStat struct {
 	ID             uint      `gorm:"primaryKey;autoIncrement"`
-	WebsiteID      uint      `gorm:"uniqueIndex:idx_country_unique;not null"`
+	WebsiteID      uint      `gorm:"uniqueIndex:idx_country_unique;index:idx_country_site_hour;not null"`
 	Country        string    `gorm:"uniqueIndex:idx_country_unique;not null"`
 	VisitorsCount  int       `gorm:"not null;default:0"`
 	PageViewsCount int       `gorm:"not null;default:0"`
-	Hour           time.Time `gorm:"uniqueIndex:idx_country_unique;type:datetime;not null"`
+	Hour           time.Time `gorm:"uniqueIndex:idx_country_unique;index:idx_country_site_hour;type:datetime;not null"`
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }
@@ -88,7 +88,7 @@ type CountryStat struct {
 // UTMStat represents aggregated UTM parameter statistics
 type UTMStat struct {
 	ID             uint      `gorm:"primaryKey;autoIncrement"`
-	WebsiteID      uint      `gorm:"uniqueIndex:idx_utm_unique;not null"`
+	WebsiteID      uint      `gorm:"uniqueIndex:idx_utm_unique;index:idx_utm_site_hour;not null"`
 	UTMSource      string    `gorm:"uniqueIndex:idx_utm_unique"`
 	UTMMedium      string    `gorm:"uniqueIndex:idx_utm_unique"`
 	UTMCampaign    string    `gorm:"uniqueIndex:idx_utm_unique"`
@@ -96,7 +96,7 @@ type UTMStat struct {
 	UTMContent     string    `gorm:"uniqueIndex:idx_utm_unique"`
 	VisitorsCount  int       `gorm:"not null;default:0"`
 	PageViewsCount int       `gorm:"not null;default:0"`
-	Hour           time.Time `gorm:"uniqueIndex:idx_utm_unique;type:datetime;not null"`
+	Hour           time.Time `gorm:"uniqueIndex:idx_utm_unique;index:idx_utm_site_hour;type:datetime;not null"`
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }
@@ -104,12 +104,12 @@ type UTMStat struct {
 // EventStat represents aggregated custom event statistics
 type EventStat struct {
 	ID             uint      `gorm:"primaryKey;autoIncrement"`
-	WebsiteID      uint      `gorm:"uniqueIndex:idx_event_unique;not null"`
+	WebsiteID      uint      `gorm:"uniqueIndex:idx_event_unique;index:idx_event_site_hour;not null"`
 	EventName      string    `gorm:"uniqueIndex:idx_event_unique;not null"`
 	EventKey       string    `gorm:"uniqueIndex:idx_event_unique"`
 	VisitorsCount  int       `gorm:"not null;default:0"`
 	PageViewsCount int       `gorm:"not null;default:0"`
-	Hour           time.Time `gorm:"uniqueIndex:idx_event_unique;type:datetime;not null"`
+	Hour           time.Time `gorm:"uniqueIndex:idx_event_unique;index:idx_event_site_hour;type:datetime;not null"`
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }
@@ -117,12 +117,12 @@ type EventStat struct {
 // QueryParamStat represents aggregated query string parameter statistics
 type QueryParamStat struct {
 	ID             uint      `gorm:"primaryKey;autoIncrement"`
-	WebsiteID      uint      `gorm:"uniqueIndex:idx_query_param_unique;not null"`
+	WebsiteID      uint      `gorm:"uniqueIndex:idx_query_param_unique;index:idx_query_param_site_hour;not null"`
 	ParamName      string    `gorm:"uniqueIndex:idx_query_param_unique;not null"`
 	ParamValue     string    `gorm:"uniqueIndex:idx_query_param_unique;not null"`
 	VisitorsCount  int       `gorm:"not null;default:0"`
 	PageViewsCount int       `gorm:"not null;default:0"`
-	Hour           time.Time `gorm:"uniqueIndex:idx_query_param_unique;type:datetime;not null"`
+	Hour           time.Time `gorm:"uniqueIndex:idx_query_param_unique;index:idx_query_param_site_hour;type:datetime;not null"`
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }
@@ -131,12 +131,12 @@ type QueryParamStat struct {
 // Transitions are stored with step positions to enable Sankey diagram rendering
 type FlowTransitionStat struct {
 	ID           uint      `gorm:"primaryKey;autoIncrement"`
-	WebsiteID    uint      `gorm:"uniqueIndex:idx_flow_transition_unique;not null"`
+	WebsiteID    uint      `gorm:"uniqueIndex:idx_flow_transition_unique;index:idx_flow_transition_site_hour;not null"`
 	StepPosition int       `gorm:"uniqueIndex:idx_flow_transition_unique;not null"` // 1, 2, 3, etc.
 	SourcePage   string    `gorm:"uniqueIndex:idx_flow_transition_unique;not null"` // hostname + pathname
 	TargetPage   string    `gorm:"uniqueIndex:idx_flow_transition_unique;not null"` // hostname + pathname
 	Transitions  int       `gorm:"not null;default:0"`                              // count of transitions
-	Hour         time.Time `gorm:"uniqueIndex:idx_flow_transition_unique;type:datetime;not null"`
+	Hour         time.Time `gorm:"uniqueIndex:idx_flow_transition_unique;index:idx_flow_transition_site_hour;type:datetime;not null"`
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }

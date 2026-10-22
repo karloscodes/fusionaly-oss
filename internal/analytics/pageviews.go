@@ -77,14 +77,14 @@ func GetFirstPageView(db *gorm.DB, websiteID int) (*events.Event, error) {
 // PageStat represents aggregated page view statistics
 type PageStat struct {
 	ID             uint      `gorm:"primaryKey;autoIncrement"`
-	WebsiteID      uint      `gorm:"uniqueIndex:idx_page_unique;not null"`
+	WebsiteID      uint      `gorm:"uniqueIndex:idx_page_unique;index:idx_page_site_hour;not null"`
 	Hostname       string    `gorm:"uniqueIndex:idx_page_unique;not null"`
 	Pathname       string    `gorm:"uniqueIndex:idx_page_unique;not null"`
 	PageViewsCount int       `gorm:"not null;default:0"`
 	VisitorsCount  int       `gorm:"not null;default:0"`
 	Entrances      int       `gorm:"not null;default:0"`
 	Exits          int       `gorm:"not null;default:0"`
-	Hour           time.Time `gorm:"uniqueIndex:idx_page_unique;type:datetime;not null"`
+	Hour           time.Time `gorm:"uniqueIndex:idx_page_unique;index:idx_page_site_hour;type:datetime;not null"`
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }
