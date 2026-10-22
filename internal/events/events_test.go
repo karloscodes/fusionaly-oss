@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 
-	"fusionaly/internal/config"
 	"fusionaly/internal/testsupport"
 )
 
@@ -1535,8 +1534,9 @@ func TestCollectEventSubdomainUserSignature(t *testing.T) {
 				assert.Equal(t, "/test-page", savedEvent.Pathname, "Pathname should be extracted correctly")
 
 				// Generate expected user signature for comparison
-				privateKey := config.GetConfig().PrivateKey
-				expectedUserSignature := visitors.BuildUniqueVisitorId(tc.expectedUserSignatureBase, tc.ipAddress, tc.userAgent, privateKey)
+				salt, err := visitors.DailySalt(dbManager)
+				require.NoError(t, err)
+				expectedUserSignature := visitors.BuildUniqueVisitorId(tc.expectedUserSignatureBase, tc.ipAddress, tc.userAgent, salt)
 
 				// Verify user signature is generated correctly
 				assert.Equal(t, expectedUserSignature, savedEvent.UserSignature,
@@ -1545,7 +1545,7 @@ func TestCollectEventSubdomainUserSignature(t *testing.T) {
 				// Additional verification: if this is a subdomain tracking case,
 				// verify that the user signature would be different if generated with the subdomain
 				if tc.expectSubdomainTracking {
-					subdomainSignature := visitors.BuildUniqueVisitorId(tc.hostname, tc.ipAddress, tc.userAgent, privateKey)
+					subdomainSignature := visitors.BuildUniqueVisitorId(tc.hostname, tc.ipAddress, tc.userAgent, salt)
 					assert.NotEqual(t, subdomainSignature, savedEvent.UserSignature,
 						"User signature should be based on base domain, not subdomain hostname")
 				}

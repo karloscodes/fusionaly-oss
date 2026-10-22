@@ -11,7 +11,6 @@ import (
 	"github.com/karloscodes/cartridge"
 	"gorm.io/gorm"
 
-	"fusionaly/internal/config"
 	"fusionaly/internal/events"
 	"fusionaly/internal/settings"
 	"fusionaly/internal/visitors"
@@ -109,9 +108,15 @@ func GetVisitorInfoHandler(ctx *cartridge.Context) error {
 		signatureDomain = host
 	}
 
-	// Type-assert to get fusionaly-specific config fields
-	cfg := ctx.Config.(*config.Config)
-	userSignature := visitors.BuildUniqueVisitorId(signatureDomain, clientIP, userAgent, cfg.PrivateKey)
+	salt, err := visitors.DailySalt(ctx.DBManager)
+	if err != nil {
+		ctx.Logger.Error("Failed to load the daily salt", slog.Any("error", err))
+		return ctx.Status(http.StatusInternalServerError).JSON(cartridge.Map{
+			"error": "Failed to load visitor info",
+			"code":  "INTERNAL_ERROR",
+		})
+	}
+	userSignature := visitors.BuildUniqueVisitorId(signatureDomain, clientIP, userAgent, salt)
 	alias := visitors.VisitorAlias(userSignature)
 
 	visitorEvents := make([]visitorEvent, 0, visitorEventLimit)

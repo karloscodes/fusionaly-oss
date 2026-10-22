@@ -2,7 +2,6 @@ package visitors_test
 
 import (
 	"testing"
-	"time"
 
 	"fusionaly/internal/visitors"
 	"github.com/stretchr/testify/assert"
@@ -49,15 +48,5 @@ func TestBuildUniqueVisitorId(t *testing.T) {
 		id2 := visitors.BuildUniqueVisitorId(website, ipAddress, userAgent, "salt2")
 
 		assert.NotEqual(t, id1, id2, "Different salts should generate different IDs")
-	})
-
-	t.Run("IDs are stable within the same UTC day", func(t *testing.T) {
-		// Generate ID twice with small delay - should be same within same day
-		id1 := visitors.BuildUniqueVisitorId(website, ipAddress, userAgent, salt)
-		time.Sleep(10 * time.Millisecond)
-		id2 := visitors.BuildUniqueVisitorId(website, ipAddress, userAgent, salt)
-
-		assert.Equal(t, id1, id2, "IDs should be same within the same UTC day")
-		assert.NotEmpty(t, id1, "ID should not be empty")
 	})
 }

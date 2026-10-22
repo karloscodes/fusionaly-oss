@@ -320,7 +320,7 @@ Client → Cloudflare (optional) → kamal-proxy (--forward-headers) → Fusiona
 ```
 - **ProxyHeader**: Fiber reads real IP from `X-Forwarded-For` (configured in `internal/app.go`)
 - **getClientIP()**: Event handler reads `X-Forwarded-For` → `X-Real-IP` → `CF-Connecting-IP` (in `api/v1/utils.go`)
-- **Visitor signature**: `hash(domain + IP + userAgent + privateKey)` — privacy-first, no cookies
+- **Visitor signature**: `hash(dailySalt + domain + IP + userAgent)` — privacy-first, no cookies. `visitors.DailySalt` makes a random salt each UTC day and overwrites the old one, so nobody can link an old signature to a visitor
 
 ### Browser detection via Sec-CH-UA
 - Chromium browsers (Chrome, Brave, Edge, Opera, Vivaldi) send identical User-Agent strings

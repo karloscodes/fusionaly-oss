@@ -126,7 +126,13 @@ func CollectEvent(dbManager cartridge.DBManager, logger *slog.Logger, input *Col
 	country := GetCountryFromIP(input.IPAddress)
 	db := dbManager.GetConnection()
 
-	tempEvent, err := prepareTempEvent(db, logger, input, urlData, country)
+	salt, err := visitors.DailySalt(dbManager)
+	if err != nil {
+		logger.Error("Failed to load the daily salt", slog.Any("error", err))
+		return classifyWriteError(err)
+	}
+
+	tempEvent, err := prepareTempEvent(db, logger, input, urlData, country, salt)
 	if err != nil {
 		logger.Error("Failed to prepare temp event", slog.Any("error", err))
 		return classifyWriteError(err)
@@ -258,7 +264,7 @@ func withSourceParamsOnly(parsedURL *url.URL) string {
 }
 
 // prepareTempEvent creates an IngestedEvent from input data
-func prepareTempEvent(db *gorm.DB, logger *slog.Logger, input *CollectEventInput, urlData *urlData, country string) (*IngestedEvent, error) {
+func prepareTempEvent(db *gorm.DB, logger *slog.Logger, input *CollectEventInput, urlData *urlData, country, salt string) (*IngestedEvent, error) {
 	referrerHostname := DirectOrUnknownReferrer
 	referrerPathname := ""
 	if input.ReferrerURL != "" {
@@ -340,9 +346,9 @@ func prepareTempEvent(db *gorm.DB, logger *slog.Logger, input *CollectEventInput
 	var userSignature string
 	isSubdomainOfSubdomainTrackingEnabledWebsite := baseDomain != urlData.hostname && settings.IsSubdomainTrackingEnabled(db, baseDomain)
 	if isSubdomainOfSubdomainTrackingEnabledWebsite {
-		userSignature = visitors.BuildUniqueVisitorId(baseDomain, input.IPAddress, input.UserAgent, config.GetConfig().PrivateKey)
+		userSignature = visitors.BuildUniqueVisitorId(baseDomain, input.IPAddress, input.UserAgent, salt)
 	} else {
-		userSignature = visitors.BuildUniqueVisitorId(urlData.hostname, input.IPAddress, input.UserAgent, config.GetConfig().PrivateKey)
+		userSignature = visitors.BuildUniqueVisitorId(urlData.hostname, input.IPAddress, input.UserAgent, salt)
 	}
 
 	return &IngestedEvent{

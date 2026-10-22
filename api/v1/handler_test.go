@@ -16,9 +16,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/gorm"
 
-	"fusionaly/internal/config"
 	"fusionaly/internal/events"
 	"fusionaly/internal/settings"
 	"fusionaly/internal/testsupport"
@@ -418,13 +416,7 @@ func TestGetVisitorInfoHandler(t *testing.T) {
 		var count int64
 		db.Model(&websites.Website{}).Where("domain = ?", "example.com").Count(&count)
 
-		cfg := config.GetConfig()
-		signature := visitors.BuildUniqueVisitorId(
-			"example.com",
-			"1.2.3.4",
-			"Mozilla/5.0 (Test Agent)",
-			cfg.PrivateKey,
-		)
+		signature := todaysSignature(t, dbManager, "example.com", "1.2.3.4", "Mozilla/5.0 (Test Agent)")
 
 		now := time.Now().UTC()
 		eventsList := []events.Event{
@@ -528,8 +520,7 @@ func TestGetVisitorInfoHandler(t *testing.T) {
 		website := testsupport.CreateTestWebsite(db, "example.com")
 		require.NotZero(t, website.ID)
 
-		cfg := config.GetConfig()
-		signature := visitors.BuildUniqueVisitorId("example.com", "5.6.7.8", "Host-Fallback-Agent", cfg.PrivateKey)
+		signature := todaysSignature(t, dbManager, "example.com", "5.6.7.8", "Host-Fallback-Agent")
 
 		now := time.Now().UTC()
 		event := events.Event{
@@ -575,8 +566,7 @@ func TestGetVisitorInfoHandler(t *testing.T) {
 		require.NotZero(t, website.ID)
 		require.NoError(t, settings.UpdateSubdomainTrackingSettings(db, "example.com", true))
 
-		cfg := config.GetConfig()
-		signature := visitors.BuildUniqueVisitorId("example.com", "7.8.9.0", "Subdomain-Agent", cfg.PrivateKey)
+		signature := todaysSignature(t, dbManager, "example.com", "7.8.9.0", "Subdomain-Agent")
 
 		now := time.Now().UTC()
 		event := events.Event{
@@ -625,8 +615,7 @@ func TestGetVisitorInfoHandler(t *testing.T) {
 		website := testsupport.CreateTestWebsite(db, "example.com")
 		require.NotZero(t, website.ID)
 
-		cfg := config.GetConfig()
-		signature := visitors.BuildUniqueVisitorId("example.com", "4.3.2.1", "Param-Agent", cfg.PrivateKey)
+		signature := todaysSignature(t, dbManager, "example.com", "4.3.2.1", "Param-Agent")
 
 		now := time.Now().UTC()
 		event := events.Event{
@@ -706,8 +695,7 @@ func TestGetVisitorInfoHandler(t *testing.T) {
 		website := testsupport.CreateTestWebsite(db, "example.com")
 		require.NotZero(t, website.ID)
 
-		cfg := config.GetConfig()
-		signature := visitors.BuildUniqueVisitorId("example.com", "9.9.9.9", "Fallback-Agent", cfg.PrivateKey)
+		signature := todaysSignature(t, dbManager, "example.com", "9.9.9.9", "Fallback-Agent")
 
 		now := time.Now().UTC()
 		ingested := events.IngestedEvent{
@@ -902,10 +890,11 @@ func TestIngestionEventTypes(t *testing.T) {
 func TestVisitorInfoOriginRules(t *testing.T) {
 	visitedAt := time.Date(2026, 3, 10, 12, 0, 0, 0, time.UTC)
 
-	seedVisit := func(t *testing.T, db *gorm.DB, domain, path string) {
+	seedVisit := func(t *testing.T, dbManager *testsupport.TestDBManager, domain, path string) {
 		t.Helper()
+		db := dbManager.GetConnection()
 		website := testsupport.CreateTestWebsite(db, domain)
-		signature := visitors.BuildUniqueVisitorId(domain, "1.2.3.4", "Origin-Agent", config.GetConfig().PrivateKey)
+		signature := todaysSignature(t, dbManager, domain, "1.2.3.4", "Origin-Agent")
 		event := events.Event{
 			WebsiteID:        website.ID,
 			UserSignature:    signature,
@@ -933,7 +922,7 @@ func TestVisitorInfoOriginRules(t *testing.T) {
 		dbManager, _ := testsupport.SetupTestDBManager(t)
 		db := dbManager.GetConnection()
 		testsupport.CleanAllTables(db)
-		seedVisit(t, db, "example.com", "/private-page")
+		seedVisit(t, dbManager, "example.com", "/private-page")
 		app := testsupport.CreateMinimalTestApp(t, db)
 
 		resp, err := app.Test(request("/x/api/v1/me?w=example.com&url=https://example.com/", "https://evil.com"), 30000)
@@ -951,7 +940,7 @@ func TestVisitorInfoOriginRules(t *testing.T) {
 		dbManager, _ := testsupport.SetupTestDBManager(t)
 		db := dbManager.GetConnection()
 		testsupport.CleanAllTables(db)
-		seedVisit(t, db, "example.com", "/private-page")
+		seedVisit(t, dbManager, "example.com", "/private-page")
 		app := testsupport.CreateMinimalTestApp(t, db)
 
 		resp, err := app.Test(request("/x/api/v1/me", "https://evil.example.com"), 30000)
@@ -968,7 +957,7 @@ func TestVisitorInfoOriginRules(t *testing.T) {
 		dbManager, _ := testsupport.SetupTestDBManager(t)
 		db := dbManager.GetConnection()
 		testsupport.CleanAllTables(db)
-		seedVisit(t, db, "example.com", "/own-page")
+		seedVisit(t, dbManager, "example.com", "/own-page")
 		require.NoError(t, settings.UpdateSubdomainTrackingSettings(db, "example.com", true))
 		app := testsupport.CreateMinimalTestApp(t, db)
 
@@ -983,7 +972,7 @@ func TestVisitorInfoOriginRules(t *testing.T) {
 		dbManager, _ := testsupport.SetupTestDBManager(t)
 		db := dbManager.GetConnection()
 		testsupport.CleanAllTables(db)
-		seedVisit(t, db, "example.com", "/private-page")
+		seedVisit(t, dbManager, "example.com", "/private-page")
 		app := testsupport.CreateMinimalTestApp(t, db)
 
 		resp, err := app.Test(request("/x/api/v1/me?w=example.com", "null"), 30000)
@@ -997,8 +986,8 @@ func TestVisitorInfoOriginRules(t *testing.T) {
 		dbManager, _ := testsupport.SetupTestDBManager(t)
 		db := dbManager.GetConnection()
 		testsupport.CleanAllTables(db)
-		seedVisit(t, db, "example.com", "/own-page")
-		seedVisit(t, db, "other.com", "/other-page")
+		seedVisit(t, dbManager, "example.com", "/own-page")
+		seedVisit(t, dbManager, "other.com", "/other-page")
 		app := testsupport.CreateMinimalTestApp(t, db)
 
 		resp, err := app.Test(request("/x/api/v1/me?w=other.com", "https://example.com"), 30000)
@@ -1034,4 +1023,12 @@ func TestVisitorInfoOriginRules(t *testing.T) {
 		assert.Equal(t, "https://example.com", allowedResp.Header.Get("Access-Control-Allow-Origin"))
 		assert.Empty(t, deniedResp.Header.Get("Access-Control-Allow-Origin"))
 	})
+}
+
+// todaysSignature is the signature the server gives this visitor today.
+func todaysSignature(t *testing.T, dbManager *testsupport.TestDBManager, domain, ip, userAgent string) string {
+	t.Helper()
+	salt, err := visitors.DailySalt(dbManager)
+	require.NoError(t, err)
+	return visitors.BuildUniqueVisitorId(domain, ip, userAgent, salt)
 }
