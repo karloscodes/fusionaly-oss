@@ -25,6 +25,7 @@ jobs:
     name: Release tag
     runs-on: ubuntu-latest
     outputs:
+      tag: ${{ steps.resolve.outputs.tag }}
       sha: ${{ steps.resolve.outputs.sha }}
       previous: ${{ steps.resolve.outputs.previous }}
     steps:
@@ -32,6 +33,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Resolve the release tag
         id: resolve
@@ -47,21 +49,20 @@ jobs:
           fi
           # refs/tags/ only. A branch named vX.Y.Z must not pass.
           tagged="$(git rev-parse --verify "refs/tags/${tag}^{commit}")"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
           echo "sha=${tagged}" >> "$GITHUB_OUTPUT"
 
+          # An rc: GoReleaser finds the previous tag itself.
           if [[ "$tag" == *-* ]]; then
-            echo "previous=" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          stables="$(git tag --list 'v[0-9]*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' || true)"
+          # The list holds this tag, so any other highest tag is above it.
+          stables="$(git tag --list 'v[0-9]*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$')"
           highest="$(printf '%s\n' "$stables" | head -1)"
-          if [ "$EVENT_NAME" = "workflow_dispatch" ] && [ -n "$highest" ] && [ "$tag" != "$highest" ]; then
-            top="$(git tag --list "$tag" "$highest" --sort=-v:refname | head -1)"
-            if [ "$top" != "$tag" ]; then
-              echo "Refusing ${tag}: ${highest} is already the stable release, and publishing ${tag} would move latest backwards." >&2
-              exit 1
-            fi
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] && [ "$tag" != "$highest" ]; then
+            echo "Refusing ${tag}: ${highest} is the newest stable tag, and ${tag} would move latest back." >&2
+            exit 1
           fi
           previous="$(printf '%s\n' "$stables" | awk -v cur="$tag" '$0 == cur { found = 1; next } found { print; exit }')"
           if [ -z "$previous" ]; then
@@ -104,7 +105,7 @@ jobs:
           npm run build
 
       - name: Run unit tests
-        run: FUSIONALY_ENV="test" go test -v ./...
+        run: FUSIONALY_ENV=test go test -v ./...
 
   test-manager:
     name: Test Manager Binary
@@ -138,7 +139,7 @@ jobs:
           echo "Manager binary tests passed!"
 
       - name: Run manager integration tests
-        run: FUSIONALY_ENV="test" go test -v ./internal/manager -run "TestManager"
+        run: FUSIONALY_ENV=test go test -v ./internal/manager -run "TestManager"
 
   test-install:
     name: Install Test
@@ -219,9 +220,6 @@ jobs:
     name: Build and Release
     runs-on: ubuntu-latest
     needs: [tag, test, test-manager, test-install, chasen]
-    # GoReleaser reads this. On a tag push inputs.tag is empty, so this is GITHUB_REF_NAME.
-    env:
-      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -264,5 +262,5 @@ jobs:
           # v2.11.0-rc.3 ahead of v2.11.0 when both point at HEAD, and
           # prerelease: auto then follows that rc tag. Stable notes start at
           # the previous stable tag, not at the rc that shares this commit.
-          GORELEASER_CURRENT_TAG: ${{ env.RELEASE_TAG }}
+          GORELEASER_CURRENT_TAG: ${{ needs.tag.outputs.tag }}
           GORELEASER_PREVIOUS_TAG: ${{ needs.tag.outputs.previous }}
