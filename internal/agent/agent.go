@@ -14,6 +14,8 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/karloscodes/cartridge/sqlite"
+
+	"fusionaly/internal/config"
 )
 
 // SchemaResponse is the response format for the schema endpoint
@@ -54,8 +56,19 @@ func GetSchema(db *gorm.DB) (*SchemaResponse, error) {
 			"visit_duration":      "Average visit duration in seconds: SUM(visit_seconds) / SUM(sessions) from site_stats. A visit counts in the bucket of its first page view.",
 			"event_types":         "events.event_type: 1 = page view, 2 = custom event, 3 = page hide (only extends a visit; leave it out of counts)",
 			"aggregation_pattern": "Always SUM() count columns when grouping. Each row holds one 30-minute bucket.",
+			"raw_events":          rawEventsConcept(),
 		},
 	}, nil
+}
+
+// rawEventsConcept tells agents how far back the events table goes, so they
+// read old ranges from the stats tables, not from missing raw events.
+func rawEventsConcept() string {
+	days := config.GetConfig().EventsRetentionDays
+	if days <= 0 {
+		return "The events table keeps every raw event. For counts, prefer the stats tables: they are smaller and faster."
+	}
+	return fmt.Sprintf("The events table keeps raw events for the last %d days. Older events are deleted, except the events with a price, which revenue reads. The stats tables keep every day: use them for counts and for anything older than %d days.", days, days)
 }
 
 // AllowedTables are the tables agents may read: analytics data only. Everything
