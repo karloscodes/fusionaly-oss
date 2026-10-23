@@ -22,6 +22,20 @@ export function WebsiteSetup() {
 
 	const scriptTag = `<script defer src="${window.location.origin}/y/api/v1/sdk.js" data-website-id="${website.id}"></script>`;
 
+	// The install guides on fusionaly.com/docs/integrations/<slug>/.
+	const guides = [
+		["Next.js", "nextjs"],
+		["React", "react"],
+		["Astro", "astro"],
+		["Nuxt", "nuxt"],
+		["SvelteKit", "sveltekit"],
+		["WordPress", "wordpress"],
+		["Shopify", "shopify"],
+		["Webflow", "webflow"],
+		["Ghost", "ghost"],
+		["Hugo", "hugo"],
+	];
+
 	const handleCopy = async () => {
 		try {
 			await copyText(scriptTag);
@@ -87,6 +101,24 @@ export function WebsiteSetup() {
 									)}
 								</Button>
 							</div>
+
+							<p className="text-sm text-gray-700">
+								Step-by-step guides:{" "}
+								{guides.map(([name, slug], i) => (
+									<span key={slug}>
+										{i > 0 && ", "}
+										<a
+											href={`https://fusionaly.com/docs/integrations/${slug}/`}
+											target="_blank"
+											rel="noopener noreferrer"
+											className="font-medium text-gray-900 hover:underline"
+										>
+											{name}
+										</a>
+									</span>
+								))}
+								.
+							</p>
 
 							<div className="bg-gray-100 border border-gray-200 rounded-lg p-4">
 								<p className="text-sm text-gray-700">
