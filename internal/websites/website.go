@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+
+	"fusionaly/internal/settings"
 )
 
 // ErrWebsiteExists means a website with the same domain is already registered.
@@ -198,16 +200,20 @@ func UpdateWebsite(db *gorm.DB, website *Website) error {
 	return db.Save(website).Error
 }
 
-// DeleteWebsite deletes a website by its ID
+// DeleteWebsite deletes a website, its goals, and its subdomain setting.
+// Its events and summaries can be millions of rows, so PurgeDeletedWebsites
+// deletes them later, in batches.
 func DeleteWebsite(db *gorm.DB, id uint) error {
-	result := db.Delete(&Website{}, id)
-	if result.Error != nil {
-		return result.Error
+	var website Website
+	if err := db.First(&website, id).Error; err != nil {
+		return err
 	}
-	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
-	}
-	return nil
+	return db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Delete(&website).Error; err != nil {
+			return err
+		}
+		return settings.ForgetWebsite(tx, website.ID, website.Domain)
+	})
 }
 
 // GetWebsitesForSelector returns a list of websites formatted for the frontend selector

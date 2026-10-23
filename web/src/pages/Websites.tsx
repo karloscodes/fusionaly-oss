@@ -461,7 +461,7 @@ const Websites: React.FC = () => {
             <DialogHeader>
               <DialogTitle>Delete Website</DialogTitle>
               <DialogDescription>
-                Are you sure you want to delete {websiteToDelete?.domain}? This action cannot be undone and all associated data will be permanently removed.
+                Are you sure you want to delete {websiteToDelete?.domain}? This action cannot be undone. Fusionaly permanently deletes all its data within a day.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>

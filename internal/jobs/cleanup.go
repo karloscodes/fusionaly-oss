@@ -10,9 +10,10 @@ import (
 
 	"fusionaly/internal/config"
 	"fusionaly/internal/database"
+	"fusionaly/internal/websites"
 )
 
-// CleanupJob handles cleanup of old ingested events
+// CleanupJob deletes old queue rows and the data of deleted websites
 type CleanupJob struct {
 	dbManager *database.DBManager
 	logger    *slog.Logger
@@ -27,9 +28,18 @@ func NewCleanupJob(dbManager *database.DBManager, logger *slog.Logger, cfg *conf
 	}
 }
 
-// Run removes processed ingested events older than the retention period.
-// This helps with GDPR data minimization and reduces storage usage.
+// Run deletes old queue rows and the data of deleted websites.
 func (j *CleanupJob) Run() error {
+	if err := j.deleteOldQueueRows(); err != nil {
+		return err
+	}
+	return j.purgeDeletedWebsites()
+}
+
+// deleteOldQueueRows removes processed ingested events older than the
+// retention period. This helps with GDPR data minimization and reduces
+// storage usage.
+func (j *CleanupJob) deleteOldQueueRows() error {
 	retentionDays := j.cfg.IngestedEventsRetentionDays
 	cutoffDate := time.Now().AddDate(0, 0, -retentionDays)
 
@@ -77,5 +87,21 @@ func (j *CleanupJob) Run() error {
 		slog.Int64("deleted_count", totalDeleted),
 		slog.Int("retention_days", retentionDays))
 
+	return nil
+}
+
+// purgeDeletedWebsites deletes the events, queue rows, and summaries of
+// deleted websites. Deleting a website removes only the website itself.
+func (j *CleanupJob) purgeDeletedWebsites() error {
+	deleted, err := websites.PurgeDeletedWebsites(j.dbManager)
+	if err != nil {
+		j.logger.Error("Failed to delete the data of deleted websites",
+			slog.Any("error", err),
+			slog.Int64("deleted_so_far", deleted))
+		return err
+	}
+	if deleted > 0 {
+		j.logger.Info("Deleted the data of deleted websites", slog.Int64("deleted_count", deleted))
+	}
 	return nil
 }

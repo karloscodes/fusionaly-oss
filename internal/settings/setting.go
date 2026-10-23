@@ -327,6 +327,41 @@ func SaveWebsiteGoals(db *gorm.DB, websiteID uint, goals []string) error {
 	return nil
 }
 
+// ForgetWebsite removes a deleted website's goals and its subdomain setting.
+// It updates the rows directly, so it works inside the caller's transaction.
+func ForgetWebsite(db *gorm.DB, websiteID uint, domain string) error {
+	subdomains, _ := GetSubdomainTrackingSettings(db)
+	if _, ok := subdomains[domain]; ok {
+		delete(subdomains, domain)
+		updated, err := json.Marshal(subdomains)
+		if err != nil {
+			return fmt.Errorf("failed to marshal subdomain tracking settings: %w", err)
+		}
+		if err := db.Model(&Setting{}).Where("key = ?", "subdomain_tracking").Update("value", string(updated)).Error; err != nil {
+			return fmt.Errorf("failed to update subdomain tracking settings: %w", err)
+		}
+	}
+
+	goalsJSON, err := GetSetting(db, "website_goals")
+	if err != nil {
+		return nil
+	}
+	var websiteGoals WebsiteGoals
+	if err := json.Unmarshal([]byte(goalsJSON), &websiteGoals); err != nil {
+		return nil
+	}
+	websiteIDStr := strconv.FormatUint(uint64(websiteID), 10)
+	if _, ok := websiteGoals.Goals[websiteIDStr]; !ok {
+		return nil
+	}
+	delete(websiteGoals.Goals, websiteIDStr)
+	updated, err := json.Marshal(websiteGoals)
+	if err != nil {
+		return fmt.Errorf("failed to marshal website_goals: %w", err)
+	}
+	return db.Model(&Setting{}).Where("key = ?", "website_goals").Update("value", string(updated)).Error
+}
+
 // SettingResponse represents a setting key-value pair for API responses
 type SettingResponse struct {
 	Key   string `json:"key"`
