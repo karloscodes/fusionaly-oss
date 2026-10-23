@@ -12,7 +12,6 @@ interface Website {
   created_at: string;
   conversion_goals?: string[];
   subdomain_tracking_enabled?: boolean;
-  privacy_mode?: string;
 }
 
 interface Event {
@@ -325,78 +324,6 @@ const WebsiteEdit: React.FC = () => {
                   onGoalsChange={setSelectedGoals}
                 />
               </div>
-
-              {/* Privacy Mode Section - Hidden but functional */}
-              {/* Uncomment to allow users to toggle between privacy and tracking modes
-              <div className="pt-6 border-t border-gray-200">
-                <h2 className="text-base font-semibold text-gray-900 mb-3">Privacy & Tracking Settings
-                </h2>
-                <p className="text-sm text-gray-500 mb-4">
-                  Choose how visitor tracking works for this website. Both modes are privacy-compliant (no IP storage).
-                </p>
-
-                <div className="space-y-4">
-                  <div className="border rounded-lg p-4 bg-white">
-                    <div className="flex items-start gap-3">
-                      <div className="flex-1">
-                        <h3 className="font-medium mb-2">Tracking Mode</h3>
-                        <div className="space-y-3">
-                          <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                            <input
-                              type="radio"
-                              name="privacy_mode_radio"
-                              value="privacy"
-                              checked={privacyMode === 'privacy'}
-                              onChange={(e) => setPrivacyMode(e.target.value)}
-                              className="w-4 h-4 text-black border-gray-300 focus:ring-black"
-                            />
-                            <div className="flex-1">
-                              <div className="font-medium text-sm">Privacy Mode</div>
-                              <div className="text-xs text-gray-600 mt-1">
-                                ✓ Visitor IDs rotate daily<br/>
-                                ✓ Aggregate analytics only<br/>
-                                ✗ No multi-day user journeys
-                              </div>
-                            </div>
-                          </label>
-                          <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                            <input
-                              type="radio"
-                              name="privacy_mode_radio"
-                              value="tracking"
-                              checked={privacyMode === 'tracking'}
-                              onChange={(e) => setPrivacyMode(e.target.value)}
-                              className="w-4 h-4 text-black border-gray-300 focus:ring-black"
-                            />
-                            <div className="flex-1">
-                              <div className="font-medium text-sm">Tracking Mode (Default)</div>
-                              <div className="text-xs text-gray-600 mt-1">
-                                ✓ Stable visitor IDs (cross-session)<br/>
-                                ✓ Full journey tracking & cohorts<br/>
-                                ✓ Still privacy-compliant (hashed IDs only)
-                              </div>
-                            </div>
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div className="flex items-start gap-3">
-                      <Info className="h-5 w-5 text-blue-600 mt-0.5 shrink-0" />
-                      <div className="text-sm text-blue-900">
-                        <p className="font-medium mb-1">Privacy Guarantee</p>
-                        <p className="text-xs">
-                          Both modes are GDPR-compliant. We <strong>never store IP addresses</strong> – only anonymous hashed identifiers.
-                          The difference is how long we can connect a visitor's sessions.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              */}
 
               {/* Subdomain Tracking Section */}
               <div className="pt-6 border-t border-gray-200">

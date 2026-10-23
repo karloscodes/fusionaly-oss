@@ -31,11 +31,10 @@ func NewWebsiteNotFoundError(domain string) *WebsiteNotFoundError {
 
 // Website represents a tracked website
 type Website struct {
-	ID          uint      `gorm:"primaryKey;autoIncrement" json:"id"`
-	Domain      string    `gorm:"unique;not null" json:"domain"`          // Base domain, e.g., "example.com"
-	PrivacyMode string    `gorm:"default:'tracking'" json:"privacy_mode"` // "privacy" (daily rotation) or "tracking" (stable IDs)
-	ShareToken  *string   `gorm:"uniqueIndex" json:"share_token"`         // If set, dashboard is publicly shared at /share/{token}
-	CreatedAt   time.Time `json:"created_at"`
+	ID         uint      `gorm:"primaryKey;autoIncrement" json:"id"`
+	Domain     string    `gorm:"unique;not null" json:"domain"`  // Base domain, e.g., "example.com"
+	ShareToken *string   `gorm:"uniqueIndex" json:"share_token"` // If set, dashboard is publicly shared at /share/{token}
+	CreatedAt  time.Time `json:"created_at"`
 }
 
 // GetFirstWebsite retrieves the first website from the database
@@ -186,11 +185,6 @@ func CreateWebsite(db *gorm.DB, website *Website) error {
 
 	// Set creation time and defaults
 	website.CreatedAt = time.Now().UTC()
-
-	// Ensure privacy mode has a default value
-	if website.PrivacyMode == "" {
-		website.PrivacyMode = "tracking"
-	}
 
 	return db.Create(website).Error
 }
