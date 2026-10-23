@@ -460,6 +460,97 @@ test.describe("Event Ingestion E2E", () => {
 		expect(consoleErrors, "Expected no console errors").toEqual([]);
 	});
 
+	// The paths of the page views the SDK sends, in order.
+	const watchPageViews = (page) => {
+		const paths = [];
+		page.on("request", (request) => {
+			if (!request.url().includes("/x/api/v1/events") || request.method() !== "POST") {
+				return;
+			}
+			try {
+				const body = request.postDataJSON();
+				if (body.eventType === 1) {
+					const url = new URL(body.url);
+					paths.push(url.pathname + url.search);
+				}
+			} catch (e) {
+				// Not an event body.
+			}
+		});
+		return paths;
+	};
+
+	test("should count a page view when a router redirects with replaceState", async ({ page }) => {
+		const pageViews = watchPageViews(page);
+		await page.goto("/_demo");
+		await expect.poll(() => pageViews.length).toBe(1);
+
+		// What Next.js router.replace and React Router navigate(to, { replace: true }) do.
+		await page.evaluate(() => history.replaceState({}, "", "/after-redirect"));
+		await expect.poll(() => pageViews).toContain("/after-redirect");
+
+		// A query change on the same path is no new page view.
+		await page.evaluate(() => history.replaceState({}, "", "/after-redirect?tab=2"));
+		await page.waitForTimeout(1000);
+		expect(pageViews).toEqual(["/_demo", "/after-redirect"]);
+	});
+
+	test("should stop sending when the server refuses the domain", async ({ page }) => {
+		const sends = [];
+		await page.route("**/x/api/v1/events", async (route) => {
+			if (route.request().method() !== "POST") {
+				return route.continue();
+			}
+			sends.push(route.request().postData());
+			await route.fulfill({
+				status: 403,
+				contentType: "application/json",
+				body: JSON.stringify({ error: "invalid origin" }),
+			});
+		});
+
+		await page.goto("/_demo");
+		await expect.poll(() => sends.length).toBeGreaterThan(0);
+		// Longer than the first retry, which comes after at most 1.2s.
+		await page.waitForTimeout(2500);
+		const sentBeforeRefusal = sends.length;
+
+		await page.evaluate(() => window.Fusionaly.sendCustomEvent("after_refusal", {}));
+		await page.waitForTimeout(1000);
+
+		expect(sends.length, "the SDK sends nothing after the refusal").toBe(sentBeforeRefusal);
+		expect(new Set(sends).size, "the SDK retries no refused event").toBe(sends.length);
+		expect(
+			await page.evaluate(() => localStorage.getItem("fusionaly_pendingEvents")),
+			"the SDK stores no refused event",
+		).toBeNull();
+		const sdkErrors = consoleErrors.filter((text) => text.startsWith("Fusionaly:"));
+		expect(sdkErrors).toEqual([expect.stringContaining("is not a website in Fusionaly")]);
+	});
+
+	test("should send nothing when the site owner sets fusionaly_ignore", async ({ page }) => {
+		await page.addInitScript(() => localStorage.setItem("fusionaly_ignore", "true"));
+		// The tracked link goes to Google: answer it here, without the network.
+		await page.route(/google\.com/, (route) =>
+			route.fulfill({ status: 200, contentType: "text/html", body: "<p>ok</p>" }),
+		);
+		const sends = [];
+		page.on("request", (request) => {
+			if (request.url().includes("/x/api/v1/events") && request.method() === "POST") {
+				sends.push(request.url());
+			}
+		});
+
+		await page.goto("/_demo");
+		await page.click('a[data-fusionaly-event-name="click:link:google"]');
+		await page.waitForURL(/google\.com/);
+		await page.goBack();
+		await page.evaluate(() => window.Fusionaly.sendCustomEvent("owner_click", {}));
+		await page.waitForTimeout(1000);
+
+		expect(sends).toEqual([]);
+	});
+
 	// These stub the endpoint, so they cover the SDK half of the retry contract
 	// only. The server half (503 body, Retry-After value, the CORS expose rule)
 	// is covered by the Go tests in api/v1 and internal/events.

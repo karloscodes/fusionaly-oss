@@ -65,11 +65,36 @@
 		}
 	};
 
+	// A site owner runs localStorage.fusionaly_ignore = "true" in their own
+	// browser, so their own visits do not count.
+	const ignoredByOwner = (() => {
+		try {
+			return localStorage.getItem("fusionaly_ignore") === "true";
+		} catch (e) {
+			return false;
+		}
+	})();
+
+	// A 403 means the server takes no events from this domain: it is not a
+	// website in Fusionaly. That does not change while the page is open, so
+	// the SDK stops sending instead of retrying and storing every event.
+	let refused = false;
+	const refuse = () => {
+		if (refused) {
+			return;
+		}
+		refused = true;
+		log(
+			`${window.location.hostname} is not a website in Fusionaly, so the server refuses its events. Add the domain in Fusionaly to count them.`,
+			"error",
+		);
+	};
+
 	// Helper function to check if tracking is allowed. Automated browsers
 	// (Puppeteer, Playwright, Selenium) set navigator.webdriver; they are
 	// monitors and scrapers, not visitors.
 	const shouldTrack = () => {
-		if (navigator.webdriver === true) {
+		if (refused || ignoredByOwner || navigator.webdriver === true) {
 			return false;
 		}
 		return !(
@@ -94,19 +119,31 @@
 	// the path (an anchor link, a query or hash update) is no new page view.
 	let lastPagePath = null;
 	const sendPageViewIfPathChanged = () => {
+		// The first page view is not sent yet, for example while the page is
+		// prerendered. It counts the path it finds when it is sent.
+		if (lastPagePath === null) {
+			return;
+		}
 		if (window.location.pathname !== lastPagePath) {
 			sendPageView();
 		}
 	};
 
-	const setupSPATracking = () => {
-		const originalPushState = history.pushState;
-		history.pushState = function (...args) {
-			originalPushState.apply(history, args);
+	// Routers change pages with pushState, and redirect with replaceState:
+	// Next.js router.replace, React Router navigate(to, { replace: true }).
+	const watchHistory = (method) => {
+		const original = history[method];
+		history[method] = function (...args) {
+			original.apply(history, args);
 			if (window.Fusionaly.config.autoSendPageViews) {
 				setTimeout(sendPageViewIfPathChanged, 50);
 			}
 		};
+	};
+
+	const setupSPATracking = () => {
+		watchHistory("pushState");
+		watchHistory("replaceState");
 
 		window.addEventListener("popstate", () => {
 			if (window.Fusionaly.config.autoSendPageViews) {
@@ -149,10 +186,19 @@
 		})
 			.then((response) => {
 				if (!response.ok) {
+					if (response.status === 403) {
+						refuse();
+						return;
+					}
 					log(
 						`Error sending event: ${response.status} ${response.statusText}`,
 						"error",
 					);
+					// Any other 4xx but 429 fails the same way again, so the
+					// event is dropped, not retried or stored.
+					if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+						return;
+					}
 					// Only the busy response carries a hint worth following. The
 					// rate limiter answers 429 with Retry-After: 60, and waiting
 					// that long outlives the page and loses the event.
@@ -314,6 +360,11 @@
 	// the caller then decides to store the event. storeOnFailure stores an
 	// event whose fetch fails later; page hides set it to false.
 	const sendBeaconEvent = (eventData, storeOnFailure = true) => {
+		// An event the SDK must not send counts as sent, so the caller does
+		// not store it.
+		if (!shouldTrack()) {
+			return true;
+		}
 		const body = JSON.stringify(eventData);
 
 		if (window.Fusionaly.config.useKeepaliveFetch) {
