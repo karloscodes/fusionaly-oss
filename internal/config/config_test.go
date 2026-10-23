@@ -50,6 +50,7 @@ func TestLoad(t *testing.T) {
 		assert.Equal(t, SQLiteDatabase, c.DatabaseType)
 		assert.Equal(t, 60, c.JobIntervalSeconds)
 		assert.Equal(t, 15, c.IngestedEventsRetentionDays)
+		assert.Equal(t, 760, c.EventsRetentionDays)
 		assert.Equal(t, "csrf", c.CSRFContextKey)
 		assert.Equal(t, LogLevel(""), c.LogLevel)
 	})
@@ -88,6 +89,7 @@ func TestLoad(t *testing.T) {
 			"FUSIONALY_LOGS_MAX_SIZE_IN_MB": "5", "FUSIONALY_LOGS_MAX_BACKUPS": "2", "FUSIONALY_LOGS_MAX_AGE_IN_DAYS": "7",
 			"FUSIONALY_DB_TYPE": SQLiteDatabase, "FUSIONALY_DB_MAX_OPEN_CONNS": "4", "FUSIONALY_DB_MAX_IDLE_CONNS": "2",
 			"FUSIONALY_JOB_INTERVAL_SECONDS": "15", "FUSIONALY_INGESTED_EVENTS_RETENTION_DAYS": "30",
+			"FUSIONALY_EVENTS_RETENTION_DAYS": "0",
 		}))
 
 		assert.NoError(t, err)
@@ -110,6 +112,7 @@ func TestLoad(t *testing.T) {
 		assert.Equal(t, 2, c.DatabaseMaxIdleConns)
 		assert.Equal(t, 15, c.JobIntervalSeconds)
 		assert.Equal(t, 30, c.IngestedEventsRetentionDays)
+		assert.Equal(t, 0, c.EventsRetentionDays)
 	})
 
 	t.Run("treats an empty variable as unset", func(t *testing.T) {

@@ -72,6 +72,13 @@ type Config struct {
 	// Days to keep processed queue rows. They hold the full URL and the
 	// User-Agent, so keep them only long enough to look into a problem.
 	IngestedEventsRetentionDays int
+
+	// Days to keep raw events. The summaries keep every chart, so raw events
+	// serve only recent questions: the Events page, MCP queries, and
+	// recounts. Events with a price stay, because revenue reads them. 0 keeps
+	// every event. The default is about 25 months, the longest that France's
+	// CNIL accepts for analytics without consent.
+	EventsRetentionDays int
 }
 
 var (
@@ -155,6 +162,7 @@ func load(getenv func(string) string) (*Config, error) {
 		DatabaseMaxIdleConns:        num("FUSIONALY_DB_MAX_IDLE_CONNS", 0),
 		JobIntervalSeconds:          num("FUSIONALY_JOB_INTERVAL_SECONDS", 60),
 		IngestedEventsRetentionDays: num("FUSIONALY_INGESTED_EVENTS_RETENTION_DAYS", 15),
+		EventsRetentionDays:         num("FUSIONALY_EVENTS_RETENTION_DAYS", 760),
 	}
 	return c, bad
 }

@@ -72,13 +72,17 @@ type visitTally struct {
 // Source stats (ref_stats, utm_stats, query_param_stats) are not rebuilt.
 // A visit's source can be its utm_source or ref, and events keep neither
 // the URL nor the source, only the raw referrer.
+//
+// It recounts only the days since KeptSince. Older days have no raw page
+// views left, so their stored counts stay.
 func RebuildVisitCounts(db *gorm.DB, websiteID uint) error {
-	tally, err := tallyVisits(db, websiteID)
+	keptSince := KeptSince(time.Now())
+	tally, err := tallyVisits(db, websiteID, keptSince)
 	if err != nil {
 		return err
 	}
 	return db.Transaction(func(tx *gorm.DB) error {
-		return writeVisitTally(tx, websiteID, tally)
+		return writeVisitTally(tx, websiteID, tally, keptSince)
 	})
 }
 
@@ -86,7 +90,7 @@ func bucketOf(t time.Time) int64 {
 	return truncateToHalfHour(t.UTC()).Unix()
 }
 
-func tallyVisits(db *gorm.DB, websiteID uint) (visitTally, error) {
+func tallyVisits(db *gorm.DB, websiteID uint, keptSince time.Time) (visitTally, error) {
 	tally := visitTally{
 		visitors: map[int64]int{}, sessions: map[int64]int{}, bounces: map[int64]int{},
 		entrances: map[pageBucket]int{}, exits: map[pageBucket]int{},
@@ -127,6 +131,9 @@ func tallyVisits(db *gorm.DB, websiteID uint) (visitTally, error) {
 		var e Event
 		if err := db.ScanRows(rows, &e); err != nil {
 			return tally, fmt.Errorf("failed to scan event: %w", err)
+		}
+		if e.Timestamp.Before(keptSince) {
+			continue
 		}
 
 		newVisitor := e.UserSignature != signature || signature == ""
@@ -176,7 +183,7 @@ func tallyVisits(db *gorm.DB, websiteID uint) (visitTally, error) {
 // writeVisitTally replaces the stored counts with the tally. It matches rows
 // by their bucket's instant, not by the stored text, so rows written with
 // another time zone offset still match.
-func writeVisitTally(tx *gorm.DB, websiteID uint, tally visitTally) error {
+func writeVisitTally(tx *gorm.DB, websiteID uint, tally visitTally, keptSince time.Time) error {
 	type statRow struct {
 		ID       uint
 		Hostname string
@@ -189,6 +196,9 @@ func writeVisitTally(tx *gorm.DB, websiteID uint, tally visitTally) error {
 		return fmt.Errorf("failed to read page stats: %w", err)
 	}
 	for _, p := range pages {
+		if p.Hour.Before(keptSince) {
+			continue
+		}
 		key := pageBucket{p.Hostname, p.Pathname, bucketOf(p.Hour)}
 		err := tx.Table("page_stats").Where("id = ?", p.ID).Updates(map[string]any{
 			"exits": tally.exits[key], "visitors_count": tally.pageVisitor[key], "entrances": tally.entrances[key],
@@ -203,6 +213,9 @@ func writeVisitTally(tx *gorm.DB, websiteID uint, tally visitTally) error {
 		return fmt.Errorf("failed to read site stats: %w", err)
 	}
 	for _, s := range sites {
+		if s.Hour.Before(keptSince) {
+			continue
+		}
 		hour := bucketOf(s.Hour)
 		err := tx.Table("site_stats").Where("id = ?", s.ID).Updates(map[string]any{
 			"bounce_count": tally.bounces[hour], "visitors": tally.visitors[hour], "sessions": tally.sessions[hour],
@@ -277,7 +290,12 @@ func rebuildByDay(dbManager cartridge.DBManager, websiteID uint, tally func(*gor
 		rowOfBucket[bucketOf(r.Hour)] = r.ID
 	}
 
-	for day := first.Timestamp.UTC().Truncate(24 * time.Hour); !day.After(last.Timestamp.UTC()); day = day.Add(24 * time.Hour) {
+	// Older days have no raw page views left: keep their stored values.
+	start := first.Timestamp.UTC().Truncate(24 * time.Hour)
+	if keptSince := KeptSince(time.Now()); start.Before(keptSince) {
+		start = keptSince
+	}
+	for day := start; !day.After(last.Timestamp.UTC()); day = day.Add(24 * time.Hour) {
 		values, err := tally(db, websiteID, day)
 		if err != nil {
 			return fmt.Errorf("day %s: %w", day.Format(time.DateOnly), err)

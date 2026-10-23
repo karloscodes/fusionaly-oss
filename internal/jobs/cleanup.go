@@ -1,19 +1,18 @@
 package jobs
 
 import (
-	"context"
 	"log/slog"
 	"time"
 
-	"github.com/karloscodes/cartridge"
-	"gorm.io/gorm"
-
 	"fusionaly/internal/config"
 	"fusionaly/internal/database"
+	"fusionaly/internal/events"
+	"fusionaly/internal/pkg/batch"
 	"fusionaly/internal/websites"
 )
 
-// CleanupJob deletes old queue rows and the data of deleted websites
+// CleanupJob deletes old queue rows, old raw events, and the data of deleted
+// websites
 type CleanupJob struct {
 	dbManager *database.DBManager
 	logger    *slog.Logger
@@ -28,9 +27,13 @@ func NewCleanupJob(dbManager *database.DBManager, logger *slog.Logger, cfg *conf
 	}
 }
 
-// Run deletes old queue rows and the data of deleted websites.
+// Run deletes old queue rows, old raw events, and the data of deleted
+// websites.
 func (j *CleanupJob) Run() error {
 	if err := j.deleteOldQueueRows(); err != nil {
+		return err
+	}
+	if err := j.deleteOldEvents(); err != nil {
 		return err
 	}
 	return j.purgeDeletedWebsites()
@@ -47,35 +50,14 @@ func (j *CleanupJob) deleteOldQueueRows() error {
 		slog.Int("retention_days", retentionDays),
 		slog.Time("cutoff_date", cutoffDate))
 
-	// Delete in batches inside the serialized writer, so ingestion is never
-	// blocked for long. GORM drops .Limit() on a SQLite DELETE, so the batch
-	// is a subquery. Failed events (processed = 2) age out the same way.
-	const batchSize = 1000
-	totalDeleted := int64(0)
-
-	for {
-		var deleted int64
-		err := cartridge.Write(context.Background(), j.dbManager, func(tx *gorm.DB) error {
-			result := tx.Exec(`DELETE FROM ingested_events WHERE id IN (
-				SELECT id FROM ingested_events WHERE processed IN (1, 2) AND created_at < ? LIMIT ?)`,
-				cutoffDate, batchSize)
-			deleted = result.RowsAffected
-			return result.Error
-		})
-		if err != nil {
-			j.logger.Error("Failed to delete old ingested events",
-				slog.Any("error", err),
-				slog.Int64("deleted_so_far", totalDeleted))
-			return err
-		}
-
-		totalDeleted += deleted
-		if deleted < batchSize {
-			break
-		}
-
-		// Small delay between batches to prevent database lock contention
-		time.Sleep(100 * time.Millisecond)
+	// Failed events (processed = 2) age out the same way.
+	totalDeleted, err := batch.Delete(j.dbManager, `DELETE FROM ingested_events WHERE id IN (
+		SELECT id FROM ingested_events WHERE processed IN (1, 2) AND created_at < ? LIMIT ?)`, cutoffDate)
+	if err != nil {
+		j.logger.Error("Failed to delete old ingested events",
+			slog.Any("error", err),
+			slog.Int64("deleted_so_far", totalDeleted))
+		return err
 	}
 
 	if totalDeleted == 0 {
@@ -87,6 +69,24 @@ func (j *CleanupJob) deleteOldQueueRows() error {
 		slog.Int64("deleted_count", totalDeleted),
 		slog.Int("retention_days", retentionDays))
 
+	return nil
+}
+
+// deleteOldEvents deletes the raw events older than
+// FUSIONALY_EVENTS_RETENTION_DAYS, except the events with a price.
+func (j *CleanupJob) deleteOldEvents() error {
+	deleted, err := events.DeleteOldEvents(j.dbManager, time.Now())
+	if err != nil {
+		j.logger.Error("Failed to delete old events",
+			slog.Any("error", err),
+			slog.Int64("deleted_so_far", deleted))
+		return err
+	}
+	if deleted > 0 {
+		j.logger.Info("Deleted old events",
+			slog.Int64("deleted_count", deleted),
+			slog.Int("retention_days", j.cfg.EventsRetentionDays))
+	}
 	return nil
 }
 

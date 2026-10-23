@@ -1,12 +1,12 @@
 package websites
 
 import (
-	"context"
 	"fmt"
-	"time"
 
 	"github.com/karloscodes/cartridge"
 	"gorm.io/gorm"
+
+	"fusionaly/internal/pkg/batch"
 )
 
 // PurgeDeletedWebsites deletes the rows of deleted websites from every table
@@ -69,27 +69,8 @@ func deletedWebsiteIDs(db *gorm.DB) ([]uint, error) {
 	return deleted, nil
 }
 
-// purgeRows deletes one website's rows from one table, in batches inside the
-// serialized writer, so ingestion never waits long. GORM drops .Limit() on a
-// SQLite DELETE, so the batch is a subquery.
+// purgeRows deletes one website's rows from one table.
 func purgeRows(dbManager cartridge.DBManager, table string, websiteID uint) (int64, error) {
-	const batchSize = 1000
 	query := fmt.Sprintf("DELETE FROM `%s` WHERE rowid IN (SELECT rowid FROM `%s` WHERE website_id = ? LIMIT ?)", table, table)
-
-	var total int64
-	for {
-		var deleted int64
-		err := cartridge.Write(context.Background(), dbManager, func(tx *gorm.DB) error {
-			result := tx.Exec(query, websiteID, batchSize)
-			deleted = result.RowsAffected
-			return result.Error
-		})
-		total += deleted
-		if err != nil || deleted < batchSize {
-			return total, err
-		}
-
-		// Small delay between batches to prevent database lock contention
-		time.Sleep(100 * time.Millisecond)
-	}
+	return batch.Delete(dbManager, query, websiteID)
 }
