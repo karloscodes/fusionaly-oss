@@ -8,6 +8,7 @@ import (
 	"fusionaly/internal/feed"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
 
@@ -37,7 +38,8 @@ func TestBaselineFor(t *testing.T) {
 			}
 		}
 
-		b := feed.BaselineFor(db, 1, siteVisitors, yesterday)
+		b, err := feed.BaselineFor(db, 1, siteVisitors, yesterday)
+		require.NoError(t, err)
 
 		assert.InDelta(t, 1000, b.Typical, 0.001)
 		assert.InDelta(t, 50*1.4826, b.Spread, 0.001)
@@ -50,7 +52,8 @@ func TestBaselineFor(t *testing.T) {
 			insertVisitors(db, yesterday.AddDate(0, 0, -i), 300)
 		}
 
-		b := feed.BaselineFor(db, 1, siteVisitors, yesterday)
+		b, err := feed.BaselineFor(db, 1, siteVisitors, yesterday)
+		require.NoError(t, err)
 
 		assert.InDelta(t, 300, b.Typical, 0.001, "zero weeks before launch must not drag the baseline down")
 	})
@@ -63,7 +66,8 @@ func TestBaselineFor(t *testing.T) {
 			insertVisitors(db, yesterday.AddDate(0, 0, -7*(w+1)), v)
 		}
 
-		b := feed.BaselineFor(db, 1, siteVisitors, yesterday)
+		b, err := feed.BaselineFor(db, 1, siteVisitors, yesterday)
+		require.NoError(t, err)
 
 		assert.InDelta(t, 1000, b.Typical, 0.001)
 		assert.True(t, b.IsSpike(1500), "a past viral day must not hide the next surge")
@@ -76,7 +80,8 @@ func TestBaselineFor(t *testing.T) {
 			insertVisitors(db, yesterday.AddDate(0, 0, -(i+1)), v)
 		}
 
-		b := feed.BaselineFor(db, 1, siteVisitors, yesterday)
+		b, err := feed.BaselineFor(db, 1, siteVisitors, yesterday)
+		require.NoError(t, err)
 
 		assert.InDelta(t, 100, b.Typical, 0.001)
 		assert.True(t, b.IsSpike(300))
@@ -89,7 +94,8 @@ func TestBaselineFor(t *testing.T) {
 			insertVisitors(db, yesterday.AddDate(0, 0, -i), 100)
 		}
 
-		b := feed.BaselineFor(db, 1, siteVisitors, yesterday)
+		b, err := feed.BaselineFor(db, 1, siteVisitors, yesterday)
+		require.NoError(t, err)
 
 		assert.InDelta(t, 100, b.Typical, 0.001)
 		assert.InDelta(t, 100*feed.ColdStartVariance, b.Spread, 0.001)
@@ -101,7 +107,8 @@ func TestBaselineFor(t *testing.T) {
 		insertVisitors(db, yesterday.AddDate(0, 0, -1), 100)
 		insertVisitors(db, yesterday.AddDate(0, 0, -2), 100)
 
-		b := feed.BaselineFor(db, 1, siteVisitors, yesterday)
+		b, err := feed.BaselineFor(db, 1, siteVisitors, yesterday)
+		require.NoError(t, err)
 
 		assert.InDelta(t, 100, b.Typical, 0.001)
 	})
@@ -113,7 +120,8 @@ func TestBaselineFor(t *testing.T) {
 			insertVisitors(db, yesterday.AddDate(0, 0, -i), 400)
 		}
 
-		b := feed.BaselineFor(db, 1, siteVisitors, yesterday)
+		b, err := feed.BaselineFor(db, 1, siteVisitors, yesterday)
+		require.NoError(t, err)
 
 		assert.InDelta(t, math.Sqrt(400), b.Spread, 0.001)
 		assert.False(t, b.IsSpike(430), "a +30 wobble on 400/day is noise")
@@ -127,8 +135,20 @@ func TestBaselineFor(t *testing.T) {
 		signups := feed.Metric{Table: "event_stats", Column: "visitors_count", Filter: "event_name = ?", Args: []any{"signup"}}
 		db.Exec(`INSERT INTO event_stats (website_id, event_name, visitors_count, hour) VALUES (1, 'purchase', 5, ?)`, yesterday.AddDate(0, 0, -3))
 
-		b := feed.BaselineFor(db, 1, signups, yesterday)
+		b, err := feed.BaselineFor(db, 1, signups, yesterday)
+		require.NoError(t, err)
 
 		assert.Zero(t, b.Total, "other events must not count toward this goal")
+	})
+
+	t.Run("returns an error, not an empty history, when the query fails", func(t *testing.T) {
+		db := setupTestDB(t)
+		yesterday := yesterdayUTC()
+		insertVisitors(db, yesterday.AddDate(0, 0, -7), 50)
+		broken := feed.Metric{Table: "site_stats", Column: "no_such_column"}
+
+		_, err := feed.BaselineFor(db, 1, broken, yesterday)
+
+		assert.Error(t, err)
 	})
 }

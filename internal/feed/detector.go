@@ -65,9 +65,6 @@ func (d *Detector) DetectForWebsite(websiteID uint) error {
 	// Trending content (pages with unusual traffic)
 	d.detectTrendingContent(websiteID, yesterday)
 
-	// Page problems (high bounce on specific pages)
-	d.detectPageProblems(websiteID, yesterday)
-
 	// Monthly insights (run on 1st of month, or anytime for previous month)
 	d.detectMonthlySummary(websiteID)
 	d.detectDroppingPages(websiteID)
@@ -89,7 +86,11 @@ func (d *Detector) detectTrafficChanges(websiteID uint, yesterday time.Time) {
 		return
 	}
 
-	baseline := BaselineFor(d.db, websiteID, Metric{Table: "site_stats", Column: "visitors"}, yesterday)
+	baseline, err := BaselineFor(d.db, websiteID, Metric{Table: "site_stats", Column: "visitors"}, yesterday)
+	if err != nil {
+		d.logger.Error("Failed to read the visitor baseline", slog.Any("error", err))
+		return
+	}
 	if baseline.Total == 0 {
 		return
 	}
@@ -156,7 +157,7 @@ func (d *Detector) detectTrafficChanges(websiteID uint, yesterday time.Time) {
 
 // detectNewReferrers finds first-time traffic sources with significant traffic
 func (d *Detector) detectNewReferrers(websiteID uint, yesterday time.Time) {
-	// Get referrers from yesterday with >10 visitors
+	// Get referrers from yesterday with at least MinReferrerVisitors visitors
 	type refRow struct {
 		Hostname string
 		Visitors int64
@@ -230,7 +231,11 @@ func (d *Detector) detectGoalSpikes(websiteID uint, yesterday time.Time) {
 
 	for _, goal := range yesterdayGoals {
 		metric := Metric{Table: "event_stats", Column: "visitors_count", Filter: "event_name = ?", Args: []any{goal.EventName}}
-		baseline := BaselineFor(d.db, websiteID, metric, yesterday)
+		baseline, err := BaselineFor(d.db, websiteID, metric, yesterday)
+		if err != nil {
+			d.logger.Error("Failed to read the goal baseline", slog.Any("error", err))
+			continue
+		}
 		if baseline.Total == 0 {
 			continue // First conversions ever: no history to compare against
 		}
@@ -335,7 +340,11 @@ func (d *Detector) detectTrendingContent(websiteID uint, yesterday time.Time) {
 
 	for _, page := range yesterdayPages {
 		metric := Metric{Table: "page_stats", Column: "visitors_count", Filter: "pathname = ?", Args: []any{page.Pathname}}
-		baseline := BaselineFor(d.db, websiteID, metric, yesterday)
+		baseline, err := BaselineFor(d.db, websiteID, metric, yesterday)
+		if err != nil {
+			d.logger.Error("Failed to read the page baseline", slog.Any("error", err))
+			continue
+		}
 		typical := baseline.Typical
 
 		isNew := baseline.Total == 0
@@ -374,13 +383,6 @@ func (d *Detector) detectTrendingContent(websiteID uint, yesterday time.Time) {
 			}
 		}
 	}
-}
-
-// detectPageProblems finds pages with unusually high bounce rates
-// NOTE: Currently disabled - page_stats schema doesn't have bounce_count column
-func (d *Detector) detectPageProblems(websiteID uint, yesterday time.Time) {
-	// Schema doesn't support bounce rate detection yet
-	// Would need bounce_count column in page_stats table
 }
 
 // friendlySourceName returns a display-friendly name for a referrer hostname.

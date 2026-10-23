@@ -1,6 +1,7 @@
 package feed
 
 import (
+	"fmt"
 	"math"
 	"slices"
 	"time"
@@ -111,9 +112,15 @@ func (b Baseline) IsSpike(current float64) bool {
 //
 // It uses the median and MAD, not the mean and stddev, so a viral day in the
 // window cannot hide the next spike. Up to 3 of 8 samples can be outliers.
-func BaselineFor(db *gorm.DB, websiteID uint, m Metric, day time.Time) Baseline {
+//
+// It returns an error when it cannot read the history. Callers must not
+// read a failed query as a site without history.
+func BaselineFor(db *gorm.DB, websiteID uint, m Metric, day time.Time) (Baseline, error) {
 	from := day.AddDate(0, 0, -7*BaselineWeeks)
-	totals := dailyTotals(db, websiteID, m, from, day)
+	totals, err := dailyTotals(db, websiteID, m, from, day)
+	if err != nil {
+		return Baseline{}, err
+	}
 
 	var total float64
 	for _, v := range totals {
@@ -132,7 +139,7 @@ func BaselineFor(db *gorm.DB, websiteID uint, m Metric, day time.Time) Baseline 
 
 	if len(sameWeekday) >= MinBaselineWeeks {
 		typical := median(sameWeekday)
-		return Baseline{Typical: typical, Spread: noiseFloor(typical, mad(sameWeekday, typical)), Total: total}
+		return Baseline{Typical: typical, Spread: noiseFloor(typical, mad(sameWeekday, typical)), Total: total}, nil
 	}
 
 	// Cold start. The last 7 days mix weekdays and weekends, so their spread
@@ -146,7 +153,7 @@ func BaselineFor(db *gorm.DB, websiteID uint, m Metric, day time.Time) Baseline 
 		lastWeek = append(lastWeek, totals[d])
 	}
 	typical := median(lastWeek)
-	return Baseline{Typical: typical, Spread: noiseFloor(typical, typical*ColdStartVariance), Total: total}
+	return Baseline{Typical: typical, Spread: noiseFloor(typical, typical*ColdStartVariance), Total: total}, nil
 }
 
 // noiseFloor stops a steady metric from producing a near-zero spread, which
@@ -183,7 +190,7 @@ func mad(values []float64, center float64) float64 {
 
 // dailyTotals returns the metric's total per day in [from, to), keyed by date.
 // Days without rows are absent, and callers read them as zero.
-func dailyTotals(db *gorm.DB, websiteID uint, m Metric, from, to time.Time) map[string]float64 {
+func dailyTotals(db *gorm.DB, websiteID uint, m Metric, from, to time.Time) (map[string]float64, error) {
 	type row struct {
 		Day   string
 		Total float64
@@ -197,13 +204,15 @@ func dailyTotals(db *gorm.DB, websiteID uint, m Metric, from, to time.Time) map[
 	if m.Filter != "" {
 		q = q.Where(m.Filter, m.Args...)
 	}
-	q.Group("DATE(hour)").Scan(&rows)
+	if err := q.Group("DATE(hour)").Scan(&rows).Error; err != nil {
+		return nil, fmt.Errorf("failed to read daily totals of %s.%s: %w", m.Table, m.Column, err)
+	}
 
 	totals := make(map[string]float64, len(rows))
 	for _, r := range rows {
 		totals[r.Day] = r.Total
 	}
-	return totals
+	return totals, nil
 }
 
 // firstTrackedDay returns the first date the site received traffic. Weeks
