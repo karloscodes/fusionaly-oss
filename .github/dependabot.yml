@@ -2,7 +2,9 @@
 # Security updates come as soon as an advisory is out, in the "security" group.
 # Security and patch updates merge by themselves when CI passes; minor and major
 # updates wait for a person: .github/workflows/merge-security-updates.yml.
-# A merge releases nothing: updates ship with the next release candidate.
+# A merge releases nothing by itself. release-candidate.yml ships a security
+# update at once, as a patch release; other updates ship with the next
+# release candidate.
 version: 2
 updates:
   - package-ecosystem: "gomod"
