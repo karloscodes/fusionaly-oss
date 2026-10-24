@@ -320,17 +320,20 @@ type EventNameInfo struct {
 	Domain    string `json:"domain"`
 }
 
-// GetDistinctEventNamesForWebsite returns distinct custom event names with website info for a specific website
+// GetDistinctEventNamesForWebsite returns the names of the custom events a
+// website sent in the last daysBack days. It reads event_stats, which the
+// processor keeps per name and half hour: reading the events table took
+// 0.35 s for 30 days of 1M events, on each load of the website's settings.
 func GetDistinctEventNamesForWebsite(db *gorm.DB, websiteID uint, daysBack int) ([]EventNameInfo, error) {
 	var results []EventNameInfo
 	timeLimit := time.Now().UTC().AddDate(0, 0, -daysBack)
 
-	err := db.Table("events e").
-		Select("e.custom_event_name as event_name, e.website_id, w.domain").
-		Joins("JOIN websites w ON w.id = e.website_id").
-		Where("e.website_id = ? AND e.custom_event_name != '' AND e.timestamp >= ?", websiteID, timeLimit).
-		Group("e.custom_event_name, e.website_id, w.domain").
-		Order("e.custom_event_name ASC").
+	err := db.Table("event_stats s").
+		Select("s.event_name, s.website_id, w.domain").
+		Joins("JOIN websites w ON w.id = s.website_id").
+		Where("s.website_id = ? AND s.event_name != '' AND s.hour >= ?", websiteID, timeLimit).
+		Group("s.event_name, s.website_id, w.domain").
+		Order("s.event_name ASC").
 		Scan(&results).Error
 
 	if err != nil {

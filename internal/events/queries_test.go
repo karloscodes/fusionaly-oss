@@ -74,3 +74,35 @@ func TestGetFilteredEvents(t *testing.T) {
 		assert.False(t, result.TotalCapped)
 	})
 }
+
+func TestGetDistinctEventNamesForWebsite(t *testing.T) {
+	t.Run("names each custom event of the range once, in order", func(t *testing.T) {
+		dbm, _, site := testsupport.SetupTestDBManagerWithWebsite(t, "visits.test")
+		at := time.Now().UTC().Add(-time.Hour)
+		arriveNamed(t, dbm, site.ID, "signup", at)
+		arriveNamed(t, dbm, site.ID, "checkout", at.Add(time.Minute))
+		arriveNamed(t, dbm, site.ID, "signup", at.Add(2*time.Minute))
+		// A name seen only before the range: the processor keeps its count.
+		require.NoError(t, dbm.GetConnection().Exec(`INSERT INTO event_stats (website_id, event_name, event_key, hour, visitors_count, page_views_count)
+			VALUES (?, 'old', '', ?, 1, 1)`, site.ID, at.Add(-40*24*time.Hour).Truncate(30*time.Minute)).Error)
+
+		names, err := events.GetDistinctEventNamesForWebsite(dbm.GetConnection(), site.ID, 30)
+
+		require.NoError(t, err)
+		require.Len(t, names, 2)
+		assert.Equal(t, "checkout", names[0].EventName)
+		assert.Equal(t, "signup", names[1].EventName)
+		assert.Equal(t, "visits.test", names[0].Domain)
+	})
+}
+
+// arriveNamed stores a custom event and runs the processor on it.
+func arriveNamed(t *testing.T, dbm *testsupport.TestDBManager, websiteID uint, name string, at time.Time) {
+	t.Helper()
+	event := events.IngestedEvent{WebsiteID: websiteID, UserSignature: "v1", Hostname: "visits.test", Pathname: "/",
+		EventType: events.EventTypeCustomEvent, CustomEventName: name,
+		Timestamp: at, CreatedAt: at, UserAgent: "Mozilla/5.0 (Macintosh) Safari/605.1.15"}
+	require.NoError(t, dbm.GetConnection().Create(&event).Error)
+	_, err := events.ProcessUnprocessedEvents(dbm, testsupport.GetLogger(), 100)
+	require.NoError(t, err)
+}
