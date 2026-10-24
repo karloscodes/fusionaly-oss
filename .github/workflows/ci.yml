@@ -136,7 +136,15 @@ jobs:
           go-version-file: go.mod
       # The app embeds built files (web/dist, the minified SDK). gosec only needs them to exist.
       - run: mkdir -p web/dist/assets web/dist/.vite && touch web/dist/assets/stub.txt api/v1/sdk.min.js && echo '{}' > web/dist/.vite/manifest.json
-      - run: go run github.com/securego/gosec/v2/cmd/gosec@v2.29.0 -exclude-dir=e2e -severity high -confidence high ./...
+      # gosec v2.29.0 pins a golang.org/x/tools too old to read Go 1.27
+      # packages. Built with x/tools v0.52.0, as in chasen, it reads both.
+      - name: Build gosec
+        run: |
+          cd "$(mktemp -d)"
+          go mod init gosec-build
+          go get github.com/securego/gosec/v2/cmd/gosec@v2.29.0 golang.org/x/tools@v0.52.0
+          go build -o "$RUNNER_TEMP/gosec" github.com/securego/gosec/v2/cmd/gosec
+      - run: $RUNNER_TEMP/gosec -exclude-dir=e2e -severity high -confidence high ./...
 
   govulncheck:
     name: govulncheck
