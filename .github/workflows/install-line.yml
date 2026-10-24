@@ -1,0 +1,37 @@
+name: Install line
+
+# The install line of the docs, word for word, on a fresh runner:
+#   curl -fsSL https://fusionaly.com/install | sudo bash -s <domain>
+# CI's install test checks install.sh of each commit with the image of
+# that commit. This checks what a new user gets today: the script that the site
+# serves, the Chasen it installs, and the released image. A broken redirect, a
+# Chasen release that breaks the install, or a script on main that needs an
+# image not released yet fails here. It installs nothing that is published.
+#
+# Each week, after each release, and by hand: gh workflow run "Install line"
+# The same file is in Fusionaly, Formlander, and LogNorth; only the URL differs.
+on:
+  schedule:
+    - cron: "41 5 * * 2"
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
+
+permissions:
+  contents: read
+
+jobs:
+  live:
+    name: Live install line
+    # A release that failed published nothing new.
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Install with the line of the docs, as a new user does
+        run: e2e/installer.sh
+        env:
+          INSTALL_URL: https://fusionaly.com/install

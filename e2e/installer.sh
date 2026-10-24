@@ -6,9 +6,14 @@
 # run that updates and keeps the data, and that a server of the older
 # installer is left alone.
 #
+# With INSTALL_URL it tests the live install line instead, as a new user runs
+# it today: the script that URL serves, with the image that script names (the
+# released one), through `curl -fsSL <url> | sudo bash -s <domain>`.
+#
 # It needs Docker, sudo, and the ports 80 and 443, and it changes the
 # machine: run it on a CI runner or in a throwaway VM, not on your computer.
 #   e2e/installer.sh
+#   INSTALL_URL=https://fusionaly.com/install e2e/installer.sh
 set -Eeuo pipefail
 cd "$(dirname "$0")/.."
 
@@ -43,15 +48,21 @@ login() { post -d "email=$email" --data-urlencode "password=$1" http://127.0.0.1
 ctr() { docker ps --format '{{.Names}}' | grep -m1 -E '^fusionaly(-next)?$'; }
 # The first account, made the way fnctl makes it, not through the setup screens.
 create_owner() { docker exec "$(ctr)" /app/fnctl create-admin-user "$email" "$password" >/dev/null; }
-install() { sudo FUSIONALY_IMAGE="$image" bash install.sh "$host"; } # the domain as the docs pass it: bash -s <domain>
 
-docker rm -f fusionaly-e2e-registry >/dev/null 2>&1 || true
-docker run -d --name fusionaly-e2e-registry -p 127.0.0.1:5000:5000 registry:2 >/dev/null
-trap 'docker rm -f fusionaly-e2e-registry >/dev/null 2>&1 || true' EXIT
+if [[ -n "${INSTALL_URL:-}" ]]; then
+  install() { curl -fsSL "$INSTALL_URL" | sudo bash -s "$host"; } # the line of the docs, word for word
+  echo "--- the live install line: $INSTALL_URL"
+else
+  install() { sudo FUSIONALY_IMAGE="$image" bash install.sh "$host"; } # the domain as the docs pass it: bash -s <domain>
 
-echo "--- the image of this commit"
-docker build -q -t "$image" . >/dev/null
-docker push -q "$image" >/dev/null
+  docker rm -f fusionaly-e2e-registry >/dev/null 2>&1 || true
+  docker run -d --name fusionaly-e2e-registry -p 127.0.0.1:5000:5000 registry:2 >/dev/null
+  trap 'docker rm -f fusionaly-e2e-registry >/dev/null 2>&1 || true' EXIT
+
+  echo "--- the image of this commit"
+  docker build -q -t "$image" . >/dev/null
+  docker push -q "$image" >/dev/null
+fi
 
 echo "--- the installer, on a fresh machine"
 out="$(install 2>&1)" || { echo "$out"; fail "install.sh failed: $(tail -n 15 <<<"$out")"; }
