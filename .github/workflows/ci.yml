@@ -152,6 +152,19 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
+      # govulncheck scans the Go of go.mod, so the image must ship that Go,
+      # built on the Alpine it runs on. The release checks it again; here a
+      # Dockerfile-only bump fails on its pull request.
+      - name: Check the Dockerfile's Go and Alpine
+        run: |
+          set -euo pipefail
+          mod="$(awk '$1 == "go" { print $2; exit }' go.mod)"
+          builder="$(awk '$1 == "FROM" && $2 ~ /^golang:/ { sub(/^golang:/, "", $2); print $2; exit }' Dockerfile)"
+          runtime="$(awk '$1 == "FROM" && $2 ~ /^alpine:/ { sub(/^alpine:/, "", $2); print $2; exit }' Dockerfile)"
+          if [ -z "${mod}" ] || [ "${builder}" != "${mod}-alpine${runtime}" ]; then
+            echo "Dockerfile: golang:${builder:-?} and alpine:${runtime:-?}; want golang:${mod:-?}-alpine${runtime:-?}"
+            exit 1
+          fi
       - run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 
   gitleaks:

@@ -31,6 +31,10 @@ updates:
       - dependency-name: "github.com/karloscodes/*"
   - package-ecosystem: "docker"
     directory: "/"
+    # Go moves by hand, in one commit with go.mod: repo:audit names each new
+    # patch. A golang image bump alone fails CI, so Dependabot leaves it.
+    ignore:
+      - dependency-name: "golang"
     schedule:
       interval: "monthly"
     # A new version waits a week: a compromised release is usually pulled by then.
