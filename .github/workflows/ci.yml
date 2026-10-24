@@ -49,8 +49,9 @@ jobs:
           rm -rf "${PLAYWRIGHT_BROWSERS_PATH:-$HOME/.cache/ms-playwright}"
           npx playwright install --with-deps chromium
 
+      # The code embeds the minified SDK, so vet needs it built.
       - name: Vet
-        run: go vet ./...
+        run: make minify-sdk && go vet ./...
       - name: Run tests
         run: |
           make test GOTESTFLAGS=-race
