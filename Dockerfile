@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.26.10-alpine3.24 AS builder
+FROM golang:1.27.2-alpine3.24 AS builder
 
 # Install build dependencies
 RUN apk add --no-cache build-base musl-dev git nodejs npm
