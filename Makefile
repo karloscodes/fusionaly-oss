@@ -7,6 +7,8 @@ DIST_DIR := dist
 TMP_DIR := tmp
 APP_PORT ?= 3000
 GOTESTSUM := $(shell command -v gotestsum 2> /dev/null)
+# Extra go test flags. CI passes -race: make test GOTESTFLAGS=-race
+GOTESTFLAGS ?=
 WATCHEXEC := watchexec
 BINARY_NAME := fusionaly
 IMCTL_BINARY := fnctl
@@ -132,9 +134,9 @@ test: minify-sdk
 	FUSIONALY_ENV=test $(MAKE) db-migrate
 	@echo "Running tests..."
 	@if [ -n "$(t)" ]; then \
-		FUSIONALY_ENV=test gotestsum --format testname -- --run "$(t)" ./...; \
+		FUSIONALY_ENV=test gotestsum --format testname -- $(GOTESTFLAGS) --run "$(t)" ./...; \
 	else \
-		FUSIONALY_ENV=test gotestsum --format testname ./...; \
+		FUSIONALY_ENV=test gotestsum --format testname -- $(GOTESTFLAGS) ./...; \
 	fi
 
 # Linting

@@ -52,9 +52,11 @@ jobs:
           rm -rf "${PLAYWRIGHT_BROWSERS_PATH:-$HOME/.cache/ms-playwright}"
           npx playwright install --with-deps chromium
 
+      - name: Vet
+        run: go vet ./...
       - name: Run tests
         run: |
-          make test
+          make test GOTESTFLAGS=-race
           make test-e2e
 
   test-manager:
