@@ -56,14 +56,16 @@ env:
   MIN_DAYS: 6
 
 permissions:
-  contents: write
-  actions: write
+  contents: read
 
 jobs:
   train:
     # A merge workflow that skipped or failed merged nothing.
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
     env:
       GH_TOKEN: ${{ github.token }}
       GIT_COMMITTER_NAME: github-actions[bot]

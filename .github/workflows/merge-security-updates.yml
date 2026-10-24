@@ -26,6 +26,9 @@ on:
     workflows: ["CI"]
     types: [completed]
 
+permissions:
+  contents: read
+
 jobs:
   merge:
     # CI passed, on a pull request, from a branch of this repository (not of a
