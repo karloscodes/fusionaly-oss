@@ -1,49 +1,19 @@
-<h1 align="center">Fusionaly</h1>
+# Fusionaly
 
-<p align="center"><strong>Self-hosted web analytics in one SQLite file.</strong></p>
+[![CI](https://github.com/karloscodes/fusionaly-oss/actions/workflows/ci.yml/badge.svg)](https://github.com/karloscodes/fusionaly-oss/actions/workflows/ci.yml) [![Release](https://img.shields.io/github/v/release/karloscodes/fusionaly-oss)](https://github.com/karloscodes/fusionaly-oss/releases/latest) [![Docker pulls](https://img.shields.io/docker/pulls/karloscodes/fusionaly)](https://hub.docker.com/r/karloscodes/fusionaly) [![License: MIT](https://img.shields.io/github/license/karloscodes/fusionaly-oss)](LICENSE)
 
-<p align="center">
-  See who visits, where they come from, and what they click.<br>
-  No cookies, no fingerprinting, no third parties. Your data never leaves your server.
-</p>
+Self-hosted web analytics in one SQLite file.
 
-<p align="center">
-  <a href="https://github.com/karloscodes/fusionaly-oss/releases/latest"><img src="https://img.shields.io/github/v/release/karloscodes/fusionaly-oss?color=00D1FF" alt="Latest release"></a>
-  <a href="https://hub.docker.com/r/karloscodes/fusionaly"><img src="https://img.shields.io/docker/pulls/karloscodes/fusionaly?color=00D1FF" alt="Docker pulls"></a>
-  <a href="https://github.com/karloscodes/fusionaly-oss/actions"><img src="https://github.com/karloscodes/fusionaly-oss/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="./LICENSE"><img src="https://img.shields.io/github/license/karloscodes/fusionaly-oss?color=00D678" alt="License: MIT"></a>
-  <a href="https://github.com/karloscodes/fusionaly-oss/stargazers"><img src="https://img.shields.io/github/stars/karloscodes/fusionaly-oss?style=flat&color=00D678" alt="GitHub stars"></a>
-  <br>
-  <img src="https://img.shields.io/github/go-mod/go-version/karloscodes/fusionaly-oss" alt="Go version">
-  <img src="https://img.shields.io/badge/database-SQLite-003B57?logo=sqlite&logoColor=white" alt="SQLite">
-  <img src="https://img.shields.io/badge/self--hosted-one%20container-000000" alt="Self-hosted in one container">
-  <a href="#ask-from-your-ai-client"><img src="https://img.shields.io/badge/MCP-Claude%20%C2%B7%20Codex%20%C2%B7%20Cursor%20%C2%B7%20Gemini-00D1FF" alt="MCP: Claude, Codex, Cursor, Gemini"></a>
-</p>
+See who visits, where they come from, and what they click. No cookies, no fingerprinting, no third parties. Fusionaly runs on a Raspberry Pi or a $5 VPS, on your own domain: one command installs it, and it updates itself every night. Ask it questions from Claude, Codex, Cursor, or Gemini.
 
-<p align="center">
-  <a href="https://t.fusionaly.com/share/QdREgX5mZu5y">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset=".github/assets/dashboard-dark.png">
-      <img src=".github/assets/dashboard-light.png" alt="The Fusionaly dashboard for fusionaly.com: visitors, page views, sessions, bounce rate, and a 30-day visitors chart" width="900">
-    </picture>
-  </a>
-  <br>
-  <sub>The real dashboard for fusionaly.com. <a href="https://t.fusionaly.com/share/QdREgX5mZu5y">Open it live</a>.</sub>
-</p>
+**[Website](https://fusionaly.com)** · **[Docs](https://fusionaly.com/docs)** · **[Live dashboard](https://t.fusionaly.com/share/QdREgX5mZu5y)**
 
-<p align="center">
-  Runs on a Raspberry Pi or a $5 VPS, on your own domain. One command installs it, and it updates itself every night.<br>
-  Ask it questions from Claude, Codex, Cursor, or Gemini.
-</p>
-
-<p align="center">
-  <a href="https://fusionaly.com">Website</a> ·
-  <a href="https://fusionaly.com/docs">Documentation</a> ·
-  <a href="https://fusionaly.com/docs/installation/">Installation</a> ·
-  <a href="https://t.fusionaly.com/share/QdREgX5mZu5y">Live dashboard</a>
-</p>
-
----
+<a href="https://t.fusionaly.com/share/QdREgX5mZu5y">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/dashboard-dark.png">
+    <img src=".github/assets/dashboard-light.png" alt="The Fusionaly dashboard for fusionaly.com: visitors, page views, sessions, bounce rate, and a 30-day visitors chart">
+  </picture>
+</a>
 
 ## Install
 
@@ -62,13 +32,11 @@ curl -fsSL https://chasenhq.com/cli | sh
 chasen deploy karloscodes/fusionaly --server root@203.0.113.5 --domain data.example.com --auto-update
 ```
 
-Or run the image yourself: `karloscodes/fusionaly` on Docker Hub, or `ghcr.io/karloscodes/fusionaly`. Servers that the older installer set up keep working; to move one to Chasen, see [Move to Chasen](https://fusionaly.com/docs/move-to-chasen/).
+Or run the image yourself: `karloscodes/fusionaly` on Docker Hub, or `ghcr.io/karloscodes/fusionaly`. Servers that the older installer set up keep working; to move one to Chasen, see [Move to Chasen](https://fusionaly.com/docs/move-to-chasen/). The full setup is in the [installation guide](https://fusionaly.com/docs/installation/).
 
-Full setup in the [Installation Guide](https://fusionaly.com/docs/installation/).
+> Don't host it on an `analytics.*` subdomain: ad blockers (uBlock Origin, EasyPrivacy) block hostnames like that and drop your tracking requests. Use a neutral subdomain such as `data.example.com`.
 
-> Don't host it on an `analytics.*` subdomain — ad blockers (uBlock Origin, EasyPrivacy) block hostnames like that and drop your tracking requests. Use a neutral subdomain such as `data.example.com`.
-
-## How it works
+## Use
 
 Add the script to your site:
 
@@ -76,7 +44,7 @@ Add the script to your site:
 <script defer src="https://your-domain.com/y/api/v1/sdk.js"></script>
 ```
 
-Page views and clicks are tracked automatically. For named events, add one attribute — it works on any element:
+Page views and clicks are tracked automatically. For a named event, add one attribute to any element:
 
 ```html
 <button data-fusionaly-event-name="signup_clicked">Sign up</button>
@@ -85,22 +53,22 @@ Page views and clicks are tracked automatically. For named events, add one attri
 <section data-fusionaly-event-name="testimonials_seen">...</section>
 ```
 
-The SDK picks the right trigger per element — click, submit, `sendBeacon`, or scroll-into-view. [Read the docs](https://fusionaly.com/docs/automated-tracking/).
+The SDK picks the right trigger for each element: click, submit, `sendBeacon`, or scroll into view. [Read the docs](https://fusionaly.com/docs/automated-tracking/).
 
 ## What you get
 
-- **Tracking** — page views, SPA navigation, clicks, forms, sections, revenue, and custom events. Automatic where it can be, one attribute where it can't.
-- **Dashboard** — visitors, sources, top pages, countries, devices, goals, and user flows. Daily charts follow your timezone, daylight saving included.
-- **What's new** — a home feed across all your sites: traffic spikes and drops, new referrers, goal spikes, milestones. Each day is compared with the same weekday in past weeks, so a normal Monday peak is not news, and one viral day doesn't hide the next. Small sites stay quiet until something real happens.
-- **Ask from your AI client** — Claude, Codex, Cursor, or Gemini answer questions about your traffic in plain English. See [Ask from your AI client](#ask-from-your-ai-client).
-- **Annotations** — mark deployments, campaigns, and incidents on the timeline.
-- **Shareable dashboards** — public read-only links.
-- **Bot filtering & spam protection** — clean data by default.
+- **Tracking** - Page views, SPA navigation, clicks, forms, sections, revenue, and custom events. Automatic where it can be, one attribute where it can't.
+- **Dashboard** - Visitors, sources, top pages, countries, devices, goals, and user flows. Daily charts follow your timezone, daylight saving included.
+- **What's new** - A home feed across all your sites: traffic spikes and drops, new referrers, goal spikes, milestones. Each day is compared with the same weekday in past weeks, so a normal Monday peak is not news.
+- **Ask from your AI client** - Claude, Codex, Cursor, or Gemini answer questions about your traffic in plain English. See [below](#ask-from-your-ai-client).
+- **Annotations** - Mark deployments, campaigns, and incidents on the timeline.
+- **Shareable dashboards** - Public, read-only links.
+- **Bot filtering and spam protection** - Clean data by default.
 
 ## Privacy
 
 - No cookies, no fingerprinting, no personal data stored.
-- Visitors are counted with a daily-rotating hash, not a stable identifier.
+- Visitors are counted with a hash that rotates daily, not a stable identifier.
 - Everything stays on your server. No third parties, and Fusionaly never calls an AI provider.
 
 ## Ask from your AI client
@@ -113,81 +81,30 @@ Ask "where did my traffic come from this week?" in the AI client you already use
 /fusionaly:connect
 ```
 
-That is Claude Code. Codex, Gemini CLI, Cursor, Claude Desktop, and others are one command each: see the [plugin README](plugin/README.md). Get the agent key from **Administration > Agents**.
-
-Your client asks your server, and only the answer reaches your AI provider. The tools can't write, and they can't read accounts, settings, or keys.
+That is Claude Code. Codex, Gemini CLI, Cursor, Claude Desktop, and others are one command each: see the [plugin README](plugin/README.md). Get the agent key from **Administration > Agents**. Your client asks your server, and only the answer reaches your AI provider. The tools can't write, and they can't read accounts, settings, or keys.
 
 ## Self-hosting
 
 - One SQLite file. No external database, no Redis, no queue.
-- Runs on a Raspberry Pi or a $5 VPS.
-- The installer sets up nightly auto-updates and local backups, no SSH chores. For off-server backups (VPS snapshots, Litestream, rsync), see [Backups](https://fusionaly.com/docs/server-administration/#backups).
-
-If an update doesn't land, force one on the server — it pulls the latest image, redeploys, and repairs the auto-update cron:
-
-```bash
-sudo fusionaly update
-```
-
-## Tech stack
-
-- **Backend**: Go (Fiber, GORM, SQLite, cartridge)
-- **Frontend**: React, Inertia.js, Tailwind CSS, shadcn/ui
-- **Tests**: Go testing, Playwright E2E
+- Chasen sets up nightly updates and live backups, with no SSH chores. For off-server backups (VPS snapshots, Litestream, rsync), see [Backups](https://fusionaly.com/docs/server-administration/#backups).
+- To run the image without Chasen, set `FUSIONALY_DOMAIN` and `FUSIONALY_PRIVATE_KEY` (at least 32 characters: `openssl rand -hex 32`). Chasen gives the key as `PRIVATE_KEY`, which Fusionaly reads too. [SDK configuration](https://fusionaly.com/docs/configuration/) has the tracking options.
 
 ## Development
 
-**Requirements:** Go 1.25+, Node.js 22+, SQLite
+Requirements: Go (the version in `go.mod`), Node.js 22 or later.
 
 ```bash
-make install      # Install dependencies
-make db-migrate   # Apply migrations
-make dev          # Start dev server (hot reload)
+make install      # dependencies
+make db-migrate   # migrations
+make dev          # the dev server with hot reload, at http://localhost:3000
+make test         # the unit tests
+make test-e2e     # the Playwright end-to-end tests
+make lint         # the linters
+make build        # the production binaries
 ```
 
-Access at `http://localhost:3000`.
-
-```bash
-make test         # Unit tests (~3s)
-make test-e2e     # Playwright E2E (~5min)
-make lint         # Run linters
-make build        # Production binaries
-```
-
-## Project structure
-
-```
-fusionaly/
-├── cmd/
-│   ├── fusionaly/     # Main server binary
-│   ├── fnctl/         # CLI tool (migrations, admin tasks)
-│   └── manager/       # Install, updates, and backups in production
-├── internal/          # Core logic (Phoenix Contexts pattern)
-├── api/v1/            # Public tracking API + SDK
-├── web/               # React frontend (Inertia.js + Tailwind)
-├── e2e/               # Playwright E2E tests
-└── storage/           # Runtime data (SQLite database, GeoLite2)
-```
-
-## Configuration
-
-Defaults work out of the box for development. For production, set:
-
-- `FUSIONALY_DOMAIN` — your domain name
-- `FUSIONALY_PRIVATE_KEY` — at least 32 characters; generate one with `openssl rand -hex 32`
-
-See the [Installation Guide](https://fusionaly.com/docs/installation/) for Docker setup and [SDK Configuration](https://fusionaly.com/docs/configuration/) for tracking options.
-
-## Contributing
-
-1. **Open an issue first** — discuss features or significant changes before starting.
-2. **Bug fixes** — PRs welcome with a clear problem/solution description.
-3. Run `make lint`, `make test`, and `make test-e2e` before submitting.
+The code: `cmd/fusionaly` is the server, `cmd/fnctl` the admin CLI (migrations, accounts), and `cmd/manager` the older installer. `internal/` holds the core logic in Phoenix contexts, `api/v1/` the public tracking API and the SDK, `web/` the React frontend (Inertia.js, Tailwind), and `e2e/` the Playwright tests. Open an issue before a large change, and run `make lint`, `make test`, and `make test-e2e` before a pull request.
 
 ## License
 
-[MIT](./LICENSE)
-
----
-
-[Website](https://fusionaly.com) · [Docs](https://fusionaly.com/docs) · [Issues](https://github.com/karloscodes/fusionaly-oss/issues) · [Docker Hub](https://hub.docker.com/r/karloscodes/fusionaly)
+MIT. See [LICENSE](LICENSE).
