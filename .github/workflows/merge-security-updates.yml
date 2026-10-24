@@ -3,14 +3,21 @@ name: Merge security updates
 # Dependabot pull requests merge by themselves when CI passes on them:
 #   - security updates (the "security" group in .github/dependabot.yml), and
 #   - patch updates: every updated dependency is a semver patch.
-# Minor and major updates wait for a person. A merge starts no release and no
-# deploy: the change ships the next time a person releases or deploys.
+# Minor and major updates wait for a person. A merge itself starts no release
+# and no deploy. In a product or a CLI, the fast lane listens for this workflow
+# and releases a security update at once: release-candidate.yml or
+# security-release.yml.
 #
 # A pull request that is behind main gets "@dependabot rebase" and waits for CI
-# to pass again. It fails closed: anything it can't read or check waits for a
-# person. It reads the update metadata that Dependabot writes into its signed
-# commit, the same data dependabot/fetch-metadata reads (that action needs a
-# pull_request event, so it can't run on workflow_run).
+# to pass again. Dependabot takes that command only from a person with push
+# access, so the comment goes out with DEPENDABOT_REBASE_TOKEN: a fine-grained
+# token of the owner with "Pull requests: write". Without it, the run fails and
+# the pull request waits for a person.
+#
+# It fails closed: anything it can't read or check waits for a person. It reads
+# the update metadata that Dependabot writes into its signed commit, the same
+# data dependabot/fetch-metadata reads (that action needs a pull_request event,
+# so it can't run on workflow_run).
 #
 # This file is the same in every product, self-hosted or SaaS. Each one names
 # its test workflow "CI".
@@ -40,6 +47,7 @@ jobs:
           BRANCH: ${{ github.event.workflow_run.head_branch }}
           SHA: ${{ github.event.workflow_run.head_sha }}
           PULL_REQUESTS: ${{ toJSON(github.event.workflow_run.pull_requests) }}
+          REBASE_TOKEN: ${{ secrets.DEPENDABOT_REBASE_TOKEN }}
         run: |
           set -euo pipefail
           hold() { echo "$1: a person merges it."; exit 0; }
@@ -85,8 +93,17 @@ jobs:
           # Behind main where main requires an up-to-date branch: ask Dependabot
           # to rebase (its rebased commits stay signed). CI runs again on the
           # new head and this workflow merges it then.
+          # A failed run says so: a behind pull request stays behind until a
+          # person acts.
           rebase() {
-            gh pr comment "$PR" --body "@dependabot rebase" || hold "Behind main, and can't ask Dependabot to rebase"
+            if [ -z "$REBASE_TOKEN" ]; then
+              echo "::error::#$PR is behind main, and there is no DEPENDABOT_REBASE_TOKEN to ask Dependabot to rebase. Comment @dependabot rebase on it."
+              exit 1
+            fi
+            if ! GH_TOKEN="$REBASE_TOKEN" gh pr comment "$PR" --body "@dependabot rebase"; then
+              echo "::error::#$PR is behind main, and DEPENDABOT_REBASE_TOKEN could not comment. Comment @dependabot rebase on it."
+              exit 1
+            fi
             hold "Behind main, asked Dependabot to rebase"
           }
           if [ "$state" = "BEHIND" ]; then rebase; fi
