@@ -262,8 +262,10 @@ export function Events() {
 					<div className="flex justify-between items-center text-sm">
 						<div className="text-sm text-gray-500">
 							Page {eventsData.pagination.current_page} of{" "}
-							{eventsData.pagination.total_pages} (
-							{formatNumber(eventsData.pagination.total_items)} events)
+							{eventsData.pagination.total_pages}
+							{eventsData.pagination.total_capped ? "+" : ""} (
+							{formatNumber(eventsData.pagination.total_items)}
+							{eventsData.pagination.total_capped ? "+" : ""} events)
 						</div>
 						<div className="flex gap-2">
 							<a
@@ -277,7 +279,7 @@ export function Events() {
 							</a>
 							<a
 								href={buildUrl({ page: (currentPage + 1).toString() })}
-								className={`px-4 py-2 text-sm border border-gray-200 rounded-lg text-gray-700 bg-white font-medium hover:bg-gray-50 hover:border-gray-300 transition-colors ${currentPage === eventsData?.pagination.total_pages ||
+								className={`px-4 py-2 text-sm border border-gray-200 rounded-lg text-gray-700 bg-white font-medium hover:bg-gray-50 hover:border-gray-300 transition-colors ${(currentPage >= eventsData?.pagination.total_pages && !eventsData?.pagination.total_capped) ||
 										isLoading
 										? "opacity-50 pointer-events-none cursor-not-allowed"
 										: ""

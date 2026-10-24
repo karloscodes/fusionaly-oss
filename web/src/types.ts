@@ -155,6 +155,8 @@ export interface PaginationData {
   current_page: number;
   total_pages: number;
   total_items: number;
+  // More events match than total_items counts: the page shows "1,000+".
+  total_capped?: boolean;
   per_page: number;
 }
 

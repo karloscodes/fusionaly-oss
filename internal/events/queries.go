@@ -8,23 +8,33 @@ import (
 
 // EventFilters represents filtering options for events
 type EventFilters struct {
-	WebsiteID            uint
-	FromDate             time.Time
-	ToDate               time.Time
-	URLFilter            string
-	ReferrerFilter       string
-	UserFilter           string
-	TypeFilter           string // "page" or "event"
+	WebsiteID             uint
+	FromDate              time.Time
+	ToDate                time.Time
+	URLFilter             string
+	ReferrerFilter        string
+	UserFilter            string
+	TypeFilter            string // "page" or "event"
 	CustomEventNameFilter string
-	Limit                int
-	Offset               int
+	Limit                 int
+	Offset                int
 }
 
 // EventsResult represents paginated events result
 type EventsResult struct {
 	Events []Event
-	Total  int64
+	// Total counts the matching events, up to countAhead past the page.
+	// TotalCapped says that more match.
+	Total       int64
+	TotalCapped bool
 }
+
+// countAhead is how far past the page the count reads. A filter on text (a
+// URL, a referrer, an event name) can use no index, so an exact count read
+// every event of the range: 0.4 s for 30 days of 1M events, on each page.
+// The page shows "1,000+ events" instead, and the count grows as the user
+// pages on.
+const countAhead = 1000
 
 // GetFilteredEvents retrieves filtered and paginated events
 func GetFilteredEvents(db *gorm.DB, filters EventFilters) (EventsResult, error) {
@@ -61,13 +71,9 @@ func GetFilteredEvents(db *gorm.DB, filters EventFilters) (EventsResult, error) 
 		query = query.Where("custom_event_name LIKE ?", "%"+filters.CustomEventNameFilter+"%")
 	}
 
-	// Get total count for pagination
-	var total int64
-	if err := query.Count(&total).Error; err != nil {
-		return EventsResult{}, err
-	}
+	// The page and the count start from the same filters.
+	query = query.Session(&gorm.Session{})
 
-	// Get paginated events
 	var events []Event
 	if err := query.Order("timestamp DESC").
 		Limit(filters.Limit).
@@ -76,9 +82,20 @@ func GetFilteredEvents(db *gorm.DB, filters EventFilters) (EventsResult, error) 
 		return EventsResult{}, err
 	}
 
+	// A page that is not full is the last one, so it gives the total.
+	if len(events) < filters.Limit && (len(events) > 0 || filters.Offset == 0) {
+		return EventsResult{Events: events, Total: int64(filters.Offset + len(events))}, nil
+	}
+
+	counted := filters.Offset + countAhead
+	var total int64
+	if err := db.Table("(?) AS matches", query.Select("id").Limit(counted+1)).Count(&total).Error; err != nil {
+		return EventsResult{}, err
+	}
 	return EventsResult{
-		Events: events,
-		Total:  total,
+		Events:      events,
+		Total:       min(total, int64(counted)),
+		TotalCapped: total > int64(counted),
 	}, nil
 }
 

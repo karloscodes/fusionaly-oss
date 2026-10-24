@@ -19,7 +19,9 @@ type PaginationData struct {
 	CurrentPage int   `json:"current_page"`
 	TotalPages  int   `json:"total_pages"`
 	TotalItems  int64 `json:"total_items"`
-	PerPage     int   `json:"per_page"`
+	// TotalCapped says that more events match than TotalItems counts.
+	TotalCapped bool `json:"total_capped"`
+	PerPage     int  `json:"per_page"`
 }
 
 type Event struct {
@@ -118,6 +120,7 @@ func EventsIndexAction(ctx *cartridge.Context) error {
 			CurrentPage: page,
 			TotalPages:  totalPages,
 			TotalItems:  result.Total,
+			TotalCapped: result.TotalCapped,
 			PerPage:     limit,
 		},
 	}
@@ -247,6 +250,7 @@ func WebsiteEventsAction(ctx *cartridge.Context) error {
 			CurrentPage: page,
 			TotalPages:  totalPages,
 			TotalItems:  result.Total,
+			TotalCapped: result.TotalCapped,
 			PerPage:     limit,
 		},
 	}
