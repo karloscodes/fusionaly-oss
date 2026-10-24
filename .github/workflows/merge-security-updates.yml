@@ -8,11 +8,10 @@ name: Merge security updates
 # and releases a security update at once: release-candidate.yml or
 # security-release.yml.
 #
-# A pull request that is behind main gets "@dependabot rebase" and waits for CI
-# to pass again. Dependabot takes that command only from a person with push
-# access, so the comment goes out with DEPENDABOT_REBASE_TOKEN: a fine-grained
-# token of the owner with "Pull requests: write". Without it, the run fails and
-# the pull request waits for a person.
+# No repo requires a branch that is up to date with main (rulesets of the
+# standard), so a merge never waits for a rebase. A pull request that is
+# behind main means that rule came back: the run fails and says so, because
+# Dependabot ignores "@dependabot rebase" from a workflow.
 #
 # It fails closed: anything it can't read or check waits for a person. It reads
 # the update metadata that Dependabot writes into its signed commit, the same
@@ -50,7 +49,6 @@ jobs:
           BRANCH: ${{ github.event.workflow_run.head_branch }}
           SHA: ${{ github.event.workflow_run.head_sha }}
           PULL_REQUESTS: ${{ toJSON(github.event.workflow_run.pull_requests) }}
-          REBASE_TOKEN: ${{ secrets.DEPENDABOT_REBASE_TOKEN }}
         run: |
           set -euo pipefail
           hold() { echo "$1: a person merges it."; exit 0; }
@@ -93,26 +91,10 @@ jobs:
             [ "$(grep -c '^  update-type: version-update:semver-patch$' <<<"$meta" || true)" = "$count" ] || hold "Not every update is a patch"
             echo "Patch update of $count dependencies."
           fi
-          # Behind main where main requires an up-to-date branch: ask Dependabot
-          # to rebase (its rebased commits stay signed). CI runs again on the
-          # new head and this workflow merges it then.
-          # A failed run says so: a behind pull request stays behind until a
-          # person acts.
-          rebase() {
-            if [ -z "$REBASE_TOKEN" ]; then
-              echo "::error::#$PR is behind main, and there is no DEPENDABOT_REBASE_TOKEN to ask Dependabot to rebase. Comment @dependabot rebase on it."
-              exit 1
-            fi
-            if ! GH_TOKEN="$REBASE_TOKEN" gh pr comment "$PR" --body "@dependabot rebase"; then
-              echo "::error::#$PR is behind main, and DEPENDABOT_REBASE_TOKEN could not comment. Comment @dependabot rebase on it."
-              exit 1
-            fi
-            hold "Behind main, asked Dependabot to rebase"
-          }
-          if [ "$state" = "BEHIND" ]; then rebase; fi
-          # --match-head-commit: merge only the commit that CI ran on. If main
-          # moved while this ran, rebase instead of failing.
-          if ! gh pr merge "$PR" --rebase --match-head-commit "$SHA"; then
-            if [ "$(gh pr view "$PR" --json mergeStateStatus --jq .mergeStateStatus)" = "BEHIND" ]; then rebase; fi
+          behind() {
+            echo "::error::#$PR is behind main, and a rule asks for an up-to-date branch, which the standard has not. Remove the rule, or comment @dependabot rebase on it."
             exit 1
-          fi
+          }
+          if [ "$state" = "BEHIND" ]; then behind; fi
+          # --match-head-commit: merge only the commit that CI ran on.
+          gh pr merge "$PR" --rebase --match-head-commit "$SHA"
