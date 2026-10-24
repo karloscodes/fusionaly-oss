@@ -10,6 +10,10 @@ name: Release candidate
 #   latest   the newest stable release   customer servers
 #   rc       the newest candidate        your own server
 #
+# Each release runs main's Release workflow on the tag's commit (-f tag). A
+# patch on v1.5.0 holds the workflow of v1.5.0, which can be older than main's
+# or ask for a runner that is gone.
+#
 # The fast lane: a security update skips the train. When
 # merge-security-updates.yml merges one, this cuts a patch release (v1.5.0 ->
 # v1.5.1): the last stable release plus the security updates on main, nothing
@@ -96,7 +100,7 @@ jobs:
           git tag -a "$stable" "$CANDIDATE^{commit}" -m "Release $stable, from $CANDIDATE"
           git push origin "$stable"
           # A tag that a workflow pushes starts no other workflow: start the release here.
-          gh workflow run Release --ref "$stable"
+          gh workflow run Release --ref main -f tag="$stable"
 
       - name: Release the security updates on main now
         if: github.event_name == 'workflow_run'
@@ -129,7 +133,7 @@ jobs:
           git tag -a "$next" -m "Security release $next: $last and the security updates on main"
           git push origin "$next"
           # A tag that a workflow pushes starts no other workflow: start the release here.
-          gh workflow run Release --ref "$next"
+          gh workflow run Release --ref main -f tag="$next"
 
       - name: Make main the next candidate
         if: github.event_name != 'workflow_run' && !inputs.promote
@@ -152,4 +156,4 @@ jobs:
           git tag -a "$next" -m "Release candidate $next"
           git push origin "$next"
           # A tag that a workflow pushes starts no other workflow: start the release here.
-          gh workflow run Release --ref "$next"
+          gh workflow run Release --ref main -f tag="$next"
