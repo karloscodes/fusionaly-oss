@@ -9,6 +9,11 @@ const FUSIONALY = "http://localhost:3000";
 // from Fusionaly on a different domain, so every event is a cross-site request.
 // The customer page is served by page.route on a ".test" host, so no extra
 // server or DNS is needed; the SDK and its events hit the real app.
+//
+// Chromium lets a public page load from localhost only from a secure context
+// and with the Local Network Access permission. A customer site is https, so
+// the page is https; the visitor grants the permission, which no real visitor
+// is asked for, because a real Fusionaly is not on localhost.
 test.describe("Cross-site Ingestion", () => {
 	let helpers;
 
@@ -35,12 +40,12 @@ test.describe("Cross-site Ingestion", () => {
 	}
 
 	// visitCustomerSite opens a fresh browser (like a real visitor, without the
-	// suite's extra test headers) on http://<domain>/ and returns the response
+	// suite's extra test headers) on https://<domain>/ and returns the response
 	// Fusionaly gives to the first event.
 	async function visitCustomerSite(browser, domain) {
-		const visitor = await browser.newContext();
+		const visitor = await browser.newContext({ permissions: ["local-network-access"] });
 		const page = await visitor.newPage();
-		await page.route(`http://${domain}/**`, (route) =>
+		await page.route(`https://${domain}/**`, (route) =>
 			route.fulfill({
 				contentType: "text/html",
 				body: `<!doctype html>
@@ -60,7 +65,7 @@ test.describe("Cross-site Ingestion", () => {
 				response.request().method() === "POST",
 			{ timeout: 15000 },
 		);
-		await page.goto(`http://${domain}/`);
+		await page.goto(`https://${domain}/`);
 		const response = await eventResponse;
 		const headers = await response.request().allHeaders();
 
@@ -77,7 +82,7 @@ test.describe("Cross-site Ingestion", () => {
 		// Playwright can't see the browser-added Sec-Fetch-Site header, but the
 		// Origin proves the request left another site, and ingestion rejects
 		// requests without Sec-Fetch-Site, so a 202 means the browser sent it.
-		expect(headers["origin"], "the event must come from the customer's domain").toBe(`http://${domain}`);
+		expect(headers["origin"], "the event must come from the customer's domain").toBe(`https://${domain}`);
 		expect(response.status(), "a cross-site page view from a registered website should be accepted").toBe(202);
 	});
 
@@ -86,7 +91,7 @@ test.describe("Cross-site Ingestion", () => {
 
 		const { response, headers } = await visitCustomerSite(browser, domain);
 
-		expect(headers["origin"]).toBe(`http://${domain}`);
+		expect(headers["origin"]).toBe(`https://${domain}`);
 		expect(response.status(), "events from an unregistered domain should be rejected").toBe(403);
 	});
 });
