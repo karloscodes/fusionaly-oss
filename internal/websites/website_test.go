@@ -9,27 +9,35 @@ import (
 
 	"fusionaly/internal/events"
 	"fusionaly/internal/settings"
-	"fusionaly/internal/websites"
 	"fusionaly/internal/testsupport"
+	"fusionaly/internal/websites"
 )
 
-func TestGetWebsitesWithStats(t *testing.T) {
-	t.Run("leaves page hides out of the event count", func(t *testing.T) {
-		dbManager, _ := testsupport.SetupTestDBManager(t)
-		db := dbManager.GetConnection()
-		testsupport.CleanAllTables(db)
-		site := testsupport.CreateTestWebsite(db, "example.com")
-		at := time.Now().UTC().Add(-time.Hour)
-		require.NoError(t, db.Create(&[]events.Event{
-			{WebsiteID: site.ID, UserSignature: "v1", Hostname: "example.com", Pathname: "/", EventType: events.EventTypePageView, Timestamp: at},
-			{WebsiteID: site.ID, UserSignature: "v1", Hostname: "example.com", Pathname: "/", EventType: events.EventTypePageHide, Timestamp: at.Add(time.Minute)},
-		}).Error)
+// arrive stores an event and runs the processor on it, as the ingest does.
+func arrive(t *testing.T, dbm *testsupport.TestDBManager, websiteID uint, at time.Time, eventType events.EventType) {
+	t.Helper()
+	event := events.IngestedEvent{WebsiteID: websiteID, UserSignature: "v1", Hostname: "example.com", Pathname: "/",
+		EventType: eventType, CustomEventName: map[bool]string{true: "signup"}[eventType == events.EventTypeCustomEvent],
+		Timestamp: at, CreatedAt: at, UserAgent: "Mozilla/5.0 (Macintosh) Safari/605.1.15"}
+	require.NoError(t, dbm.GetConnection().Create(&event).Error)
+	_, err := events.ProcessUnprocessedEvents(dbm, testsupport.GetLogger(), 100)
+	require.NoError(t, err)
+}
 
-		stats, err := websites.GetWebsitesWithStats(db, 30)
+func TestGetWebsitesWithStats(t *testing.T) {
+	t.Run("counts the page views and custom events of the range, not page hides", func(t *testing.T) {
+		dbm, _, site := testsupport.SetupTestDBManagerWithWebsite(t, "example.com")
+		at := time.Now().UTC().Add(-time.Hour)
+		arrive(t, dbm, site.ID, at.Add(-40*24*time.Hour), events.EventTypePageView)
+		arrive(t, dbm, site.ID, at, events.EventTypePageView)
+		arrive(t, dbm, site.ID, at.Add(time.Minute), events.EventTypeCustomEvent)
+		arrive(t, dbm, site.ID, at.Add(2*time.Minute), events.EventTypePageHide)
+
+		stats, err := websites.GetWebsitesWithStats(dbm.GetConnection(), 30)
 
 		require.NoError(t, err)
 		require.Len(t, stats, 1)
-		assert.Equal(t, int64(1), stats[0].EventCount)
+		assert.Equal(t, int64(2), stats[0].EventCount)
 	})
 }
 

@@ -3,6 +3,7 @@ package http
 import (
 	"net/http"
 	"net/url"
+	"sort"
 
 	"fusionaly/internal/analytics"
 	"log/slog"
@@ -12,8 +13,8 @@ import (
 	"github.com/karloscodes/cartridge/inertia"
 	"gorm.io/gorm"
 
-	"fusionaly/internal/events"
 	"fusionaly/internal/feed"
+	"fusionaly/internal/websites"
 )
 
 // HomeFeedAction renders the admin home page: your sites + the "what's new"
@@ -30,23 +31,14 @@ func HomeFeedAction(ctx *cartridge.Context) error {
 		})
 	}
 
-	// Get websites with event counts for display
-	type websiteRow struct {
-		ID         uint   `json:"id"`
-		Domain     string `json:"domain"`
-		CreatedAt  string `json:"created_at"`
-		EventCount int64  `json:"event_count"`
-	}
-	var websiteRows []websiteRow
-	if err := db.Table("websites").
-		Select("websites.id, websites.domain, websites.created_at, COALESCE(COUNT(events.id), 0) as event_count").
-		Joins("LEFT JOIN events ON events.website_id = websites.id AND events.event_type != ?", events.EventTypePageHide).
-		Group("websites.id").
-		Order("websites.created_at DESC").
-		Scan(&websiteRows).Error; err != nil {
+	// Site cards, newest site first, with the events of the last 30 days, as
+	// on the websites page. They used to count every event ever stored.
+	siteStats, err := websites.GetWebsitesWithStats(db, 30)
+	if err != nil {
 		ctx.Logger.Error("Failed to get websites with stats", slog.Any("error", err))
-		websiteRows = []websiteRow{}
+		siteStats = []websites.WebsiteWithStats{}
 	}
+	sort.Slice(siteStats, func(i, j int) bool { return siteStats[i].CreatedAt.After(siteStats[j].CreatedAt) })
 
 	// Site cards: visitors per day for the last 15 full days (a 14-day
 	// sparkline plus yesterday against the days before it).
@@ -55,10 +47,10 @@ func HomeFeedAction(ctx *cartridge.Context) error {
 		ctx.Logger.Error("Failed to get daily visitors per site", slog.Any("error", err))
 	}
 
-	websites := make([]map[string]any, 0, len(websiteRows))
+	siteCards := make([]map[string]any, 0, len(siteStats))
 	websiteMap := make(map[uint]string) // For feed enrichment
-	for _, w := range websiteRows {
-		websites = append(websites, map[string]any{
+	for _, w := range siteStats {
+		siteCards = append(siteCards, map[string]any{
 			"id":             w.ID,
 			"domain":         w.Domain,
 			"created_at":     w.CreatedAt,
@@ -95,7 +87,7 @@ func HomeFeedAction(ctx *cartridge.Context) error {
 
 	return ctx.Inertia("Home", inertia.Props{
 		"feedItems":     enrichedItems,
-		"websites":      websites,
+		"websites":      siteCards,
 		"calendarData":  calendarData,
 		"totalVisitors": totalVisitors,
 	})
