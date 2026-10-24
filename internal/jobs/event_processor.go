@@ -5,7 +5,6 @@ import (
 
 	"github.com/karloscodes/cartridge"
 
-	"fusionaly/internal/analytics"
 	"fusionaly/internal/events"
 )
 
@@ -80,22 +79,6 @@ func (j *EventProcessorJob) Run() error {
 					slog.Time("timestamp", event.Timestamp))
 			}
 		}
-	}
-
-	// Log event table stats
-	var eventCount int64
-	if err := db.Model(&events.Event{}).Count(&eventCount).Error; err != nil {
-		j.logger.Error("Failed to count events", slog.Any("error", err))
-	} else {
-		j.logger.Info("Total events in Event table", slog.Int64("count", eventCount))
-	}
-
-	// Check for SiteStat entries
-	var siteStatCount int64
-	if err := db.Model(&analytics.SiteStat{}).Count(&siteStatCount).Error; err != nil {
-		j.logger.Error("Failed to count site stats", slog.Any("error", err))
-	} else {
-		j.logger.Info("Total records in SiteStat table", slog.Int64("count", siteStatCount))
 	}
 
 	j.logger.Info("Events processed",
