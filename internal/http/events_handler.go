@@ -9,6 +9,7 @@ import (
 	"log/slog"
 
 	"fusionaly/internal/events"
+	"fusionaly/internal/settings"
 	"fusionaly/internal/visitors"
 	"fusionaly/internal/websites"
 	"github.com/karloscodes/cartridge"
@@ -78,7 +79,7 @@ func EventsIndexAction(ctx *cartridge.Context) error {
 	rangeFilter := ctx.Query("range", "last_7_days")
 
 	// Calculate date range from range filter
-	fromDate, toDate := calculateDateRange(rangeFilter)
+	fromDate, toDate := calculateDateRange(rangeFilter, ownerNow(db))
 
 	// Get filtered events using events context
 	result, err := events.GetFilteredEvents(db, events.EventFilters{
@@ -132,9 +133,19 @@ func EventsIndexAction(ctx *cartridge.Context) error {
 	return ctx.Inertia("Events", props)
 }
 
-// calculateDateRange calculates from and to dates based on range filter
-func calculateDateRange(rangeFilter string) (time.Time, time.Time) {
-	now := time.Now()
+// ownerNow is now in the owner's time zone, so a day on the events page
+// starts at midnight there, as on the dashboard.
+func ownerNow(db *gorm.DB) time.Time {
+	loc, err := time.LoadLocation(settings.Timezone(db))
+	if err != nil {
+		loc = time.UTC
+	}
+	return time.Now().In(loc)
+}
+
+// calculateDateRange returns the range a filter names, in UTC, as the events
+// are stored. Its days start at midnight in now's zone.
+func calculateDateRange(rangeFilter string, now time.Time) (time.Time, time.Time) {
 	var fromDate, toDate time.Time
 
 	switch rangeFilter {
@@ -169,7 +180,7 @@ func calculateDateRange(rangeFilter string) (time.Time, time.Time) {
 		toDate = now
 	}
 
-	return fromDate, toDate
+	return fromDate.UTC(), toDate.UTC()
 }
 
 // WebsiteEventsAction handles the events page for a specific website at /admin/websites/:id/events
@@ -208,7 +219,7 @@ func WebsiteEventsAction(ctx *cartridge.Context) error {
 	rangeFilter := ctx.Query("range", "last_7_days")
 
 	// Calculate date range from range filter
-	fromDate, toDate := calculateDateRange(rangeFilter)
+	fromDate, toDate := calculateDateRange(rangeFilter, ownerNow(db))
 
 	// Get filtered events using events context
 	result, err := events.GetFilteredEvents(db, events.EventFilters{
