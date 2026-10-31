@@ -36,6 +36,6 @@ jobs:
     permissions:
       contents: write
       actions: write
-    uses: karloscodes/workflows/.github/workflows/release-train.yml@v1.1.0
+    uses: karloscodes/workflows/.github/workflows/release-train.yml@main
     with:
       promote: ${{ inputs.promote }}

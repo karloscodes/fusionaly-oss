@@ -127,14 +127,14 @@ jobs:
   # The app embeds built files (web/dist, the minified SDK). The scans only need
   # them to exist.
   security:
-    uses: karloscodes/workflows/.github/workflows/go-security.yml@v1.1.0
+    uses: karloscodes/workflows/.github/workflows/go-security.yml@main
     with:
       prepare: "mkdir -p web/dist/assets web/dist/.vite && touch web/dist/assets/stub.txt api/v1/sdk.min.js && echo '{}' > web/dist/.vite/manifest.json"
       gosec-flags: "-exclude-dir=e2e"
       check-dockerfile: true
 
   gitleaks:
-    uses: karloscodes/workflows/.github/workflows/gitleaks.yml@v1.1.0
+    uses: karloscodes/workflows/.github/workflows/gitleaks.yml@main
 
   # The one check to require on main: it passes when every job above passed
   # (or was skipped on a fork).

@@ -23,6 +23,6 @@ permissions:
 
 jobs:
   live:
-    uses: karloscodes/workflows/.github/workflows/install-line.yml@v1.1.0
+    uses: karloscodes/workflows/.github/workflows/install-line.yml@main
     with:
       url: https://fusionaly.com/install

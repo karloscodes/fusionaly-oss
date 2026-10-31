@@ -15,4 +15,4 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    uses: karloscodes/workflows/.github/workflows/merge-security-updates.yml@v1.1.0
+    uses: karloscodes/workflows/.github/workflows/merge-security-updates.yml@main

@@ -13,4 +13,4 @@ permissions:
 
 jobs:
   scan:
-    uses: karloscodes/workflows/.github/workflows/vulncheck.yml@v1.0.0
+    uses: karloscodes/workflows/.github/workflows/vulncheck.yml@main

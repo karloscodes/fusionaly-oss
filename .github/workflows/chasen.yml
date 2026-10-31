@@ -35,6 +35,6 @@ permissions:
 
 jobs:
   install:
-    uses: karloscodes/workflows/.github/workflows/install-paths.yml@v1.1.0
+    uses: karloscodes/workflows/.github/workflows/install-paths.yml@main
     with:
       ref: ${{ inputs.ref }}

@@ -17,6 +17,6 @@ jobs:
       pull-requests: write
       issues: write
       id-token: write
-    uses: karloscodes/workflows/.github/workflows/claude.yml@v1.1.0
+    uses: karloscodes/workflows/.github/workflows/claude.yml@main
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
