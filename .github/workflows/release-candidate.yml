@@ -23,11 +23,6 @@ on:
     workflows: ["Merge security updates", "Vulncheck"]
     types: [completed]
 
-# One train at a time: the fast lane and Monday never tag at once.
-concurrency:
-  group: release-train
-  cancel-in-progress: false
-
 permissions:
   contents: read
 
