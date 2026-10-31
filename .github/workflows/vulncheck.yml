@@ -1,0 +1,103 @@
+name: Vulncheck
+
+# One daily check of what users run: the branch `production` when it exists,
+# else the newest stable tag, else the default branch. CI and Dependabot watch
+# main. A fix on main does not clear this run: it stays red until the fix ships.
+# A red run emails you. This workflow releases nothing and deploys nothing.
+#
+# Repository variables, all optional:
+#   VULNCHECK_IMAGES   Images to scan, separated by spaces. {sha} is the scanned commit.
+#                      ghcr.io/karloscodes/fusionaly:latest ghcr.io/karloscodes/fusionaly:rc
+#   VULNCHECK_GO       The Go to scan with. Empty: the version in go.mod, which a
+#                      product or CLI builds with. A library sets stable: its users
+#                      choose their Go, and go.mod names only the oldest it supports.
+#   RUNS_ON            Runner labels as JSON. Empty: ubuntu-latest.
+#                      ["self-hosted","Linux","X64","n100"]
+#                      Private repositories only: a public one must not use hq.
+#
+# This file is the same in every repository that has it.
+on:
+  schedule:
+    - cron: "23 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  scan:
+    name: Scan what users run
+    runs-on: ${{ fromJSON(vars.RUNS_ON || '"ubuntu-latest"') }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check out what users run
+        id: live
+        run: |
+          set -euo pipefail
+          tag="$(git tag --list 'v[0-9]*' --sort=-v:refname | grep -v -- - | head -1 || true)"
+          if git rev-parse -q --verify origin/production >/dev/null; then
+            ref=origin/production
+          elif [ -n "$tag" ]; then
+            ref="refs/tags/$tag"
+          else
+            ref=HEAD
+          fi
+          git checkout -q --detach "$ref"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          # Trivy locks its cache, and the runners on hq share one home.
+          echo "TRIVY_CACHE_DIR=$RUNNER_TEMP/trivy" >> "$GITHUB_ENV"
+          echo "Scanning $ref: $(git rev-parse --short HEAD)"
+
+      - uses: actions/setup-go@v7
+        if: hashFiles('go.mod') != ''
+        with:
+          go-version: ${{ vars.VULNCHECK_GO }}
+          go-version-file: ${{ vars.VULNCHECK_GO == '' && 'go.mod' || '' }}
+          check-latest: true
+          cache: false
+
+      # Each scan runs even when one before it failed, so one red run names
+      # every problem.
+      - name: Go code
+        if: ${{ !cancelled() && hashFiles('go.mod') != '' }}
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+
+      - uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567 # v0.3.1
+        if: ${{ !cancelled() }}
+        with:
+          version: v0.76.1
+
+      # Gemfile.lock and package-lock.json, without dev dependencies.
+      # govulncheck owns Go, so this step skips go.mod.
+      - name: Gems and npm packages
+        if: ${{ !cancelled() }}
+        run: >-
+          trivy fs --scanners vuln --ignore-unfixed --severity HIGH,CRITICAL --exit-code 1
+          --skip-dirs e2e,example,examples --skip-files '**/go.mod' .
+
+      # A missing image fails the run: a scan that can't read the image proves nothing.
+      - name: Published images
+        if: ${{ !cancelled() && vars.VULNCHECK_IMAGES != '' }}
+        env:
+          IMAGES: ${{ vars.VULNCHECK_IMAGES }}
+          SHA: ${{ steps.live.outputs.sha }}
+          GHCR_TOKEN: ${{ github.token }}
+        run: |
+          status=0
+          for image in $IMAGES; do
+            image="${image//\{sha\}/$SHA}"
+            echo "::group::$image"
+            case "$image" in
+              ghcr.io/*) export TRIVY_USERNAME="$GITHUB_ACTOR" TRIVY_PASSWORD="$GHCR_TOKEN" ;;
+              *) unset TRIVY_USERNAME TRIVY_PASSWORD ;;
+            esac
+            trivy image --scanners vuln --ignore-unfixed --severity HIGH,CRITICAL --exit-code 1 "$image" || status=1
+            echo "::endgroup::"
+          done
+          exit "$status"
