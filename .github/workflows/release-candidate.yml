@@ -1,46 +1,13 @@
 name: Release candidate
 
-# The release train. Every Monday:
-#   1. The candidate that waited MIN_DAYS becomes the stable release
-#      (v1.5.0-rc.2 -> v1.5.0).
-#   2. When main holds changes after the stable release, main becomes the next
-#      candidate (v1.6.0-rc.1).
-#
-# Two image tags follow the train, and servers update from them each night:
-#   latest   the newest stable release   customer servers
-#   rc       the newest candidate        your own server
-#
-# Each release runs main's Release workflow on the tag's commit (-f tag). A
-# patch on v1.5.0 holds the workflow of v1.5.0, which can be older than main's
-# or ask for a runner that is gone.
-#
-# The fast lane: a security update skips the train. When
-# merge-security-updates.yml merges one, this cuts a patch release (v1.5.0 ->
-# v1.5.1): the last stable release plus the security updates on main, nothing
-# else. Release tests it like any release before it moves `latest`. When an
-# update does not apply cleanly on the stable release, the run fails and emails
-# you: promote the candidate, or cut the patch by hand. The candidate and `rc`
-# stay as they are: your own server gets the update with the next candidate.
-#
-# The rebuild lane: the OS packages of an image get fixes that no Dependabot
-# update brings. When Vulncheck fails and the `latest` image in VULNCHECK_IMAGES
-# has an OS package with a fix, this cuts a patch on the commit of the last
-# stable release (v1.5.0 -> v1.5.1), so only the packages change. Release tests
-# it like any release. At most one per REBUILD_DAYS: a fix that is not in the
-# base image yet must not start a release every day.
+# The release train: weekly candidates and stable releases, the fast lane, and the
+# rebuild lane. The steps are in karloscodes/workflows. This file is the same in
+# Formlander, LogNorth, and Fusionaly.
 #
 # By hand:
 #   A candidate now:       gh workflow run "Release candidate"
 #   Promote one now:       gh workflow run "Release candidate" -f promote=v1.5.0-rc.2
-#   Stop a bad candidate:  fix main, then make a candidate now. The new one
-#                          replaces it and waits its own MIN_DAYS.
 #   Stop the train:        gh workflow disable "Release candidate"
-#
-# To adapt:
-#   - Another day or time: change `cron` (minute hour * * weekday, in UTC).
-#   - A longer or shorter wait before a candidate becomes stable: change MIN_DAYS.
-#   - Candidates, but no automatic promotion: delete `github.event_name == 'schedule' ||`.
-# This file is the same in Formlander, LogNorth, and Fusionaly.
 on:
   schedule:
     - cron: "17 4 * * 1"
@@ -48,8 +15,10 @@ on:
     inputs:
       promote:
         description: "Candidate to promote now, for example v1.5.0-rc.2. Empty: make a candidate from main."
-  # The fast lane and the rebuild lane. A merge by GITHUB_TOKEN starts no push
-  # workflow, so this listens for the workflow that merged, and for the scan.
+        required: false
+        type: string
+  # A merge by GITHUB_TOKEN starts no push workflow, so this listens for the
+  # workflow that merged, and for the scan.
   workflow_run:
     workflows: ["Merge security updates", "Vulncheck"]
     types: [completed]
@@ -59,154 +28,14 @@ concurrency:
   group: release-train
   cancel-in-progress: false
 
-env:
-  MIN_DAYS: 6
-  REBUILD_DAYS: 7
-
 permissions:
   contents: read
 
 jobs:
   train:
-    # A merge workflow that skipped or failed merged nothing. A scan that passed
-    # found nothing.
-    if: >-
-      github.event_name != 'workflow_run' ||
-      (github.event.workflow_run.name == 'Merge security updates' && github.event.workflow_run.conclusion == 'success') ||
-      (github.event.workflow_run.name == 'Vulncheck' && github.event.workflow_run.conclusion == 'failure')
-    runs-on: ubuntu-latest
     permissions:
       contents: write
       actions: write
-    env:
-      GH_TOKEN: ${{ github.token }}
-      GIT_COMMITTER_NAME: github-actions[bot]
-      GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-
-      - name: Promote a candidate to the stable release
-        if: github.event_name == 'schedule' || inputs.promote
-        env:
-          CANDIDATE: ${{ inputs.promote }}
-        run: |
-          # On Monday nobody names a candidate: take the newest one after the last
-          # stable release, when it adds something and is old enough.
-          if [ -z "$CANDIDATE" ]; then
-            last="$(git tag --list 'v[0-9]*' --sort=-v:refname | grep -v -- - | head -1)"
-            [ -n "$last" ] || { echo "No release tag yet."; exit 1; }
-            IFS=. read -r major minor _ <<<"${last#v}"
-            CANDIDATE="$(git tag --list "v$major.$((minor + 1)).0-rc.*" --sort=-v:refname | head -1)"
-            [ -n "$CANDIDATE" ] || { echo "No candidate after $last."; exit 0; }
-            # A candidate that adds nothing for users stays a candidate (docs, CI, and
-            # release settings do not count). `a...b` is what b adds after a.
-            if git diff --quiet "$last...$CANDIDATE" -- . ':!*.md' ':!.github' ':!.goreleaser.yml'; then echo "$CANDIDATE adds nothing after $last."; exit 0; fi
-            made="$(git for-each-ref --format='%(creatordate:unix)' "refs/tags/$CANDIDATE")"
-            days=$((($(date +%s) - made) / 86400))
-            [ "$days" -ge "$MIN_DAYS" ] || { echo "$CANDIDATE is $days days old: it waits until it is $MIN_DAYS."; exit 0; }
-          fi
-
-          case "$CANDIDATE" in v*-rc.*) ;; *) echo "$CANDIDATE is not a candidate: give a tag such as v1.5.0-rc.2."; exit 1 ;; esac
-          stable="${CANDIDATE%-rc.*}"
-          echo "Releasing $stable: the commit of $CANDIDATE"
-          git tag -a "$stable" "$CANDIDATE^{commit}" -m "Release $stable, from $CANDIDATE"
-          git push origin "$stable"
-          # A tag that a workflow pushes starts no other workflow: start the release here.
-          gh workflow run Release --ref main -f tag="$stable"
-
-      - uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567 # v0.3.1
-        if: github.event.workflow_run.name == 'Vulncheck'
-        with:
-          version: v0.76.1
-
-      - name: Rebuild the stable release for its OS packages
-        if: github.event.workflow_run.name == 'Vulncheck'
-        env:
-          IMAGES: ${{ vars.VULNCHECK_IMAGES }}
-        run: |
-          set -euo pipefail
-          image="$(tr ' ' '\n' <<<"$IMAGES" | grep ':latest$' | head -1 || true)"
-          [ -n "$image" ] || { echo "VULNCHECK_IMAGES names no :latest image."; exit 0; }
-          last="$(git tag --list 'v[0-9]*' --sort=-v:refname | grep -v -- - | head -1)"
-          [ -n "$last" ] || { echo "No release tag yet."; exit 0; }
-
-          # OS packages only: a rebuild cannot change a Go or npm dependency. Exit
-          # code 10 is a finding, so a scan that could not run releases nothing.
-          found=0
-          trivy image --pkg-types os --scanners vuln --ignore-unfixed --severity HIGH,CRITICAL \
-            --exit-code 10 "$image" || found=$?
-          case "$found" in
-            0) echo "$image has no OS package to fix."; exit 0 ;;
-            10) ;;
-            *) echo "::error::The scan of $image failed with exit code $found."; exit 1 ;;
-          esac
-
-          made="$(git for-each-ref --format='%(creatordate:unix)' "refs/tags/$last")"
-          days=$((($(date +%s) - made) / 86400))
-          [ "$days" -ge "$REBUILD_DAYS" ] || { echo "$last is $days days old: a rebuild waits until it is $REBUILD_DAYS."; exit 0; }
-
-          IFS=. read -r major minor patch <<<"${last#v}"
-          next="v$major.$minor.$((patch + 1))"
-          echo "Releasing $next: the commit of $last, with newer OS packages"
-          git tag -a "$next" "$last^{commit}" -m "Security rebuild $next: $last with newer OS packages"
-          git push origin "$next"
-          # A tag that a workflow pushes starts no other workflow: start the release here.
-          gh workflow run Release --ref main -f tag="$next"
-
-      - name: Release the security updates on main now
-        if: github.event.workflow_run.name == 'Merge security updates'
-        run: |
-          set -euo pipefail
-          last="$(git tag --list 'v[0-9]*' --sort=-v:refname | grep -v -- - | head -1)"
-          [ -n "$last" ] || { echo "No release tag yet."; exit 0; }
-
-          # Dependabot's security commits on main that $last lacks. The merge keeps
-          # Dependabot's metadata in the message. --cherry-pick drops a commit that
-          # $last already holds by content, so each update ships once.
-          fixes="$(git log --reverse --format=%H --right-only --cherry-pick --no-merges \
-            --author='^dependabot\[bot\]' --grep='^  dependency-group: security$' "$last...HEAD")"
-          [ -n "$fixes" ] || { echo "No security update after $last."; exit 0; }
-
-          IFS=. read -r major minor patch <<<"${last#v}"
-          next="v$major.$minor.$((patch + 1))"
-          echo "Releasing $next: $last and $(wc -l <<<"$fixes") security updates"
-
-          git checkout -q --detach "$last"
-          for commit in $fixes; do
-            echo "  $(git log -1 --format=%s "$commit")"
-            if ! git cherry-pick -x "$commit"; then
-              git cherry-pick --abort
-              echo "::error::$(git log -1 --format=%s "$commit") does not apply on $last. Promote the candidate, or cut the patch by hand."
-              exit 1
-            fi
-          done
-
-          git tag -a "$next" -m "Security release $next: $last and the security updates on main"
-          git push origin "$next"
-          # A tag that a workflow pushes starts no other workflow: start the release here.
-          gh workflow run Release --ref main -f tag="$next"
-
-      - name: Make main the next candidate
-        if: github.event_name != 'workflow_run' && !inputs.promote
-        run: |
-          # The last stable release: the highest version tag with no hyphen.
-          last="$(git tag --list 'v[0-9]*' --sort=-v:refname | grep -v -- - | head -1)"
-          [ -n "$last" ] || { echo "No release tag yet."; exit 1; }
-
-          # Nothing to do when main is that release (docs, CI, and release settings do
-          # not count), or when this commit is a candidate already.
-          if git diff --quiet "$last" HEAD -- . ':!*.md' ':!.github' ':!.goreleaser.yml'; then echo "main holds nothing new after $last."; exit 0; fi
-          if tag="$(git describe --exact-match --tags HEAD 2>/dev/null)"; then echo "This commit is $tag already."; exit 0; fi
-
-          # The candidate is for the next minor version: v1.4.2 -> v1.5.0-rc.1, then -rc.2.
-          IFS=. read -r major minor _ <<<"${last#v}"
-          version="v$major.$((minor + 1)).0"
-          next="$version-rc.$(($(git tag --list "$version-rc.*" | wc -l) + 1))"
-
-          echo "Releasing $next: $(git rev-list --count "$last..HEAD") commits after $last"
-          git tag -a "$next" -m "Release candidate $next"
-          git push origin "$next"
-          # A tag that a workflow pushes starts no other workflow: start the release here.
-          gh workflow run Release --ref main -f tag="$next"
+    uses: karloscodes/workflows/.github/workflows/release-train.yml@v1.1.0
+    with:
+      promote: ${{ inputs.promote }}

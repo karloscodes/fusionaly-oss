@@ -1,8 +1,7 @@
-# Standard file, identical in every karloscodes repo. See maintenance/standard.md.
-# Runs only when an OWNER/MEMBER/COLLABORATOR mentions @claude in a comment.
-# Outsiders: the job-level `if:` skips the job before a runner starts.
 name: claude
 
+# Answers @claude from owners, members, and collaborators. The steps are in
+# karloscodes/workflows. This file is the same in every repository.
 on:
   issue_comment:
     types: [created]
@@ -13,21 +12,11 @@ permissions: {}
 
 jobs:
   claude:
-    if: >-
-      contains(github.event.comment.body, '@claude') &&
-      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
     permissions:
       contents: read
       pull-requests: write
       issues: write
       id-token: write
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 1
-          persist-credentials: false
-      - uses: anthropics/claude-code-action@f27be6b65a4652f08a2ba3cff79114829b588967 # v1
-        with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+    uses: karloscodes/workflows/.github/workflows/claude.yml@v1.1.0
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}

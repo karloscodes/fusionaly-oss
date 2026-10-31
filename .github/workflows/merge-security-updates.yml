@@ -1,25 +1,7 @@
 name: Merge security updates
 
-# Dependabot pull requests merge by themselves when CI passes on them:
-#   - security updates (the "security" group in .github/dependabot.yml), and
-#   - patch updates: every updated dependency is a semver patch.
-# Minor and major updates wait for a person. A merge itself starts no release
-# and no deploy. In a product or a CLI, the fast lane listens for this workflow
-# and releases a security update at once: release-candidate.yml or
-# security-release.yml.
-#
-# No repo requires a branch that is up to date with main (rulesets of the
-# standard), so a merge never waits for a rebase. A pull request that is
-# behind main means that rule came back: the run fails and says so, because
-# Dependabot ignores "@dependabot rebase" from a workflow.
-#
-# It fails closed: anything it can't read or check waits for a person. It reads
-# the update metadata that Dependabot writes into its signed commit, the same
-# data dependabot/fetch-metadata reads (that action needs a pull_request event,
-# so it can't run on workflow_run).
-#
-# This file is the same in every product, self-hosted or SaaS. Each one names
-# its test workflow "CI".
+# Merges a Dependabot security or patch update when CI passes on it. The steps are
+# in karloscodes/workflows. This file is the same in every repository.
 on:
   workflow_run:
     workflows: ["CI"]
@@ -30,71 +12,7 @@ permissions:
 
 jobs:
   merge:
-    # CI passed, on a pull request, from a branch of this repository (not of a
-    # fork), that Dependabot made.
-    if: >-
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'pull_request' &&
-      github.event.workflow_run.head_repository.full_name == github.repository &&
-      startsWith(github.event.workflow_run.head_branch, 'dependabot/')
-    runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
-    steps:
-      - name: Merge a security or patch update
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          BRANCH: ${{ github.event.workflow_run.head_branch }}
-          SHA: ${{ github.event.workflow_run.head_sha }}
-          PULL_REQUESTS: ${{ toJSON(github.event.workflow_run.pull_requests) }}
-        run: |
-          set -euo pipefail
-          hold() { echo "$1: a person merges it."; exit 0; }
-
-          # The pull request is Dependabot's, and CI ran on its head commit.
-          # Take the PR number from the CI run itself, not a branch lookup.
-          PR="$(jq -r 'if length == 1 then .[0].number else empty end' <<<"$PULL_REQUESTS")" || hold "Can't read the pull request"
-          [ -n "$PR" ] || hold "CI did not run for exactly one pull request"
-          # gh shows Dependabot as "app/dependabot"; the REST API as "dependabot[bot]".
-          pr="$(gh pr view "$PR" --json author,headRefName,headRefOid,mergeStateStatus --jq 'select(.author.login == "app/dependabot") | "\(.headRefName) \(.headRefOid) \(.mergeStateStatus)"')" || hold "No pull request"
-          [ -n "$pr" ] || hold "Not a pull request by Dependabot"
-          read -r head_ref head_sha state <<<"$pr"
-          [ "$head_ref $head_sha" = "$BRANCH $SHA" ] || hold "The branch moved after CI ran"
-
-          # Every commit in the pull request is Dependabot's own: authored by
-          # dependabot[bot], committed by GitHub (web-flow) and signed by
-          # GitHub. A person pushing to the branch makes it wait.
-          commits="$(gh api "repos/$GH_REPO/pulls/$PR/commits?per_page=100")" || hold "Can't read the commits"
-          total="$(jq 'length' <<<"$commits")"
-          [ "$total" -ge 1 ] && [ "$total" -lt 100 ] || hold "Unexpected number of commits"
-          [ "$(jq -r '.[-1].sha' <<<"$commits")" = "$SHA" ] || hold "The head commit is not the one CI ran on"
-          good="$(jq '[.[] | select(
-              .author.login == "dependabot[bot]" and
-              .committer.login == "web-flow" and
-              .commit.committer.email == "noreply@github.com" and
-              .commit.verification.verified == true and
-              .commit.verification.reason == "valid")] | length' <<<"$commits")"
-          [ "$good" = "$total" ] || hold "Not every commit is Dependabot's own, signed by GitHub"
-          commit="$(gh api "repos/$GH_REPO/commits/$SHA")"
-          meta="$(jq -r '.commit.message' <<<"$commit" | sed -n '/^updated-dependencies:$/,/^\.\.\.$/p')"
-          count="$(grep -c '^- dependency-name:' <<<"$meta" || true)"
-          [ "$count" -gt 0 ] || hold "No update metadata in the commit"
-
-          # A security update: a grouped "security" branch, and every
-          # dependency in the security group.
-          if [[ "$BRANCH" =~ ^dependabot/[a-z_]+/([a-z0-9._-]+/)*security-[0-9a-f]{10}$ ]]; then
-            [ "$(grep -c '^  dependency-group: security$' <<<"$meta" || true)" = "$count" ] || hold "Security branch, but not every dependency is in the security group"
-            echo "Security update of $count dependencies."
-          else
-            [ "$(grep -c '^  update-type: version-update:semver-patch$' <<<"$meta" || true)" = "$count" ] || hold "Not every update is a patch"
-            echo "Patch update of $count dependencies."
-          fi
-          behind() {
-            echo "::error::#$PR is behind main, and a rule asks for an up-to-date branch, which the standard has not. Remove the rule, or comment @dependabot rebase on it."
-            exit 1
-          }
-          if [ "$state" = "BEHIND" ]; then behind; fi
-          # --match-head-commit: merge only the commit that CI ran on.
-          gh pr merge "$PR" --rebase --match-head-commit "$SHA"
+    uses: karloscodes/workflows/.github/workflows/merge-security-updates.yml@v1.1.0

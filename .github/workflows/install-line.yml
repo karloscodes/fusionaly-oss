@@ -23,15 +23,6 @@ permissions:
 
 jobs:
   live:
-    name: Live install line
-    # A release that failed published nothing new.
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-      - name: Install with the line of the docs, as a new user does
-        run: e2e/installer.sh
-        env:
-          INSTALL_URL: https://fusionaly.com/install
+    uses: karloscodes/workflows/.github/workflows/install-line.yml@v1.1.0
+    with:
+      url: https://fusionaly.com/install
