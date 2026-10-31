@@ -22,6 +22,13 @@ name: Release candidate
 # you: promote the candidate, or cut the patch by hand. The candidate and `rc`
 # stay as they are: your own server gets the update with the next candidate.
 #
+# The rebuild lane: the OS packages of an image get fixes that no Dependabot
+# update brings. When Vulncheck fails and the `latest` image in VULNCHECK_IMAGES
+# has an OS package with a fix, this cuts a patch on the commit of the last
+# stable release (v1.5.0 -> v1.5.1), so only the packages change. Release tests
+# it like any release. At most one per REBUILD_DAYS: a fix that is not in the
+# base image yet must not start a release every day.
+#
 # By hand:
 #   A candidate now:       gh workflow run "Release candidate"
 #   Promote one now:       gh workflow run "Release candidate" -f promote=v1.5.0-rc.2
@@ -41,10 +48,10 @@ on:
     inputs:
       promote:
         description: "Candidate to promote now, for example v1.5.0-rc.2. Empty: make a candidate from main."
-  # The fast lane. A merge by GITHUB_TOKEN starts no push workflow, so it
-  # listens for the workflow that merged.
+  # The fast lane and the rebuild lane. A merge by GITHUB_TOKEN starts no push
+  # workflow, so this listens for the workflow that merged, and for the scan.
   workflow_run:
-    workflows: ["Merge security updates"]
+    workflows: ["Merge security updates", "Vulncheck"]
     types: [completed]
 
 # One train at a time: the fast lane and Monday never tag at once.
@@ -54,14 +61,19 @@ concurrency:
 
 env:
   MIN_DAYS: 6
+  REBUILD_DAYS: 7
 
 permissions:
   contents: read
 
 jobs:
   train:
-    # A merge workflow that skipped or failed merged nothing.
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    # A merge workflow that skipped or failed merged nothing. A scan that passed
+    # found nothing.
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.name == 'Merge security updates' && github.event.workflow_run.conclusion == 'success') ||
+      (github.event.workflow_run.name == 'Vulncheck' && github.event.workflow_run.conclusion == 'failure')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -104,8 +116,47 @@ jobs:
           # A tag that a workflow pushes starts no other workflow: start the release here.
           gh workflow run Release --ref main -f tag="$stable"
 
+      - uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567 # v0.3.1
+        if: github.event.workflow_run.name == 'Vulncheck'
+        with:
+          version: v0.76.1
+
+      - name: Rebuild the stable release for its OS packages
+        if: github.event.workflow_run.name == 'Vulncheck'
+        env:
+          IMAGES: ${{ vars.VULNCHECK_IMAGES }}
+        run: |
+          set -euo pipefail
+          image="$(tr ' ' '\n' <<<"$IMAGES" | grep ':latest$' | head -1 || true)"
+          [ -n "$image" ] || { echo "VULNCHECK_IMAGES names no :latest image."; exit 0; }
+          last="$(git tag --list 'v[0-9]*' --sort=-v:refname | grep -v -- - | head -1)"
+          [ -n "$last" ] || { echo "No release tag yet."; exit 0; }
+
+          # OS packages only: a rebuild cannot change a Go or npm dependency. Exit
+          # code 10 is a finding, so a scan that could not run releases nothing.
+          found=0
+          trivy image --pkg-types os --scanners vuln --ignore-unfixed --severity HIGH,CRITICAL \
+            --exit-code 10 "$image" || found=$?
+          case "$found" in
+            0) echo "$image has no OS package to fix."; exit 0 ;;
+            10) ;;
+            *) echo "::error::The scan of $image failed with exit code $found."; exit 1 ;;
+          esac
+
+          made="$(git for-each-ref --format='%(creatordate:unix)' "refs/tags/$last")"
+          days=$((($(date +%s) - made) / 86400))
+          [ "$days" -ge "$REBUILD_DAYS" ] || { echo "$last is $days days old: a rebuild waits until it is $REBUILD_DAYS."; exit 0; }
+
+          IFS=. read -r major minor patch <<<"${last#v}"
+          next="v$major.$minor.$((patch + 1))"
+          echo "Releasing $next: the commit of $last, with newer OS packages"
+          git tag -a "$next" "$last^{commit}" -m "Security rebuild $next: $last with newer OS packages"
+          git push origin "$next"
+          # A tag that a workflow pushes starts no other workflow: start the release here.
+          gh workflow run Release --ref main -f tag="$next"
+
       - name: Release the security updates on main now
-        if: github.event_name == 'workflow_run'
+        if: github.event.workflow_run.name == 'Merge security updates'
         run: |
           set -euo pipefail
           last="$(git tag --list 'v[0-9]*' --sort=-v:refname | grep -v -- - | head -1)"
