@@ -3,7 +3,7 @@ module fusionaly
 go 1.26.11
 
 require (
-	github.com/dlclark/regexp2/v2 v2.8.3
+	github.com/dlclark/regexp2/v2 v2.12.0
 	github.com/karloscodes/cartridge v1.9.1
 	github.com/karloscodes/matcha v0.12.18
 	github.com/mattn/go-sqlite3 v1.14.52
