@@ -2,9 +2,11 @@
 
 [![CI](https://github.com/karloscodes/fusionaly-oss/actions/workflows/ci.yml/badge.svg)](https://github.com/karloscodes/fusionaly-oss/actions/workflows/ci.yml) [![Release](https://img.shields.io/github/v/release/karloscodes/fusionaly-oss)](https://github.com/karloscodes/fusionaly-oss/releases/latest) [![Docker pulls](https://img.shields.io/docker/pulls/karloscodes/fusionaly)](https://hub.docker.com/r/karloscodes/fusionaly) [![License: MIT](https://img.shields.io/github/license/karloscodes/fusionaly-oss)](LICENSE)
 
-Self-hosted web analytics in one SQLite file.
+Self-hosted web analytics in one SQLite file. An alternative to Google Analytics, and to Plausible when you want to run the software yourself.
 
-See who visits, where they come from, and what they click. No cookies, no fingerprinting, no third parties. Fusionaly runs on a Raspberry Pi or a $5 VPS, on your own domain: one command installs it, and it updates itself every night. Ask it questions from Claude, Codex, Cursor, or Gemini.
+See who visits, where they come from, and what they click. No cookies, no fingerprinting, and no third-party analytics service. Fusionaly runs on a Raspberry Pi or a $5 VPS, on your own domain: one command installs it, and it updates itself every night. Ask it questions from Claude, Codex, Cursor, or Gemini.
+
+It is for small sites and small teams. It is not built for tens of millions of daily users. If you want hosted analytics and no server to run, use a hosted product; Fusionaly has no cloud edition.
 
 **[Website](https://fusionaly.com)** · **[Docs](https://fusionaly.com/docs)** · **[Live dashboard](https://t.fusionaly.com/share/QdREgX5mZu5y)**
 
